@@ -1,0 +1,148 @@
+import { Link } from 'react-router-dom';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { useTheme } from '@/contexts/ThemeContext';
+import { Button } from '@/components/ui/button';
+import { Menu, X, Sun, Moon, Globe } from 'lucide-react';
+import { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+
+export function Navbar() {
+  const { t, language, setLanguage } = useLanguage();
+  const { theme, toggleTheme } = useTheme();
+  const [isOpen, setIsOpen] = useState(false);
+
+  const toggleLanguage = () => {
+    setLanguage(language === 'bn' ? 'en' : 'bn');
+  };
+
+  const navLinks = [
+    { href: '#pricing', label: t('nav.pricing') },
+    { href: '#how-it-works', label: t('nav.howItWorks') },
+    { href: '#faq', label: t('nav.faq') },
+  ];
+
+  return (
+    <nav className="fixed top-0 left-0 right-0 z-50 glass-nav">
+      <div className="container-custom">
+        <div className="flex items-center justify-between h-16 md:h-20">
+          {/* Logo */}
+          <Link to="/" className="flex items-center gap-2">
+            <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center">
+              <span className="text-primary-foreground font-bold text-xl">M</span>
+            </div>
+            <span className="font-bold text-xl text-foreground">MessHishab</span>
+          </Link>
+
+          {/* Desktop Navigation */}
+          <div className="hidden md:flex items-center gap-6">
+            {navLinks.map((link) => (
+              <a
+                key={link.href}
+                href={link.href}
+                className="text-muted-foreground hover:text-foreground transition-colors font-medium"
+              >
+                {link.label}
+              </a>
+            ))}
+          </div>
+
+          {/* Desktop Actions */}
+          <div className="hidden md:flex items-center gap-3">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={toggleLanguage}
+              className="rounded-xl"
+              title={language === 'bn' ? 'Switch to English' : 'বাংলায় দেখুন'}
+            >
+              <Globe className="h-5 w-5" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={toggleTheme}
+              className="rounded-xl"
+            >
+              {theme === 'light' ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
+            </Button>
+            <Link to="/login">
+              <Button variant="outline" className="rounded-xl">
+                {t('nav.login')}
+              </Button>
+            </Link>
+            <Link to="/register">
+              <Button className="btn-primary-glow">
+                {t('nav.register')}
+              </Button>
+            </Link>
+          </div>
+
+          {/* Mobile Menu Button */}
+          <div className="flex md:hidden items-center gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={toggleLanguage}
+              className="rounded-xl"
+            >
+              <Globe className="h-5 w-5" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={toggleTheme}
+              className="rounded-xl"
+            >
+              {theme === 'light' ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setIsOpen(!isOpen)}
+              className="rounded-xl"
+            >
+              {isOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+            </Button>
+          </div>
+        </div>
+
+        {/* Mobile Menu */}
+        <AnimatePresence>
+          {isOpen && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="md:hidden overflow-hidden"
+            >
+              <div className="py-4 space-y-4">
+                {navLinks.map((link) => (
+                  <a
+                    key={link.href}
+                    href={link.href}
+                    className="block text-muted-foreground hover:text-foreground transition-colors font-medium py-2"
+                    onClick={() => setIsOpen(false)}
+                  >
+                    {link.label}
+                  </a>
+                ))}
+                <div className="flex gap-3 pt-4">
+                  <Link to="/login" className="flex-1" onClick={() => setIsOpen(false)}>
+                    <Button variant="outline" className="w-full rounded-xl">
+                      {t('nav.login')}
+                    </Button>
+                  </Link>
+                  <Link to="/register" className="flex-1" onClick={() => setIsOpen(false)}>
+                    <Button className="w-full btn-primary-glow">
+                      {t('nav.register')}
+                    </Button>
+                  </Link>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    </nav>
+  );
+}
