@@ -25,6 +25,7 @@ import {
   Moon,
   Globe,
   Key,
+  CreditCard,
 } from 'lucide-react';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -38,6 +39,7 @@ const managerNavItems = [
   { href: '/dashboard/balance', icon: BarChart3, labelBn: 'ব্যালেন্স', labelEn: 'Balance' },
   { href: '/dashboard/notifications', icon: Bell, labelBn: 'নোটিফিকেশন', labelEn: 'Notifications' },
   { href: '/dashboard/pins', icon: Key, labelBn: 'পিন রেকর্ড', labelEn: 'PIN Records' },
+  { href: '/dashboard/subscription', icon: CreditCard, labelBn: 'সাবস্ক্রিপশন', labelEn: 'Subscription' },
 ];
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
