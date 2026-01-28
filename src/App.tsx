@@ -23,6 +23,7 @@ import BalancePage from "./pages/dashboard/BalancePage";
 import NotificationsPage from "./pages/dashboard/NotificationsPage";
 import PinRecordsPage from "./pages/dashboard/PinRecordsPage";
 import SubscriptionPage from "./pages/dashboard/SubscriptionPage";
+import PaymentPage from "./pages/dashboard/PaymentPage";
 // Member Dashboard
 import MemberDashboard from "./pages/member/MemberDashboard";
 import MemberBazarPage from "./pages/member/MemberBazarPage";
@@ -57,6 +58,7 @@ function App() {
                   <Route path="/dashboard/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} />
                   <Route path="/dashboard/pins" element={<ProtectedRoute><PinRecordsPage /></ProtectedRoute>} />
                   <Route path="/dashboard/subscription" element={<ProtectedRoute><SubscriptionPage /></ProtectedRoute>} />
+                  <Route path="/dashboard/payment" element={<ProtectedRoute><PaymentPage /></ProtectedRoute>} />
                   {/* Member Dashboard Routes */}
                   <Route path="/member" element={<ProtectedRoute><MemberDashboard /></ProtectedRoute>} />
                   <Route path="/member/bazar" element={<ProtectedRoute><MemberBazarPage /></ProtectedRoute>} />
