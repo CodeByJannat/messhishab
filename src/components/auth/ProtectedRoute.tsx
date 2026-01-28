@@ -7,6 +7,23 @@ interface ProtectedRouteProps {
   requiredRole?: 'manager' | 'member';
 }
 
+// Routes that are always accessible even without active subscription
+const ALWAYS_ACCESSIBLE_ROUTES = [
+  '/dashboard',
+  '/dashboard/subscription',
+  '/dashboard/payment',
+];
+
+// Routes that require active subscription for managers
+const SUBSCRIPTION_REQUIRED_ROUTES = [
+  '/dashboard/members',
+  '/dashboard/meals',
+  '/dashboard/bazar',
+  '/dashboard/deposits',
+  '/dashboard/balance',
+  '/dashboard/notifications',
+];
+
 export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) {
   const { user, isLoading, userRole, subscription } = useAuth();
   const { language } = useLanguage();
@@ -30,10 +47,20 @@ export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) 
   }
 
   // Check subscription for managers
-  if (userRole === 'manager' && subscription) {
-    const isExpired = new Date(subscription.end_date) < new Date();
-    if (isExpired && location.pathname !== '/subscription') {
-      return <Navigate to="/subscription" replace />;
+  if (userRole === 'manager') {
+    // Determine if subscription is active (exists AND active status AND not expired)
+    const hasActiveSubscription = subscription?.status === 'active' && 
+      new Date(subscription.end_date) > new Date();
+    
+    // Check if current route requires subscription
+    const currentPath = location.pathname;
+    const requiresSubscription = SUBSCRIPTION_REQUIRED_ROUTES.some(
+      route => currentPath.startsWith(route)
+    );
+    
+    // If on a route that requires subscription and no active subscription, redirect to subscription page
+    if (requiresSubscription && !hasActiveSubscription) {
+      return <Navigate to="/dashboard/subscription" replace />;
     }
   }
 

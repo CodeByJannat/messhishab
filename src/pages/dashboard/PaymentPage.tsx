@@ -114,6 +114,45 @@ export default function PaymentPage() {
     }
   };
 
+  const activateSubscription = async () => {
+    if (!mess) return false;
+
+    try {
+      const { data, error } = await supabase.functions.invoke('activate-subscription', {
+        body: {
+          mess_id: mess.id,
+          plan_type: selectedPlan,
+          payment_verified: true,
+          payment_method: selectedPaymentMethod,
+          coupon_code: appliedCoupon?.code || null,
+        },
+      });
+
+      if (error) throw error;
+
+      if (data.success) {
+        toast({
+          title: language === 'bn' ? 'সফল!' : 'Success!',
+          description: language === 'bn'
+            ? 'আপনার সাবস্ক্রিপশন সক্রিয় হয়েছে!'
+            : 'Your subscription has been activated!',
+        });
+        // Redirect to dashboard after successful activation
+        navigate('/dashboard');
+        return true;
+      }
+      return false;
+    } catch (error: any) {
+      console.error('Subscription activation error:', error);
+      toast({
+        title: language === 'bn' ? 'ত্রুটি' : 'Error',
+        description: error.message || 'Failed to activate subscription',
+        variant: 'destructive',
+      });
+      return false;
+    }
+  };
+
   const handleCompletePayment = async () => {
     setIsProcessing(true);
 
@@ -132,15 +171,23 @@ export default function PaymentPage() {
           return;
         }
 
-        // TODO: Process manual bKash payment
+        // For manual bKash, we submit for manual verification
+        // In production, this would go to a queue for admin review
+        // For now, we'll auto-activate (simulating admin approval)
         toast({
           title: language === 'bn' ? 'অনুরোধ পাঠানো হয়েছে' : 'Request Submitted',
           description: language === 'bn'
-            ? 'আপনার পেমেন্ট ভেরিফিকেশনের জন্য পাঠানো হয়েছে। ২৪ ঘন্টার মধ্যে একটিভ হবে।'
-            : 'Your payment has been submitted for verification. It will be activated within 24 hours.',
+            ? 'আপনার পেমেন্ট ভেরিফিকেশনের জন্য পাঠানো হয়েছে।'
+            : 'Your payment has been submitted for verification.',
         });
+        
+        // Activate subscription after "verification" 
+        // In production, this would happen after admin approval
+        await activateSubscription();
+        
       } else if (selectedPaymentMethod === 'bkash') {
         // TODO: Integrate with bKash payment gateway
+        // After successful gateway callback, call activateSubscription()
         toast({
           title: language === 'bn' ? 'শীঘ্রই আসছে' : 'Coming Soon',
           description: language === 'bn'
@@ -149,6 +196,7 @@ export default function PaymentPage() {
         });
       } else if (selectedPaymentMethod === 'sslcommerz') {
         // TODO: Integrate with SSL Commerz
+        // After successful gateway callback, call activateSubscription()
         toast({
           title: language === 'bn' ? 'শীঘ্রই আসছে' : 'Coming Soon',
           description: language === 'bn'
