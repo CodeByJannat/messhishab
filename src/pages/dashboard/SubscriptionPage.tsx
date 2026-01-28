@@ -30,9 +30,9 @@ export default function SubscriptionPage() {
   const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
   const [showMessNameModal, setShowMessNameModal] = useState(false);
 
-  // Check if mess name is set - if not, show modal
+  // Check if mess name is set OR mess_id is PENDING - if so, show modal
   useEffect(() => {
-    if (mess && !mess.name) {
+    if (mess && (!mess.name || mess.mess_id === 'PENDING')) {
       setShowMessNameModal(true);
     } else {
       setShowMessNameModal(false);
@@ -73,8 +73,8 @@ export default function SubscriptionPage() {
   };
 
   const handleProceedToPayment = () => {
-    // Check if mess name is set
-    if (!mess?.name) {
+    // Check if mess name is set and mess_id is valid
+    if (!mess?.name || mess?.mess_id === 'PENDING') {
       setShowMessNameModal(true);
       toast({
         title: language === 'bn' ? 'মেসের নাম প্রয়োজন' : 'Mess Name Required',
