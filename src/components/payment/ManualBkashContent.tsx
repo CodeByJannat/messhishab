@@ -9,7 +9,7 @@ import bkashQrCode from '@/assets/bkash-qr-code.jpg';
 
 interface ManualBkashContentProps {
   totalAmount: number;
-  messName: string;
+  messId: string; // Changed from messName to messId
   bkashNumber: string;
   trxId: string;
   onBkashNumberChange: (value: string) => void;
@@ -18,7 +18,7 @@ interface ManualBkashContentProps {
 
 export function ManualBkashContent({
   totalAmount,
-  messName,
+  messId,
   bkashNumber,
   trxId,
   onBkashNumberChange,
@@ -159,14 +159,15 @@ export function ManualBkashContent({
               <CopyButton text={totalAmount.toString()} field="amount" />
             </div>
 
-            <div className="flex items-center justify-between p-3 rounded-lg bg-background/80">
+            {/* Reference - Now uses Mess ID */}
+            <div className="flex items-center justify-between p-3 rounded-lg bg-primary/10 border border-primary/20">
               <div>
                 <span className="text-muted-foreground">
-                  {language === 'bn' ? 'রেফারেন্সঃ' : 'Reference:'}
+                  {language === 'bn' ? 'রেফারেন্স (মেস আইডি):' : 'Reference (Mess ID):'}
                 </span>
-                <span className="ml-2 font-semibold text-foreground">{messName || 'MessHishab'}</span>
+                <span className="ml-2 font-bold text-primary">{messId}</span>
               </div>
-              <CopyButton text={messName || 'MessHishab'} field="reference" />
+              <CopyButton text={messId} field="reference" />
             </div>
           </div>
 

@@ -1,6 +1,7 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { DashboardLayout } from '@/components/dashboard/DashboardLayout';
+import { MessNameSetupModal } from '@/components/dashboard/MessNameSetupModal';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Copy, Users, Utensils, ShoppingCart, Wallet, TrendingUp, TrendingDown, Eye, EyeOff } from 'lucide-react';
+import { Copy, Users, Utensils, ShoppingCart, Wallet, TrendingUp, TrendingDown, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 interface DashboardStats {
@@ -27,6 +28,7 @@ export default function ManagerDashboard() {
   const [messPassword, setMessPassword] = useState('');
   const [messName, setMessName] = useState('');
   const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [stats, setStats] = useState<DashboardStats>({
     totalMembers: 0,
     totalMeals: 0,
@@ -34,6 +36,9 @@ export default function ManagerDashboard() {
     totalDeposits: 0,
     mealRate: 0,
   });
+
+  // Check if mess name is not set - show blocking modal
+  const showMessNameModal = mess && !mess.name;
 
   useEffect(() => {
     if (mess) {
@@ -99,30 +104,46 @@ export default function ManagerDashboard() {
   const handleUpdateMess = async () => {
     if (!mess) return;
 
+    // Validate inputs
+    if (!messPassword.trim()) {
+      toast({
+        title: language === 'bn' ? 'ত্রুটি' : 'Error',
+        description: language === 'bn' ? 'পাসওয়ার্ড খালি রাখা যাবে না' : 'Password cannot be empty',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsSaving(true);
     try {
+      const updateData: { mess_password: string; name: string | null } = {
+        mess_password: messPassword.trim(),
+        name: messName.trim() || null,
+      };
+
       const { error } = await supabase
         .from('messes')
-        .update({
-          mess_password: messPassword,
-          name: messName || null,
-        })
+        .update(updateData)
         .eq('id', mess.id);
 
       if (error) throw error;
 
       toast({
         title: language === 'bn' ? 'সফল!' : 'Success!',
-        description: language === 'bn' ? 'মেস তথ্য আপডেট হয়েছে' : 'Mess info updated',
+        description: language === 'bn' ? 'মেস তথ্য সফলভাবে আপডেট হয়েছে' : 'Mess info updated successfully',
       });
 
       setIsEditing(false);
-      refreshMess();
+      await refreshMess();
     } catch (error: any) {
+      console.error('Update error:', error);
       toast({
         title: language === 'bn' ? 'ত্রুটি' : 'Error',
-        description: error.message,
+        description: error.message || (language === 'bn' ? 'আপডেট করা যায়নি' : 'Failed to update'),
         variant: 'destructive',
       });
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -171,6 +192,11 @@ export default function ManagerDashboard() {
 
   return (
     <DashboardLayout>
+      {/* Mess Name Setup Modal - Blocking */}
+      {showMessNameModal && (
+        <MessNameSetupModal isOpen={true} messId={mess.id} />
+      )}
+
       <div className="space-y-6">
         {/* Page Header */}
         <div>
@@ -185,7 +211,7 @@ export default function ManagerDashboard() {
         {/* Mess Info Card */}
         <Card className="glass-card">
           <CardHeader>
-            <CardTitle className="flex items-center justify-between">
+          <CardTitle className="flex items-center justify-between">
               <span>{language === 'bn' ? 'মেস তথ্য' : 'Mess Info'}</span>
               {!isEditing ? (
                 <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
@@ -193,11 +219,27 @@ export default function ManagerDashboard() {
                 </Button>
               ) : (
                 <div className="flex gap-2">
-                  <Button variant="outline" size="sm" onClick={() => setIsEditing(false)}>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => {
+                      setIsEditing(false);
+                      // Reset to original values on cancel
+                      if (mess) {
+                        setMessPassword(mess.mess_password);
+                        setMessName(mess.name || '');
+                      }
+                    }}
+                    disabled={isSaving}
+                  >
                     {language === 'bn' ? 'বাতিল' : 'Cancel'}
                   </Button>
-                  <Button size="sm" onClick={handleUpdateMess}>
-                    {language === 'bn' ? 'সেভ' : 'Save'}
+                  <Button size="sm" onClick={handleUpdateMess} disabled={isSaving}>
+                    {isSaving ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      language === 'bn' ? 'সেভ' : 'Save'
+                    )}
                   </Button>
                 </div>
               )}

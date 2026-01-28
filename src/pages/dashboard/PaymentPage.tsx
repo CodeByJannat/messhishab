@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { DashboardLayout } from '@/components/dashboard/DashboardLayout';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -10,8 +11,7 @@ import { BkashPaymentContent } from '@/components/payment/BkashPaymentContent';
 import { ManualBkashContent } from '@/components/payment/ManualBkashContent';
 import { SSLCommerzContent } from '@/components/payment/SSLCommerzContent';
 import { CartSection } from '@/components/payment/CartSection';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { CreditCard, Wallet } from 'lucide-react';
+import { CreditCard } from 'lucide-react';
 
 // Import payment icons
 import bkashIcon from '@/assets/bkash-icon.png';
@@ -20,11 +20,16 @@ import sslLogo from '@/assets/ssl-logo.png';
 type PaymentMethod = 'bkash' | 'manual-bkash' | 'sslcommerz';
 
 export default function PaymentPage() {
+  const navigate = useNavigate();
+  const location = useLocation();
   const { language } = useLanguage();
-  const { mess, subscription } = useAuth();
+  const { mess } = useAuth();
   const { toast } = useToast();
 
-  const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'yearly'>('monthly');
+  // Get plan from subscription page state, default to monthly
+  const planFromState = (location.state as { plan?: 'monthly' | 'yearly' })?.plan;
+  const selectedPlan: 'monthly' | 'yearly' = planFromState || 'monthly';
+
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethod>('bkash');
   const [couponCode, setCouponCode] = useState('');
   const [appliedCoupon, setAppliedCoupon] = useState<{
@@ -37,6 +42,20 @@ export default function PaymentPage() {
   // Manual bKash form state
   const [manualBkashNumber, setManualBkashNumber] = useState('');
   const [manualTrxId, setManualTrxId] = useState('');
+
+  // Redirect to subscription page if mess name is not set
+  useEffect(() => {
+    if (mess && !mess.name) {
+      toast({
+        title: language === 'bn' ? 'মেসের নাম প্রয়োজন' : 'Mess Name Required',
+        description: language === 'bn' 
+          ? 'পেমেন্ট করার আগে মেসের নাম সেট করুন'
+          : 'Please set your mess name before making a payment',
+        variant: 'destructive',
+      });
+      navigate('/dashboard');
+    }
+  }, [mess, navigate, language, toast]);
 
   const basePrice = selectedPlan === 'yearly' ? 200 : 20;
   const discountAmount = appliedCoupon ? (basePrice * appliedCoupon.discount_percent) / 100 : 0;
@@ -148,6 +167,9 @@ export default function PaymentPage() {
     }
   };
 
+  // Use Mess ID as reference for manual bKash
+  const messIdReference = mess?.mess_id || '';
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -162,33 +184,6 @@ export default function PaymentPage() {
               : 'Complete payment for your subscription'}
           </p>
         </div>
-
-        {/* Plan Selection Tabs */}
-        <Tabs
-          value={selectedPlan}
-          onValueChange={(value) => setSelectedPlan(value as 'monthly' | 'yearly')}
-          className="w-full"
-        >
-          <TabsList className="grid w-full max-w-md grid-cols-2 h-12 p-1 bg-muted/50 rounded-xl">
-            <TabsTrigger
-              value="monthly"
-              className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm"
-            >
-              <Wallet className="w-4 h-4 mr-2" />
-              {language === 'bn' ? 'মাসিক (৳২০)' : 'Monthly (৳20)'}
-            </TabsTrigger>
-            <TabsTrigger
-              value="yearly"
-              className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm relative"
-            >
-              <CreditCard className="w-4 h-4 mr-2" />
-              {language === 'bn' ? 'বার্ষিক (৳২০০)' : 'Yearly (৳200)'}
-              <span className="absolute -top-2 -right-2 px-1.5 py-0.5 text-[10px] font-bold bg-primary text-primary-foreground rounded-full">
-                {language === 'bn' ? 'সেভ ১৭%' : 'Save 17%'}
-              </span>
-            </TabsTrigger>
-          </TabsList>
-        </Tabs>
 
         {/* Main Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
@@ -233,7 +228,7 @@ export default function PaymentPage() {
                   <ManualBkashContent
                     key="manual-bkash"
                     totalAmount={finalPrice}
-                    messName={mess?.name || 'MessHishab'}
+                    messId={messIdReference}
                     bkashNumber={manualBkashNumber}
                     trxId={manualTrxId}
                     onBkashNumberChange={setManualBkashNumber}
