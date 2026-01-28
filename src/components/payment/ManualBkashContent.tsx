@@ -186,7 +186,6 @@ export function ManualBkashContent({
               : "⚠️ When entering the TrxID, carefully distinguish between zero '0' and letter 'o', uppercase 'I' and lowercase 'l'. Transaction IDs are usually in uppercase."}
           </div>
         </div>
-      </div>
 
       {/* QR Code */}
       <div className="p-6 rounded-2xl bg-gradient-to-br from-[#E2136E]/5 to-[#E2136E]/10 border border-[#E2136E]/20">
