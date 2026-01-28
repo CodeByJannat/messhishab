@@ -462,6 +462,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      finalize_mess_setup: {
+        Args: { p_mess_name: string; p_mess_uuid: string }
+        Returns: string
+      }
       generate_mess_id: { Args: never; Returns: string }
       get_user_mess_id: { Args: { _user_id: string }; Returns: string }
       has_role: {

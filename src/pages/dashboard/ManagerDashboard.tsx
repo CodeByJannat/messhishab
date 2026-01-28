@@ -6,10 +6,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useState, useEffect } from 'react';
+import { Badge } from '@/components/ui/badge';
+import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Copy, Users, Utensils, ShoppingCart, Wallet, TrendingUp, TrendingDown, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { Copy, Users, Utensils, ShoppingCart, Wallet, TrendingUp, TrendingDown, Eye, EyeOff, Loader2, CheckCircle, XCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 interface DashboardStats {
@@ -21,7 +22,7 @@ interface DashboardStats {
 }
 
 export default function ManagerDashboard() {
-  const { mess, refreshMess } = useAuth();
+  const { mess, subscription, refreshMess } = useAuth();
   const { language } = useLanguage();
   const { toast } = useToast();
   const [showPassword, setShowPassword] = useState(false);
@@ -37,13 +38,27 @@ export default function ManagerDashboard() {
     mealRate: 0,
   });
 
-  // Check if mess name is not set - show blocking modal
-  const showMessNameModal = mess && !mess.name;
+  // Check if mess name is not set OR mess_id is still PENDING - show blocking modal
+  const showMessNameModal = mess && (!mess.name || mess.mess_id === 'PENDING');
+
+  // Track original values to detect changes
+  const [originalPassword, setOriginalPassword] = useState('');
+  const [originalName, setOriginalName] = useState('');
+
+  // Determine if there are unsaved changes
+  const hasChanges = useMemo(() => {
+    return messPassword !== originalPassword || messName !== originalName;
+  }, [messPassword, messName, originalPassword, originalName]);
+
+  // Determine subscription status
+  const isSubscriptionActive = subscription?.status === 'active';
 
   useEffect(() => {
     if (mess) {
       setMessPassword(mess.mess_password);
       setMessName(mess.name || '');
+      setOriginalPassword(mess.mess_password);
+      setOriginalName(mess.name || '');
       fetchStats();
     }
   }, [mess]);
@@ -114,6 +129,24 @@ export default function ManagerDashboard() {
       return;
     }
 
+    if (messPassword.trim().length < 4) {
+      toast({
+        title: language === 'bn' ? 'ত্রুটি' : 'Error',
+        description: language === 'bn' ? 'পাসওয়ার্ড কমপক্ষে ৪ অক্ষরের হতে হবে' : 'Password must be at least 4 characters',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (messName.trim() && messName.trim().length < 2) {
+      toast({
+        title: language === 'bn' ? 'ত্রুটি' : 'Error',
+        description: language === 'bn' ? 'মেসের নাম কমপক্ষে ২ অক্ষরের হতে হবে' : 'Mess name must be at least 2 characters',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setIsSaving(true);
     try {
       const updateData: { mess_password: string; name: string | null } = {
@@ -127,6 +160,10 @@ export default function ManagerDashboard() {
         .eq('id', mess.id);
 
       if (error) throw error;
+
+      // Update original values after successful save
+      setOriginalPassword(messPassword.trim());
+      setOriginalName(messName.trim());
 
       toast({
         title: language === 'bn' ? 'সফল!' : 'Success!',
@@ -147,8 +184,15 @@ export default function ManagerDashboard() {
     }
   };
 
+  const handleCancelEdit = () => {
+    setIsEditing(false);
+    // Reset to original values
+    setMessPassword(originalPassword);
+    setMessName(originalName);
+  };
+
   const copyMessId = () => {
-    if (mess) {
+    if (mess && mess.mess_id !== 'PENDING') {
       navigator.clipboard.writeText(mess.mess_id);
       toast({
         title: language === 'bn' ? 'কপি হয়েছে!' : 'Copied!',
@@ -211,8 +255,22 @@ export default function ManagerDashboard() {
         {/* Mess Info Card */}
         <Card className="glass-card">
           <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-              <span>{language === 'bn' ? 'মেস তথ্য' : 'Mess Info'}</span>
+            <CardTitle className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <span>{language === 'bn' ? 'মেস তথ্য' : 'Mess Info'}</span>
+                {/* Subscription Status Badge */}
+                {isSubscriptionActive ? (
+                  <Badge variant="default" className="bg-success/10 text-success border-success/20 hover:bg-success/20">
+                    <CheckCircle className="w-3 h-3 mr-1" />
+                    {language === 'bn' ? 'সক্রিয়' : 'Active'}
+                  </Badge>
+                ) : (
+                  <Badge variant="destructive" className="bg-destructive/10 text-destructive border-destructive/20 hover:bg-destructive/20">
+                    <XCircle className="w-3 h-3 mr-1" />
+                    {language === 'bn' ? 'নিষ্ক্রিয়' : 'Inactive'}
+                  </Badge>
+                )}
+              </div>
               {!isEditing ? (
                 <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
                   {language === 'bn' ? 'সম্পাদনা' : 'Edit'}
@@ -222,19 +280,16 @@ export default function ManagerDashboard() {
                   <Button 
                     variant="outline" 
                     size="sm" 
-                    onClick={() => {
-                      setIsEditing(false);
-                      // Reset to original values on cancel
-                      if (mess) {
-                        setMessPassword(mess.mess_password);
-                        setMessName(mess.name || '');
-                      }
-                    }}
+                    onClick={handleCancelEdit}
                     disabled={isSaving}
                   >
                     {language === 'bn' ? 'বাতিল' : 'Cancel'}
                   </Button>
-                  <Button size="sm" onClick={handleUpdateMess} disabled={isSaving}>
+                  <Button 
+                    size="sm" 
+                    onClick={handleUpdateMess} 
+                    disabled={isSaving || !hasChanges}
+                  >
                     {isSaving ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
                     ) : (
@@ -246,16 +301,38 @@ export default function ManagerDashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {/* Mess ID */}
               <div className="space-y-2">
                 <Label>{language === 'bn' ? 'মেস আইডি' : 'Mess ID'}</Label>
                 <div className="flex gap-2">
-                  <Input value={mess?.mess_id || ''} readOnly className="rounded-xl" />
-                  <Button variant="outline" size="icon" onClick={copyMessId} className="rounded-xl">
+                  <Input 
+                    value={mess?.mess_id === 'PENDING' ? (language === 'bn' ? 'অপেক্ষমাণ...' : 'Pending...') : (mess?.mess_id || '')} 
+                    readOnly 
+                    className="rounded-xl bg-muted/50 font-mono" 
+                  />
+                  <Button 
+                    variant="outline" 
+                    size="icon" 
+                    onClick={copyMessId} 
+                    className="rounded-xl"
+                    disabled={!mess || mess.mess_id === 'PENDING'}
+                  >
                     <Copy className="w-4 h-4" />
                   </Button>
                 </div>
+              </div>
+
+              {/* Mess Name */}
+              <div className="space-y-2">
+                <Label>{language === 'bn' ? 'মেসের নাম' : 'Mess Name'}</Label>
+                <Input
+                  value={messName}
+                  onChange={(e) => setMessName(e.target.value)}
+                  readOnly={!isEditing}
+                  placeholder={language === 'bn' ? 'মেসের নাম লিখুন' : 'Enter mess name'}
+                  className="rounded-xl"
+                />
               </div>
 
               {/* Mess Password */}
@@ -281,15 +358,13 @@ export default function ManagerDashboard() {
                 </div>
               </div>
 
-              {/* Mess Name */}
+              {/* Current Month */}
               <div className="space-y-2">
-                <Label>{language === 'bn' ? 'মেসের নাম (ঐচ্ছিক)' : 'Mess Name (Optional)'}</Label>
-                <Input
-                  value={messName}
-                  onChange={(e) => setMessName(e.target.value)}
-                  readOnly={!isEditing}
-                  placeholder={language === 'bn' ? 'মেসের নাম লিখুন' : 'Enter mess name'}
-                  className="rounded-xl"
+                <Label>{language === 'bn' ? 'বর্তমান মাস' : 'Current Month'}</Label>
+                <Input 
+                  value={mess?.current_month || ''} 
+                  readOnly 
+                  className="rounded-xl bg-muted/50" 
                 />
               </div>
             </div>

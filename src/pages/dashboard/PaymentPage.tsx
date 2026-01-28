@@ -43,9 +43,9 @@ export default function PaymentPage() {
   const [manualBkashNumber, setManualBkashNumber] = useState('');
   const [manualTrxId, setManualTrxId] = useState('');
 
-  // Redirect to subscription page if mess name is not set
+  // Redirect to dashboard if mess name is not set OR mess_id is still PENDING
   useEffect(() => {
-    if (mess && !mess.name) {
+    if (mess && (!mess.name || mess.mess_id === 'PENDING')) {
       toast({
         title: language === 'bn' ? 'মেসের নাম প্রয়োজন' : 'Mess Name Required',
         description: language === 'bn' 
