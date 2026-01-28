@@ -72,6 +72,15 @@ export default function Register() {
       
       if (error) throw error;
       
+      // Send branded welcome email (fire and forget - don't block registration)
+      supabase.functions.invoke('send-welcome-email', {
+        body: { 
+          email, 
+          messId: '', // Will show "Check your dashboard" in email
+          language 
+        },
+      }).catch(err => console.error('Welcome email error:', err));
+      
       toast({
         title: language === 'bn' ? 'সফল!' : 'Success!',
         description: language === 'bn' ? 'রেজিস্ট্রেশন সফল হয়েছে। লগইন করুন।' : 'Registration successful. Please login.',
