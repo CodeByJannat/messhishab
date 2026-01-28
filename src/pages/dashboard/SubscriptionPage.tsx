@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { DashboardLayout } from '@/components/dashboard/DashboardLayout';
+import { MessNameSetupModal } from '@/components/dashboard/MessNameSetupModal';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -27,6 +28,16 @@ export default function SubscriptionPage() {
     description: string;
   } | null>(null);
   const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
+  const [showMessNameModal, setShowMessNameModal] = useState(false);
+
+  // Check if mess name is set - if not, show modal
+  useEffect(() => {
+    if (mess && !mess.name) {
+      setShowMessNameModal(true);
+    } else {
+      setShowMessNameModal(false);
+    }
+  }, [mess]);
 
   const basePrice = selectedPlan === 'yearly' ? 200 : 20;
   const discountAmount = appliedCoupon ? (basePrice * appliedCoupon.discount_percent) / 100 : 0;
@@ -61,12 +72,39 @@ export default function SubscriptionPage() {
     }
   };
 
+  const handleProceedToPayment = () => {
+    // Check if mess name is set
+    if (!mess?.name) {
+      setShowMessNameModal(true);
+      toast({
+        title: language === 'bn' ? 'মেসের নাম প্রয়োজন' : 'Mess Name Required',
+        description: language === 'bn' 
+          ? 'সাবস্ক্রিপশন কেনার আগে মেসের নাম সেট করুন'
+          : 'Please set your mess name before purchasing a subscription',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Navigate to payment page with plan info
+    navigate('/dashboard/payment', { 
+      state: { 
+        plan: selectedPlan,
+        coupon: appliedCoupon,
+      } 
+    });
+  };
 
   const isActive = subscription?.status === 'active' && new Date(subscription.end_date) > new Date();
   const daysRemaining = subscription ? Math.ceil((new Date(subscription.end_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24)) : 0;
 
   return (
     <DashboardLayout>
+      {/* Mess Name Setup Modal - Blocking for subscription */}
+      {showMessNameModal && mess && (
+        <MessNameSetupModal isOpen={true} messId={mess.id} />
+      )}
+
       <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-bold text-foreground">
@@ -274,7 +312,7 @@ export default function SubscriptionPage() {
             {/* Payment Button */}
             <Button 
               className="w-full h-12 rounded-xl text-base font-semibold"
-              onClick={() => navigate('/dashboard/payment')}
+              onClick={handleProceedToPayment}
             >
               <CreditCard className="w-5 h-5 mr-2" />
               {language === 'bn' ? 'পেমেন্ট করুন' : 'Make Payment'}
