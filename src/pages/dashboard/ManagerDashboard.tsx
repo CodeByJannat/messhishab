@@ -12,6 +12,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Copy, Users, Utensils, ShoppingCart, Wallet, TrendingUp, TrendingDown, Eye, EyeOff, Loader2, CheckCircle, XCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { Link } from 'react-router-dom';
 
 interface DashboardStats {
   totalMembers: number;
@@ -50,8 +51,9 @@ export default function ManagerDashboard() {
     return messPassword !== originalPassword || messName !== originalName;
   }, [messPassword, messName, originalPassword, originalName]);
 
-  // Determine subscription status
-  const isSubscriptionActive = subscription?.status === 'active';
+  // Determine subscription status - check if subscription exists, is active, AND not expired
+  const isSubscriptionActive = subscription?.status === 'active' && 
+    new Date(subscription.end_date) > new Date();
 
   useEffect(() => {
     if (mess) {
@@ -376,6 +378,33 @@ export default function ManagerDashboard() {
             </p>
           </CardContent>
         </Card>
+
+        {/* Subscribe Now CTA for Inactive Messes */}
+        {!isSubscriptionActive && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="glass-card border-warning/30 bg-warning/5 p-6 rounded-2xl"
+          >
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="text-center sm:text-left">
+                <h3 className="text-lg font-semibold text-foreground">
+                  {language === 'bn' ? 'সাবস্ক্রিপশন প্রয়োজন' : 'Subscription Required'}
+                </h3>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {language === 'bn'
+                    ? 'সমস্ত ফিচার ব্যবহার করতে সাবস্ক্রাইব করুন। মাত্র ২০ টাকা/মাস।'
+                    : 'Subscribe to access all features. Only ৳20/month.'}
+                </p>
+              </div>
+              <Link to="/dashboard/subscription">
+                <Button className="bg-primary hover:bg-primary/90 text-primary-foreground font-medium px-6">
+                  {language === 'bn' ? 'সাবস্ক্রাইব করুন' : 'Subscribe Now'}
+                </Button>
+              </Link>
+            </div>
+          </motion.div>
+        )}
 
         {/* Stats Grid */}
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
