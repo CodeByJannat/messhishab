@@ -129,6 +129,14 @@ const translations: Record<Language, Record<string, string>> = {
     'common.theme': 'থিম',
     'common.light': 'লাইট',
     'common.dark': 'ডার্ক',
+    
+    // Payment
+    'payment.title': 'পেমেন্ট',
+    'payment.selectMethod': 'পেমেন্ট মেথড নির্বাচন করুন',
+    'payment.orderSummary': 'অর্ডার সারাংশ',
+    'payment.completePayment': 'পেমেন্ট সম্পন্ন করুন',
+    'payment.processing': 'প্রসেসিং...',
+    'payment.securePayment': 'সম্পূর্ণ নিরাপদ পেমেন্ট',
   },
   en: {
     // Navbar
@@ -250,6 +258,14 @@ const translations: Record<Language, Record<string, string>> = {
     'common.theme': 'Theme',
     'common.light': 'Light',
     'common.dark': 'Dark',
+    
+    // Payment
+    'payment.title': 'Payment',
+    'payment.selectMethod': 'Select Payment Method',
+    'payment.orderSummary': 'Order Summary',
+    'payment.completePayment': 'Complete Payment',
+    'payment.processing': 'Processing...',
+    'payment.securePayment': 'Secure payment guaranteed',
   },
 };
 

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { DashboardLayout } from '@/components/dashboard/DashboardLayout';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -6,14 +7,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { CreditCard, Calendar, Tag, Check, Smartphone, Clock, Shield } from 'lucide-react';
+import { CreditCard, Calendar, Tag, Check, Clock, Shield, ArrowRight } from 'lucide-react';
 import { format } from 'date-fns';
 import { motion } from 'framer-motion';
 
 export default function SubscriptionPage() {
+  const navigate = useNavigate();
   const { language } = useLanguage();
   const { subscription, mess, refreshMess } = useAuth();
   const { toast } = useToast();
@@ -26,7 +27,6 @@ export default function SubscriptionPage() {
     description: string;
   } | null>(null);
   const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
 
   const basePrice = selectedPlan === 'yearly' ? 200 : 20;
   const discountAmount = appliedCoupon ? (basePrice * appliedCoupon.discount_percent) / 100 : 0;
@@ -61,19 +61,6 @@ export default function SubscriptionPage() {
     }
   };
 
-  const handlePayment = async () => {
-    setIsProcessing(true);
-    
-    // Simulate bKash payment flow
-    toast({
-      title: language === 'bn' ? 'শীঘ্রই আসছে' : 'Coming Soon',
-      description: language === 'bn' 
-        ? 'bKash পেমেন্ট শীঘ্রই চালু হবে। এখন ম্যানুয়াল পেমেন্ট করুন।' 
-        : 'bKash payment coming soon. Please contact for manual payment.',
-    });
-    
-    setIsProcessing(false);
-  };
 
   const isActive = subscription?.status === 'active' && new Date(subscription.end_date) > new Date();
   const daysRemaining = subscription ? Math.ceil((new Date(subscription.end_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24)) : 0;
@@ -284,60 +271,15 @@ export default function SubscriptionPage() {
               </div>
             </div>
 
-            {/* Payment Methods */}
-            <div>
-              <h3 className="font-medium mb-3">
-                {language === 'bn' ? 'পেমেন্ট মেথড' : 'Payment Method'}
-              </h3>
-              <Tabs defaultValue="bkash" className="w-full">
-                <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="bkash" className="flex items-center gap-2">
-                    <Smartphone className="w-4 h-4" />
-                    bKash
-                  </TabsTrigger>
-                  <TabsTrigger value="card" className="flex items-center gap-2">
-                    <CreditCard className="w-4 h-4" />
-                    {language === 'bn' ? 'কার্ড' : 'Card'}
-                  </TabsTrigger>
-                </TabsList>
-                <TabsContent value="bkash" className="mt-4">
-                  <div className="p-4 bg-[#E2136E]/10 rounded-lg border border-[#E2136E]/20 text-center">
-                    <img 
-                      src="https://www.logo.wine/a/logo/BKash/BKash-Icon-Logo.wine.svg" 
-                      alt="bKash" 
-                      className="h-12 mx-auto mb-2"
-                    />
-                    <p className="text-sm text-muted-foreground mb-4">
-                      {language === 'bn' 
-                        ? 'bKash দিয়ে সহজে পেমেন্ট করুন' 
-                        : 'Pay easily with bKash'
-                      }
-                    </p>
-                    <Button 
-                      className="w-full bg-[#E2136E] hover:bg-[#C4115E] text-white"
-                      onClick={handlePayment}
-                      disabled={isProcessing}
-                    >
-                      {isProcessing 
-                        ? (language === 'bn' ? 'প্রসেসিং...' : 'Processing...')
-                        : (language === 'bn' ? `৳${finalPrice} পে করুন` : `Pay ৳${finalPrice}`)
-                      }
-                    </Button>
-                  </div>
-                </TabsContent>
-                <TabsContent value="card" className="mt-4">
-                  <div className="p-4 bg-muted/30 rounded-lg text-center">
-                    <CreditCard className="w-12 h-12 mx-auto mb-2 text-muted-foreground" />
-                    <p className="text-sm text-muted-foreground">
-                      {language === 'bn' 
-                        ? 'কার্ড পেমেন্ট শীঘ্রই আসছে' 
-                        : 'Card payment coming soon'
-                      }
-                    </p>
-                  </div>
-                </TabsContent>
-              </Tabs>
-            </div>
+            {/* Payment Button */}
+            <Button 
+              className="w-full h-12 rounded-xl text-base font-semibold"
+              onClick={() => navigate('/dashboard/payment')}
+            >
+              <CreditCard className="w-5 h-5 mr-2" />
+              {language === 'bn' ? 'পেমেন্ট করুন' : 'Make Payment'}
+              <ArrowRight className="w-5 h-5 ml-2" />
+            </Button>
           </CardContent>
         </Card>
 
