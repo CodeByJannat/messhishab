@@ -105,18 +105,6 @@ export function ManualBkashContent({
           </span>
         </div>
         
-        <div className="space-y-3 text-sm">
-          {/* bKash Number */}
-          <div className="flex items-center justify-between p-3 rounded-lg bg-background/80">
-            <div>
-              <span className="text-muted-foreground">
-                {language === 'bn' ? 'বিকাশ নাম্বারঃ' : 'bKash Number:'}
-              </span>
-              <span className="ml-2 font-semibold text-foreground">01732854793</span>
-            </div>
-            <CopyButton text="01732854793" field="bkash" />
-          </div>
-
           {/* Steps */}
           <div className="space-y-2 text-muted-foreground leading-relaxed">
             <p className="flex gap-2">
