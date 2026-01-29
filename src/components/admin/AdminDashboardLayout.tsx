@@ -11,42 +11,32 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
-  Home,
-  Users,
-  Utensils,
-  ShoppingCart,
-  Wallet,
-  BarChart3,
-  Bell,
-  Settings,
+  LayoutDashboard,
+  CreditCard,
+  Building2,
+  Ticket,
+  MessageSquare,
   LogOut,
   Menu,
   Sun,
   Moon,
   Globe,
-  Key,
-  CreditCard,
-  MessageSquare,
+  Shield,
 } from 'lucide-react';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-const managerNavItems = [
-  { href: '/dashboard', icon: Home, labelBn: 'ড্যাশবোর্ড', labelEn: 'Dashboard' },
-  { href: '/dashboard/members', icon: Users, labelBn: 'মেম্বার', labelEn: 'Members' },
-  { href: '/dashboard/meals', icon: Utensils, labelBn: 'মিল', labelEn: 'Meals' },
-  { href: '/dashboard/bazar', icon: ShoppingCart, labelBn: 'বাজার', labelEn: 'Bazar' },
-  { href: '/dashboard/deposits', icon: Wallet, labelBn: 'জমা', labelEn: 'Deposits' },
-  { href: '/dashboard/balance', icon: BarChart3, labelBn: 'ব্যালেন্স', labelEn: 'Balance' },
-  { href: '/dashboard/notifications', icon: Bell, labelBn: 'নোটিফিকেশন', labelEn: 'Notifications' },
-  { href: '/dashboard/pins', icon: Key, labelBn: 'পিন রেকর্ড', labelEn: 'PIN Records' },
-  { href: '/dashboard/subscription', icon: CreditCard, labelBn: 'সাবস্ক্রিপশন', labelEn: 'Subscription' },
-  { href: '/dashboard/helpdesk', icon: MessageSquare, labelBn: 'হেল্প ডেস্ক', labelEn: 'Help Desk' },
+const adminNavItems = [
+  { href: '/admin', icon: LayoutDashboard, labelBn: 'ড্যাশবোর্ড', labelEn: 'Dashboard' },
+  { href: '/admin/subscription', icon: CreditCard, labelBn: 'সাবস্ক্রিপশন', labelEn: 'Subscription' },
+  { href: '/admin/mess', icon: Building2, labelBn: 'মেস', labelEn: 'Mess' },
+  { href: '/admin/coupon', icon: Ticket, labelBn: 'কুপন', labelEn: 'Coupon' },
+  { href: '/admin/helpdesk', icon: MessageSquare, labelBn: 'হেল্প ডেস্ক', labelEn: 'Help Desk' },
 ];
 
-export function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const { user, mess, signOut } = useAuth();
-  const { language, setLanguage, t } = useLanguage();
+export function AdminDashboardLayout({ children }: { children: React.ReactNode }) {
+  const { user, signOut } = useAuth();
+  const { language, setLanguage } = useLanguage();
   const { theme, toggleTheme } = useTheme();
   const location = useLocation();
   const navigate = useNavigate();
@@ -75,10 +65,10 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         </Button>
         
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-            <span className="text-primary-foreground font-bold">M</span>
+          <div className="w-8 h-8 bg-destructive rounded-lg flex items-center justify-center">
+            <Shield className="h-4 w-4 text-destructive-foreground" />
           </div>
-          <span className="font-bold text-foreground">MessHishab</span>
+          <span className="font-bold text-foreground">Admin Panel</span>
         </div>
 
         <div className="flex items-center gap-1">
@@ -114,14 +104,12 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           {/* Logo */}
           <div className="p-6 border-b border-border">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center">
-                <span className="text-primary-foreground font-bold text-xl">M</span>
+              <div className="w-10 h-10 bg-destructive rounded-xl flex items-center justify-center">
+                <Shield className="h-5 w-5 text-destructive-foreground" />
               </div>
               <div>
                 <span className="font-bold text-lg text-foreground block">MessHishab</span>
-                {mess && (
-                  <span className="text-xs text-muted-foreground">{mess.mess_id}</span>
-                )}
+                <span className="text-xs text-destructive font-medium">Admin Panel</span>
               </div>
             </div>
           </div>
@@ -129,8 +117,9 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           {/* Navigation */}
           <nav className="flex-1 p-4 overflow-y-auto">
             <ul className="space-y-2">
-              {managerNavItems.map((item) => {
-                const isActive = location.pathname === item.href;
+              {adminNavItems.map((item) => {
+                const isActive = location.pathname === item.href || 
+                  (item.href !== '/admin' && location.pathname.startsWith(item.href));
                 return (
                   <li key={item.href}>
                     <Link
@@ -138,7 +127,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                       onClick={() => setIsSidebarOpen(false)}
                       className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
                         isActive
-                          ? 'bg-primary text-primary-foreground'
+                          ? 'bg-destructive text-destructive-foreground'
                           : 'text-muted-foreground hover:text-foreground hover:bg-muted'
                       }`}
                     >
@@ -165,22 +154,18 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="w-full justify-start rounded-xl">
-                  <div className="w-8 h-8 bg-muted rounded-lg flex items-center justify-center mr-3">
-                    <span className="text-sm font-medium">{user?.email?.[0].toUpperCase()}</span>
+                  <div className="w-8 h-8 bg-destructive/20 rounded-lg flex items-center justify-center mr-3">
+                    <span className="text-sm font-medium text-destructive">{user?.email?.[0].toUpperCase()}</span>
                   </div>
                   <div className="text-left flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">{user?.email}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {language === 'bn' ? 'ম্যানেজার' : 'Manager'}
+                    <p className="text-xs text-destructive font-medium">
+                      {language === 'bn' ? 'এডমিন' : 'Admin'}
                     </p>
                   </div>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuItem onClick={() => navigate('/dashboard/settings')}>
-                  <Settings className="w-4 h-4 mr-2" />
-                  {language === 'bn' ? 'সেটিংস' : 'Settings'}
-                </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleSignOut} className="text-destructive">
                   <LogOut className="w-4 h-4 mr-2" />

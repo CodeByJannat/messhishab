@@ -24,11 +24,18 @@ import NotificationsPage from "./pages/dashboard/NotificationsPage";
 import PinRecordsPage from "./pages/dashboard/PinRecordsPage";
 import SubscriptionPage from "./pages/dashboard/SubscriptionPage";
 import PaymentPage from "./pages/dashboard/PaymentPage";
+import ManagerHelpDeskPage from "./pages/dashboard/ManagerHelpDeskPage";
 // Member Dashboard
 import MemberDashboard from "./pages/member/MemberDashboard";
 import MemberBazarPage from "./pages/member/MemberBazarPage";
 import MemberNotificationsPage from "./pages/member/MemberNotificationsPage";
 import MemberContactPage from "./pages/member/MemberContactPage";
+// Admin Dashboard
+import AdminDashboard from "./pages/admin/AdminDashboard";
+import AdminSubscriptionPage from "./pages/admin/AdminSubscriptionPage";
+import AdminMessPage from "./pages/admin/AdminMessPage";
+import AdminCouponPage from "./pages/admin/AdminCouponPage";
+import AdminHelpDeskPage from "./pages/admin/AdminHelpDeskPage";
 
 const queryClient = new QueryClient();
 
@@ -49,21 +56,28 @@ function App() {
                   <Route path="/forgot-password" element={<ForgotPassword />} />
                   <Route path="/reset-password" element={<ResetPassword />} />
                   {/* Manager Dashboard Routes */}
-                  <Route path="/dashboard" element={<ProtectedRoute><ManagerDashboard /></ProtectedRoute>} />
-                  <Route path="/dashboard/members" element={<ProtectedRoute><MembersPage /></ProtectedRoute>} />
-                  <Route path="/dashboard/meals" element={<ProtectedRoute><MealsPage /></ProtectedRoute>} />
-                  <Route path="/dashboard/bazar" element={<ProtectedRoute><BazarPage /></ProtectedRoute>} />
-                  <Route path="/dashboard/deposits" element={<ProtectedRoute><DepositsPage /></ProtectedRoute>} />
-                  <Route path="/dashboard/balance" element={<ProtectedRoute><BalancePage /></ProtectedRoute>} />
-                  <Route path="/dashboard/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} />
-                  <Route path="/dashboard/pins" element={<ProtectedRoute><PinRecordsPage /></ProtectedRoute>} />
-                  <Route path="/dashboard/subscription" element={<ProtectedRoute><SubscriptionPage /></ProtectedRoute>} />
-                  <Route path="/dashboard/payment" element={<ProtectedRoute><PaymentPage /></ProtectedRoute>} />
+                  <Route path="/dashboard" element={<ProtectedRoute requiredRole="manager"><ManagerDashboard /></ProtectedRoute>} />
+                  <Route path="/dashboard/members" element={<ProtectedRoute requiredRole="manager"><MembersPage /></ProtectedRoute>} />
+                  <Route path="/dashboard/meals" element={<ProtectedRoute requiredRole="manager"><MealsPage /></ProtectedRoute>} />
+                  <Route path="/dashboard/bazar" element={<ProtectedRoute requiredRole="manager"><BazarPage /></ProtectedRoute>} />
+                  <Route path="/dashboard/deposits" element={<ProtectedRoute requiredRole="manager"><DepositsPage /></ProtectedRoute>} />
+                  <Route path="/dashboard/balance" element={<ProtectedRoute requiredRole="manager"><BalancePage /></ProtectedRoute>} />
+                  <Route path="/dashboard/notifications" element={<ProtectedRoute requiredRole="manager"><NotificationsPage /></ProtectedRoute>} />
+                  <Route path="/dashboard/pins" element={<ProtectedRoute requiredRole="manager"><PinRecordsPage /></ProtectedRoute>} />
+                  <Route path="/dashboard/subscription" element={<ProtectedRoute requiredRole="manager"><SubscriptionPage /></ProtectedRoute>} />
+                  <Route path="/dashboard/payment" element={<ProtectedRoute requiredRole="manager"><PaymentPage /></ProtectedRoute>} />
+                  <Route path="/dashboard/helpdesk" element={<ProtectedRoute requiredRole="manager"><ManagerHelpDeskPage /></ProtectedRoute>} />
                   {/* Member Dashboard Routes */}
-                  <Route path="/member" element={<ProtectedRoute><MemberDashboard /></ProtectedRoute>} />
-                  <Route path="/member/bazar" element={<ProtectedRoute><MemberBazarPage /></ProtectedRoute>} />
-                  <Route path="/member/notifications" element={<ProtectedRoute><MemberNotificationsPage /></ProtectedRoute>} />
-                  <Route path="/member/contact" element={<ProtectedRoute><MemberContactPage /></ProtectedRoute>} />
+                  <Route path="/member" element={<ProtectedRoute requiredRole="member"><MemberDashboard /></ProtectedRoute>} />
+                  <Route path="/member/bazar" element={<ProtectedRoute requiredRole="member"><MemberBazarPage /></ProtectedRoute>} />
+                  <Route path="/member/notifications" element={<ProtectedRoute requiredRole="member"><MemberNotificationsPage /></ProtectedRoute>} />
+                  <Route path="/member/contact" element={<ProtectedRoute requiredRole="member"><MemberContactPage /></ProtectedRoute>} />
+                  {/* Admin Dashboard Routes */}
+                  <Route path="/admin" element={<ProtectedRoute requiredRole="admin"><AdminDashboard /></ProtectedRoute>} />
+                  <Route path="/admin/subscription" element={<ProtectedRoute requiredRole="admin"><AdminSubscriptionPage /></ProtectedRoute>} />
+                  <Route path="/admin/mess" element={<ProtectedRoute requiredRole="admin"><AdminMessPage /></ProtectedRoute>} />
+                  <Route path="/admin/coupon" element={<ProtectedRoute requiredRole="admin"><AdminCouponPage /></ProtectedRoute>} />
+                  <Route path="/admin/helpdesk" element={<ProtectedRoute requiredRole="admin"><AdminHelpDeskPage /></ProtectedRoute>} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </BrowserRouter>

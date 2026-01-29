@@ -23,7 +23,7 @@ interface AuthContextType {
   session: Session | null;
   mess: Mess | null;
   subscription: Subscription | null;
-  userRole: 'manager' | 'member' | null;
+  userRole: 'manager' | 'member' | 'admin' | null;
   isLoading: boolean;
   signOut: () => Promise<void>;
   refreshMess: () => Promise<void>;
@@ -36,7 +36,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [mess, setMess] = useState<Mess | null>(null);
   const [subscription, setSubscription] = useState<Subscription | null>(null);
-  const [userRole, setUserRole] = useState<'manager' | 'member' | null>(null);
+  const [userRole, setUserRole] = useState<'manager' | 'member' | 'admin' | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   const fetchUserData = async (userId: string) => {
@@ -49,7 +49,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .single();
 
       if (roleData) {
-        setUserRole(roleData.role as 'manager' | 'member');
+        setUserRole(roleData.role as 'manager' | 'member' | 'admin');
       }
 
       // Fetch mess data (as manager)

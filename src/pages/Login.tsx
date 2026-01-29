@@ -44,12 +44,24 @@ export default function Login() {
       
       if (error) throw error;
       
+      // Check user role to determine redirect
+      const { data: roleData } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', data.user.id)
+        .single();
+      
       toast({
         title: language === 'bn' ? 'সফল!' : 'Success!',
         description: language === 'bn' ? 'লগইন সফল হয়েছে' : 'Login successful',
       });
       
-      navigate('/dashboard');
+      // Redirect based on role
+      if (roleData?.role === 'admin') {
+        navigate('/admin');
+      } else {
+        navigate('/dashboard');
+      }
     } catch (error: any) {
       toast({
         title: language === 'bn' ? 'ত্রুটি' : 'Error',
