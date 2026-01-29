@@ -3,7 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
 serve(async (req) => {
@@ -31,17 +31,16 @@ serve(async (req) => {
       { global: { headers: { Authorization: authHeader } } }
     );
 
-    // Verify user
-    const token = authHeader.replace('Bearer ', '');
-    const { data: claimsData, error: claimsError } = await supabaseClient.auth.getClaims(token);
-    if (claimsError || !claimsData?.claims) {
+    // Verify user using getUser
+    const { data: userData, error: userError } = await supabaseClient.auth.getUser();
+    if (userError || !userData?.user) {
       return new Response(
         JSON.stringify({ error: 'Unauthorized' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    const userId = claimsData.claims.sub;
+    const userId = userData.user.id;
     const { messId } = await req.json();
 
     // Verify user is manager of this mess
@@ -60,7 +59,6 @@ serve(async (req) => {
     }
 
     // Get all members with their PINs (we'll show placeholder for security)
-    // In a real app, you'd store the original PIN securely or use a different approach
     const { data: members, error: membersError } = await supabaseAdmin
       .from('members')
       .select('id, name, pin_hash, created_at')
@@ -76,8 +74,6 @@ serve(async (req) => {
     }
 
     // For PIN display, we show a masked version
-    // In production, you'd need to store the original PIN encrypted separately
-    // or implement a "reset PIN" feature instead
     const membersWithPins = (members || []).map(member => ({
       id: member.id,
       name: member.name,
