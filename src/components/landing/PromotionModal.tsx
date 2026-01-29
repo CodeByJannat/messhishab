@@ -75,7 +75,10 @@ export function PromotionModal() {
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-[420px] p-0 overflow-hidden border-0 bg-transparent shadow-none">
+      <DialogContent 
+        hideCloseButton 
+        className="sm:max-w-[420px] p-0 overflow-hidden border-0 bg-transparent shadow-none"
+      >
         <motion.div
           initial={{ scale: 0.8, opacity: 0, y: 20 }}
           animate={{ scale: 1, opacity: 1, y: 0 }}
@@ -95,12 +98,13 @@ export function PromotionModal() {
             
             {/* Content Container */}
             <div className="relative p-6 pt-8">
-              {/* Close Button */}
+              {/* Single Close Button - Top Right */}
               <button
                 onClick={() => setIsOpen(false)}
-                className="absolute top-4 right-4 w-8 h-8 rounded-full bg-muted/80 hover:bg-muted flex items-center justify-center transition-all hover:scale-110"
+                aria-label="Close"
+                className="absolute top-4 right-4 z-10 w-8 h-8 rounded-full bg-muted/80 hover:bg-destructive/20 flex items-center justify-center transition-all duration-200 hover:scale-110 hover:rotate-90 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:ring-offset-2 focus:ring-offset-background"
               >
-                <X className="w-4 h-4 text-muted-foreground" />
+                <X className="w-4 h-4 text-muted-foreground hover:text-destructive transition-colors" />
               </button>
 
               {/* Floating Icon with Glow */}
