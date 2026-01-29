@@ -147,16 +147,18 @@ export default function PaymentPage() {
     }
   };
 
-  const activateSubscription = async () => {
+  const submitPaymentForReview = async () => {
     if (!mess) return false;
 
     try {
-      const { data, error } = await supabase.functions.invoke('activate-subscription', {
+      const { data, error } = await supabase.functions.invoke('submit-payment', {
         body: {
           mess_id: mess.id,
           plan_type: selectedPlan,
-          payment_verified: true,
           payment_method: selectedPaymentMethod,
+          bkash_number: manualBkashNumber,
+          transaction_id: manualTrxId,
+          amount: finalPrice,
           coupon_code: appliedCoupon?.code || null,
         },
       });
@@ -167,19 +169,18 @@ export default function PaymentPage() {
         toast({
           title: language === 'bn' ? 'সফল!' : 'Success!',
           description: language === 'bn'
-            ? 'আপনার সাবস্ক্রিপশন সক্রিয় হয়েছে!'
-            : 'Your subscription has been activated!',
+            ? 'আপনার পেমেন্ট ভেরিফিকেশনের জন্য পাঠানো হয়েছে। অ্যাডমিন অনুমোদন করলে সাবস্ক্রিপশন সক্রিয় হবে।'
+            : 'Your payment has been submitted for verification. Subscription will activate after admin approval.',
         });
-        // Redirect to dashboard after successful activation
         navigate('/dashboard');
         return true;
       }
       return false;
     } catch (error: any) {
-      console.error('Subscription activation error:', error);
+      console.error('Payment submission error:', error);
       toast({
         title: language === 'bn' ? 'ত্রুটি' : 'Error',
-        description: error.message || 'Failed to activate subscription',
+        description: error.message || 'Failed to submit payment',
         variant: 'destructive',
       });
       return false;
@@ -204,23 +205,11 @@ export default function PaymentPage() {
           return;
         }
 
-        // For manual bKash, we submit for manual verification
-        // In production, this would go to a queue for admin review
-        // For now, we'll auto-activate (simulating admin approval)
-        toast({
-          title: language === 'bn' ? 'অনুরোধ পাঠানো হয়েছে' : 'Request Submitted',
-          description: language === 'bn'
-            ? 'আপনার পেমেন্ট ভেরিফিকেশনের জন্য পাঠানো হয়েছে।'
-            : 'Your payment has been submitted for verification.',
-        });
-        
-        // Activate subscription after "verification" 
-        // In production, this would happen after admin approval
-        await activateSubscription();
+        // Submit payment for admin review
+        await submitPaymentForReview();
         
       } else if (selectedPaymentMethod === 'bkash') {
         // TODO: Integrate with bKash payment gateway
-        // After successful gateway callback, call activateSubscription()
         toast({
           title: language === 'bn' ? 'শীঘ্রই আসছে' : 'Coming Soon',
           description: language === 'bn'
@@ -229,7 +218,6 @@ export default function PaymentPage() {
         });
       } else if (selectedPaymentMethod === 'sslcommerz') {
         // TODO: Integrate with SSL Commerz
-        // After successful gateway callback, call activateSubscription()
         toast({
           title: language === 'bn' ? 'শীঘ্রই আসছে' : 'Coming Soon',
           description: language === 'bn'

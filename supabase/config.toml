@@ -20,3 +20,6 @@ verify_jwt = false
 
 [functions.get-turnstile-key]
 verify_jwt = false
+
+[functions.submit-payment]
+verify_jwt = false
