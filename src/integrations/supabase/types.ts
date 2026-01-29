@@ -514,7 +514,9 @@ export type Database = {
         Row: {
           amount: number
           bkash_number: string | null
+          coupon_code: string | null
           created_at: string
+          discount_amount: number | null
           id: string
           mess_id: string
           payment_method: string
@@ -528,7 +530,9 @@ export type Database = {
         Insert: {
           amount: number
           bkash_number?: string | null
+          coupon_code?: string | null
           created_at?: string
+          discount_amount?: number | null
           id?: string
           mess_id: string
           payment_method: string
@@ -542,7 +546,9 @@ export type Database = {
         Update: {
           amount?: number
           bkash_number?: string | null
+          coupon_code?: string | null
           created_at?: string
+          discount_amount?: number | null
           id?: string
           mess_id?: string
           payment_method?: string

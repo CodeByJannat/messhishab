@@ -22,6 +22,7 @@ interface CartSectionProps {
   onCompletePayment: () => void;
   isProcessing: boolean;
   selectedPaymentMethod: string;
+  isPaymentDisabled?: boolean;
 }
 
 export function CartSection({
@@ -37,6 +38,7 @@ export function CartSection({
   onCompletePayment,
   isProcessing,
   selectedPaymentMethod,
+  isPaymentDisabled = false,
 }: CartSectionProps) {
   const { language } = useLanguage();
 
@@ -178,9 +180,9 @@ export function CartSection({
 
       {/* Complete Payment Button */}
       <Button
-        className="w-full h-12 rounded-xl text-base font-semibold bg-primary hover:bg-primary/90 transition-all shadow-lg shadow-primary/30"
+        className="w-full h-12 rounded-xl text-base font-semibold bg-primary hover:bg-primary/90 transition-all shadow-lg shadow-primary/30 disabled:opacity-50"
         onClick={onCompletePayment}
-        disabled={isProcessing || !selectedPaymentMethod}
+        disabled={isProcessing || !selectedPaymentMethod || isPaymentDisabled}
       >
         {isProcessing ? (
           <>

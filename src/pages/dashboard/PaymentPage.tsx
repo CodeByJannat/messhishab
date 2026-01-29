@@ -60,6 +60,7 @@ export default function PaymentPage() {
   } | null>(passedCoupon || null);
   const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isManualBkashValid, setIsManualBkashValid] = useState(false);
 
   // Manual bKash form state
   const [manualBkashNumber, setManualBkashNumber] = useState('');
@@ -192,13 +193,25 @@ export default function PaymentPage() {
 
     try {
       if (selectedPaymentMethod === 'manual-bkash') {
-        // Validate manual bKash fields
-        if (!manualBkashNumber.trim() || !manualTrxId.trim()) {
+        // Validate manual bKash fields - strict validation
+        if (!manualBkashNumber || manualBkashNumber.length !== 11 || !/^\d{11}$/.test(manualBkashNumber)) {
           toast({
             title: language === 'bn' ? 'ত্রুটি' : 'Error',
             description: language === 'bn'
-              ? 'বিকাশ নাম্বার এবং TrxID দিন'
-              : 'Please provide bKash number and TrxID',
+              ? 'সঠিক ১১ ডিজিটের বিকাশ নাম্বার দিন'
+              : 'Please provide a valid 11-digit bKash number',
+            variant: 'destructive',
+          });
+          setIsProcessing(false);
+          return;
+        }
+
+        if (!manualTrxId || manualTrxId.length !== 10 || !/^[A-Z0-9]{10}$/i.test(manualTrxId)) {
+          toast({
+            title: language === 'bn' ? 'ত্রুটি' : 'Error',
+            description: language === 'bn'
+              ? 'সঠিক ১০ অক্ষরের TrxID দিন'
+              : 'Please provide a valid 10-character TrxID',
             variant: 'destructive',
           });
           setIsProcessing(false);
@@ -302,6 +315,7 @@ export default function PaymentPage() {
                     trxId={manualTrxId}
                     onBkashNumberChange={setManualBkashNumber}
                     onTrxIdChange={setManualTrxId}
+                    onValidationChange={setIsManualBkashValid}
                   />
                 )}
                 {selectedPaymentMethod === 'sslcommerz' && (
@@ -326,6 +340,7 @@ export default function PaymentPage() {
               onCompletePayment={handleCompletePayment}
               isProcessing={isProcessing}
               selectedPaymentMethod={selectedPaymentMethod}
+              isPaymentDisabled={selectedPaymentMethod === 'manual-bkash' && !isManualBkashValid}
             />
           </div>
         </div>

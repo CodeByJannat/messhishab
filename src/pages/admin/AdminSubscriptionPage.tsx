@@ -24,6 +24,8 @@ interface Payment {
   payment_method: string;
   transaction_id: string | null;
   bkash_number: string | null;
+  coupon_code: string | null;
+  discount_amount: number | null;
   status: 'pending' | 'approved' | 'rejected';
   reject_reason: string | null;
   created_at: string;
@@ -205,7 +207,10 @@ export default function AdminSubscriptionPage() {
           <TableHead>{language === 'bn' ? 'মেস আইডি' : 'Mess ID'}</TableHead>
           <TableHead>{language === 'bn' ? 'পরিমাণ' : 'Amount'}</TableHead>
           <TableHead>{language === 'bn' ? 'প্ল্যান' : 'Plan'}</TableHead>
-          <TableHead>{language === 'bn' ? 'পেমেন্ট মেথড' : 'Payment Method'}</TableHead>
+          <TableHead>{language === 'bn' ? 'পেমেন্ট মেথড' : 'Method'}</TableHead>
+          <TableHead>{language === 'bn' ? 'বিকাশ নাম্বার' : 'bKash No.'}</TableHead>
+          <TableHead>{language === 'bn' ? 'TrxID' : 'TrxID'}</TableHead>
+          <TableHead>{language === 'bn' ? 'কুপন' : 'Coupon'}</TableHead>
           <TableHead>{language === 'bn' ? 'তারিখ' : 'Date'}</TableHead>
           {showActions && <TableHead>{language === 'bn' ? 'অ্যাকশন' : 'Actions'}</TableHead>}
           {!showActions && items[0]?.status === 'rejected' && (
@@ -216,7 +221,7 @@ export default function AdminSubscriptionPage() {
       <TableBody>
         {items.length === 0 ? (
           <TableRow>
-            <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+            <TableCell colSpan={showActions ? 9 : 9} className="text-center text-muted-foreground py-8">
               {language === 'bn' ? 'কোনো পেমেন্ট নেই' : 'No payments found'}
             </TableCell>
           </TableRow>
@@ -229,7 +234,14 @@ export default function AdminSubscriptionPage() {
                   <p className="text-xs text-muted-foreground">{payment.mess?.name || ''}</p>
                 </div>
               </TableCell>
-              <TableCell className="font-medium">৳{payment.amount}</TableCell>
+              <TableCell className="font-medium">
+                <div>
+                  <p>৳{payment.amount}</p>
+                  {payment.discount_amount && payment.discount_amount > 0 && (
+                    <p className="text-xs text-success">-৳{payment.discount_amount} discount</p>
+                  )}
+                </div>
+              </TableCell>
               <TableCell>
                 <Badge variant={payment.plan_type === 'yearly' ? 'default' : 'secondary'}>
                   {payment.plan_type === 'yearly' 
@@ -238,7 +250,27 @@ export default function AdminSubscriptionPage() {
                   }
                 </Badge>
               </TableCell>
-              <TableCell>{payment.payment_method}</TableCell>
+              <TableCell>
+                <span className="text-sm">
+                  {payment.payment_method === 'manual-bkash' 
+                    ? (language === 'bn' ? 'ম্যানুয়াল বিকাশ' : 'Manual bKash')
+                    : payment.payment_method
+                  }
+                </span>
+              </TableCell>
+              <TableCell className="font-mono text-sm">
+                {payment.bkash_number || '-'}
+              </TableCell>
+              <TableCell className="font-mono text-sm">
+                {payment.transaction_id || '-'}
+              </TableCell>
+              <TableCell>
+                {payment.coupon_code ? (
+                  <Badge variant="outline" className="font-mono text-xs">
+                    {payment.coupon_code}
+                  </Badge>
+                ) : '-'}
+              </TableCell>
               <TableCell>{format(new Date(payment.created_at), 'dd/MM/yyyy')}</TableCell>
               {showActions && (
                 <TableCell>
@@ -266,7 +298,7 @@ export default function AdminSubscriptionPage() {
                 </TableCell>
               )}
               {!showActions && payment.status === 'rejected' && (
-                <TableCell className="text-muted-foreground text-sm">
+                <TableCell className="text-muted-foreground text-sm max-w-[150px] truncate" title={payment.reject_reason || ''}>
                   {payment.reject_reason || '-'}
                 </TableCell>
               )}
