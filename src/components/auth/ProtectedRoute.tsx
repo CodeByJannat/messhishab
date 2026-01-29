@@ -12,6 +12,8 @@ const ALWAYS_ACCESSIBLE_ROUTES = [
   '/dashboard',
   '/dashboard/subscription',
   '/dashboard/payment',
+  '/dashboard/notifications', // Must be accessible for admin messages, payment rejections, etc.
+  '/dashboard/helpdesk', // Must be accessible for support communication
 ];
 
 // Routes that require active subscription for managers
@@ -21,7 +23,7 @@ const SUBSCRIPTION_REQUIRED_ROUTES = [
   '/dashboard/bazar',
   '/dashboard/deposits',
   '/dashboard/balance',
-  '/dashboard/notifications',
+  '/dashboard/pin-records', // PIN Records requires subscription
 ];
 
 export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) {
