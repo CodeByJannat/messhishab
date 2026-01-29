@@ -3,7 +3,8 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { Facebook, MessageCircle } from 'lucide-react';
 
 export function Footer() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+  const currentYear = new Date().getFullYear();
 
   const links = [
     { key: 'footer.about', href: '/about' },
@@ -59,9 +60,21 @@ export function Footer() {
           </div>
         </div>
 
-        <div className="mt-8 pt-8 border-t border-border text-center">
+        {/* Copyright Section */}
+        <div className="mt-8 pt-8 border-t border-border text-center space-y-2">
           <p className="text-muted-foreground text-sm">
-            {t('footer.copyright')}
+            © {currentYear} Mess Hishab. {language === 'bn' ? 'সর্বস্বত্ব সংরক্ষিত।' : 'All rights reserved.'}
+          </p>
+          <p className="text-muted-foreground text-sm">
+            {language === 'bn' ? 'ডেভেলপড বাই ' : 'Developed by '}
+            <a
+              href="https://softauro.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary hover:underline font-medium"
+            >
+              Softauro
+            </a>
           </p>
         </div>
       </div>
