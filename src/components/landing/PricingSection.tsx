@@ -1,15 +1,27 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { motion } from 'framer-motion';
-import { Check, Star } from 'lucide-react';
+import { Check, Star, Loader2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { usePricing } from '@/hooks/usePricing';
+import { useCoupon } from '@/hooks/useCoupon';
 
 export function PricingSection() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+  const { pricing, isLoading: isPricingLoading } = usePricing();
+  const { appliedCoupon, isApplying, validateAndApplyCoupon, calculateDiscount } = useCoupon();
   const [isYearly, setIsYearly] = useState(false);
-  const [coupon, setCoupon] = useState('');
+  const [couponInput, setCouponInput] = useState('');
+
+  const basePrice = isYearly ? pricing.yearly_price : pricing.monthly_price;
+  const { discountAmount, finalPrice } = calculateDiscount(basePrice);
+
+  const handleApplyCoupon = async () => {
+    if (!couponInput.trim()) return;
+    await validateAndApplyCoupon(couponInput, basePrice);
+  };
 
   const features = [
     t('pricing.features.unlimited'),
@@ -78,14 +90,31 @@ export function PricingSection() {
             )}
 
             <div className="text-center mb-8">
-              <div className="flex items-baseline justify-center gap-1">
-                <span className="text-5xl font-bold text-foreground">
-                  ৳{isYearly ? '200' : '20'}
-                </span>
-                <span className="text-muted-foreground">
-                  {isYearly ? t('pricing.perYear') : t('pricing.perMonth')}
-                </span>
-              </div>
+              {isPricingLoading ? (
+                <div className="flex items-center justify-center h-16">
+                  <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                </div>
+              ) : (
+                <div className="flex items-baseline justify-center gap-1">
+                  {appliedCoupon && discountAmount > 0 ? (
+                    <>
+                      <span className="text-3xl font-bold text-muted-foreground line-through">
+                        ৳{basePrice}
+                      </span>
+                      <span className="text-5xl font-bold text-primary ml-2">
+                        ৳{finalPrice}
+                      </span>
+                    </>
+                  ) : (
+                    <span className="text-5xl font-bold text-foreground">
+                      ৳{basePrice}
+                    </span>
+                  )}
+                  <span className="text-muted-foreground">
+                    {isYearly ? t('pricing.perYear') : t('pricing.perMonth')}
+                  </span>
+                </div>
+              )}
             </div>
 
             <ul className="space-y-4 mb-8">
@@ -100,17 +129,40 @@ export function PricingSection() {
             </ul>
 
             {/* Coupon */}
-            <div className="flex gap-2 mb-6">
+            <div className="flex gap-2 mb-4">
               <Input
                 placeholder={t('pricing.coupon')}
-                value={coupon}
-                onChange={(e) => setCoupon(e.target.value)}
+                value={couponInput}
+                onChange={(e) => setCouponInput(e.target.value)}
                 className="rounded-xl"
+                disabled={isApplying}
               />
-              <Button variant="outline" className="rounded-xl px-6">
-                {t('pricing.apply')}
+              <Button 
+                variant="outline" 
+                className="rounded-xl px-6"
+                onClick={handleApplyCoupon}
+                disabled={isApplying || !couponInput.trim()}
+              >
+                {isApplying ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  t('pricing.apply')
+                )}
               </Button>
             </div>
+
+            {/* Applied Coupon Display */}
+            {appliedCoupon && (
+              <div className="mb-6 p-3 bg-primary/10 rounded-xl border border-primary/20">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="font-mono font-bold text-primary">{appliedCoupon.code}</span>
+                    <p className="text-sm text-muted-foreground">{appliedCoupon.description}</p>
+                  </div>
+                  <Check className="w-5 h-5 text-success" />
+                </div>
+              </div>
+            )}
 
             <Link to="/register">
               <Button className="w-full btn-primary-glow text-lg py-6">
