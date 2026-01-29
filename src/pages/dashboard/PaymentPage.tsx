@@ -11,6 +11,7 @@ import { BkashPaymentContent } from '@/components/payment/BkashPaymentContent';
 import { ManualBkashContent } from '@/components/payment/ManualBkashContent';
 import { SSLCommerzContent } from '@/components/payment/SSLCommerzContent';
 import { CartSection } from '@/components/payment/CartSection';
+import { usePricing } from '@/hooks/usePricing';
 import { CreditCard } from 'lucide-react';
 
 // Import payment icons
@@ -19,23 +20,44 @@ import sslLogo from '@/assets/ssl-logo.png';
 
 type PaymentMethod = 'bkash' | 'manual-bkash' | 'sslcommerz';
 
+interface LocationState {
+  plan?: 'monthly' | 'yearly';
+  coupon?: {
+    code: string;
+    discount_type: 'percentage' | 'fixed';
+    discount_value: number;
+    description?: string;
+  } | null;
+  finalPrice?: number;
+  basePrice?: number;
+  discountAmount?: number;
+}
+
 export default function PaymentPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { language } = useLanguage();
   const { mess } = useAuth();
   const { toast } = useToast();
+  const { pricing } = usePricing();
 
-  // Get plan from subscription page state, default to monthly
-  const planFromState = (location.state as { plan?: 'monthly' | 'yearly' })?.plan;
-  const selectedPlan: 'monthly' | 'yearly' = planFromState || 'monthly';
+  // Get plan and coupon data from subscription page state
+  const stateData = location.state as LocationState | null;
+  const selectedPlan: 'monthly' | 'yearly' = stateData?.plan || 'monthly';
+  
+  // Use passed coupon data from subscription page
+  const passedCoupon = stateData?.coupon;
+  const passedBasePrice = stateData?.basePrice;
+  const passedDiscountAmount = stateData?.discountAmount;
+  const passedFinalPrice = stateData?.finalPrice;
 
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethod>('bkash');
-  const [couponCode, setCouponCode] = useState('');
+  const [couponCode, setCouponCode] = useState(passedCoupon?.code || '');
   const [appliedCoupon, setAppliedCoupon] = useState<{
     code: string;
-    discount_percent: number;
-  } | null>(null);
+    discount_type: 'percentage' | 'fixed';
+    discount_value: number;
+  } | null>(passedCoupon || null);
   const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -57,9 +79,19 @@ export default function PaymentPage() {
     }
   }, [mess, navigate, language, toast]);
 
-  const basePrice = selectedPlan === 'yearly' ? 200 : 20;
-  const discountAmount = appliedCoupon ? (basePrice * appliedCoupon.discount_percent) / 100 : 0;
-  const finalPrice = basePrice - discountAmount;
+  // Calculate prices - use passed values if available, otherwise calculate fresh
+  const basePrice = passedBasePrice ?? (selectedPlan === 'yearly' ? pricing.yearly_price : pricing.monthly_price);
+  
+  const calculateDiscount = () => {
+    if (!appliedCoupon) return 0;
+    if (appliedCoupon.discount_type === 'percentage') {
+      return (basePrice * appliedCoupon.discount_value) / 100;
+    }
+    return appliedCoupon.discount_value;
+  };
+  
+  const discountAmount = passedDiscountAmount ?? calculateDiscount();
+  const finalPrice = passedFinalPrice ?? (basePrice - discountAmount);
 
   const paymentMethods = [
     {
@@ -96,7 +128,8 @@ export default function PaymentPage() {
       if (data.success) {
         setAppliedCoupon({
           code: data.coupon.code,
-          discount_percent: data.coupon.discount_percent,
+          discount_type: data.coupon.discount_type || 'percentage',
+          discount_value: data.coupon.discount_percent || data.coupon.discount_value,
         });
         toast({
           title: language === 'bn' ? 'সফল!' : 'Success!',
@@ -296,6 +329,9 @@ export default function PaymentPage() {
               selectedPlan={selectedPlan}
               couponCode={couponCode}
               appliedCoupon={appliedCoupon}
+              basePrice={basePrice}
+              discountAmount={discountAmount}
+              finalPrice={finalPrice}
               onCouponChange={setCouponCode}
               onApplyCoupon={handleApplyCoupon}
               isApplyingCoupon={isApplyingCoupon}

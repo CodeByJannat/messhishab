@@ -5,22 +5,17 @@ import { Badge } from '@/components/ui/badge';
 import { ShoppingCart, Check, Tag, CreditCard, Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 
-interface CartItem {
-  id: string;
-  name: string;
-  nameBn: string;
-  price: number;
-  period: string;
-  periodBn: string;
-}
-
 interface CartSectionProps {
   selectedPlan: 'monthly' | 'yearly';
   couponCode: string;
   appliedCoupon: {
     code: string;
-    discount_percent: number;
+    discount_type: 'percentage' | 'fixed';
+    discount_value: number;
   } | null;
+  basePrice: number;
+  discountAmount: number;
+  finalPrice: number;
   onCouponChange: (value: string) => void;
   onApplyCoupon: () => void;
   isApplyingCoupon: boolean;
@@ -33,6 +28,9 @@ export function CartSection({
   selectedPlan,
   couponCode,
   appliedCoupon,
+  basePrice,
+  discountAmount,
+  finalPrice,
   onCouponChange,
   onApplyCoupon,
   isApplyingCoupon,
@@ -42,18 +40,10 @@ export function CartSection({
 }: CartSectionProps) {
   const { language } = useLanguage();
 
-  const cartItem: CartItem = {
-    id: selectedPlan,
-    name: selectedPlan === 'yearly' ? 'Yearly Plan' : 'Monthly Plan',
-    nameBn: selectedPlan === 'yearly' ? 'বার্ষিক প্ল্যান' : 'মাসিক প্ল্যান',
-    price: selectedPlan === 'yearly' ? 200 : 20,
-    period: selectedPlan === 'yearly' ? '/year' : '/month',
-    periodBn: selectedPlan === 'yearly' ? '/বছর' : '/মাস',
-  };
-
-  const basePrice = cartItem.price;
-  const discountAmount = appliedCoupon ? (basePrice * appliedCoupon.discount_percent) / 100 : 0;
-  const finalPrice = basePrice - discountAmount;
+  const planName = selectedPlan === 'yearly' ? 'Yearly Plan' : 'Monthly Plan';
+  const planNameBn = selectedPlan === 'yearly' ? 'বার্ষিক প্ল্যান' : 'মাসিক প্ল্যান';
+  const period = selectedPlan === 'yearly' ? '/year' : '/month';
+  const periodBn = selectedPlan === 'yearly' ? '/বছর' : '/মাস';
 
   const features = [
     { en: 'All features included', bn: 'সব ফিচার অন্তর্ভুক্ত' },
@@ -88,7 +78,7 @@ export function CartSection({
         <div className="flex justify-between items-start mb-3">
           <div>
             <h3 className="font-semibold text-foreground">
-              {language === 'bn' ? cartItem.nameBn : cartItem.name}
+              {language === 'bn' ? planNameBn : planName}
             </h3>
             {selectedPlan === 'yearly' && (
               <Badge variant="secondary" className="mt-1 bg-primary/10 text-primary">
@@ -97,9 +87,9 @@ export function CartSection({
             )}
           </div>
           <div className="text-right">
-            <span className="text-xl font-bold text-foreground">৳{cartItem.price}</span>
+            <span className="text-xl font-bold text-foreground">৳{basePrice}</span>
             <span className="text-sm text-muted-foreground">
-              {language === 'bn' ? cartItem.periodBn : cartItem.period}
+              {language === 'bn' ? periodBn : period}
             </span>
           </div>
         </div>
@@ -152,7 +142,12 @@ export function CartSection({
             className="mt-2 p-2 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-between"
           >
             <span className="text-sm text-primary font-medium">{appliedCoupon.code}</span>
-            <Badge variant="secondary">{appliedCoupon.discount_percent}% OFF</Badge>
+            <Badge variant="secondary">
+              {appliedCoupon.discount_type === 'percentage' 
+                ? `${appliedCoupon.discount_value}% OFF`
+                : `৳${appliedCoupon.discount_value} OFF`
+              }
+            </Badge>
           </motion.div>
         )}
       </div>
