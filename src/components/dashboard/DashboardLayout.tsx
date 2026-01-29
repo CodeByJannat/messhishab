@@ -30,6 +30,7 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { SuspendedMessModal } from './SuspendedMessModal';
 
 const managerNavItems = [
   { href: '/dashboard', icon: Home, labelBn: 'ড্যাশবোর্ড', labelEn: 'Dashboard' },
@@ -61,8 +62,20 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     setLanguage(language === 'bn' ? 'en' : 'bn');
   };
 
+  const handleContactAdmin = () => {
+    navigate('/dashboard/helpdesk');
+  };
+
+  const isMessSuspended = mess?.status === 'suspended';
+
   return (
     <div className="min-h-screen bg-background">
+      {/* Suspended Mess Modal */}
+      <SuspendedMessModal 
+        isOpen={isMessSuspended}
+        suspendReason={mess?.suspend_reason}
+        onContactAdmin={handleContactAdmin}
+      />
       {/* Mobile Header */}
       <header className="lg:hidden glass-nav fixed top-0 left-0 right-0 z-50 h-16 flex items-center justify-between px-4">
         <Button
