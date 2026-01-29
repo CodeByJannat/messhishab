@@ -4,7 +4,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
-  requiredRole?: 'manager' | 'member';
+  requiredRole?: 'manager' | 'member' | 'admin';
 }
 
 // Routes that are always accessible even without active subscription
@@ -65,7 +65,9 @@ export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) 
   }
 
   if (requiredRole && userRole !== requiredRole) {
-    return <Navigate to={userRole === 'manager' ? '/dashboard' : '/member'} replace />;
+    if (userRole === 'admin') return <Navigate to="/admin" replace />;
+    if (userRole === 'manager') return <Navigate to="/dashboard" replace />;
+    return <Navigate to="/member" replace />;
   }
 
   return <>{children}</>;

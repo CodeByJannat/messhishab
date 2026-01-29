@@ -68,6 +68,42 @@ export type Database = {
           },
         ]
       }
+      coupons: {
+        Row: {
+          code: string
+          created_at: string
+          discount_type: string
+          discount_value: number
+          expiry_date: string | null
+          id: string
+          status: string
+          usage_limit: number | null
+          used_count: number
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          discount_type: string
+          discount_value: number
+          expiry_date?: string | null
+          id?: string
+          status?: string
+          usage_limit?: number | null
+          used_count?: number
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          discount_type?: string
+          discount_value?: number
+          expiry_date?: string | null
+          id?: string
+          status?: string
+          usage_limit?: number | null
+          used_count?: number
+        }
+        Relationships: []
+      }
       deposits: {
         Row: {
           amount: number
@@ -106,6 +142,79 @@ export type Database = {
           },
           {
             foreignKeyName: "deposits_mess_id_fkey"
+            columns: ["mess_id"]
+            isOneToOne: false
+            referencedRelation: "messes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      help_desk_messages: {
+        Row: {
+          created_at: string
+          id: string
+          is_read: boolean
+          message: string
+          sender_id: string
+          sender_type: string
+          ticket_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          message: string
+          sender_id: string
+          sender_type: string
+          ticket_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          message?: string
+          sender_id?: string
+          sender_type?: string
+          ticket_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "help_desk_messages_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "help_desk_tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      help_desk_tickets: {
+        Row: {
+          created_at: string
+          id: string
+          mess_id: string
+          status: Database["public"]["Enums"]["ticket_status"]
+          subject: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          mess_id: string
+          status?: Database["public"]["Enums"]["ticket_status"]
+          subject: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          mess_id?: string
+          status?: Database["public"]["Enums"]["ticket_status"]
+          subject?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "help_desk_tickets_mess_id_fkey"
             columns: ["mess_id"]
             isOneToOne: false
             referencedRelation: "messes"
@@ -223,6 +332,8 @@ export type Database = {
           mess_id: string
           mess_password: string
           name: string | null
+          status: Database["public"]["Enums"]["mess_status"]
+          suspend_reason: string | null
           updated_at: string
         }
         Insert: {
@@ -233,6 +344,8 @@ export type Database = {
           mess_id: string
           mess_password?: string
           name?: string | null
+          status?: Database["public"]["Enums"]["mess_status"]
+          suspend_reason?: string | null
           updated_at?: string
         }
         Update: {
@@ -243,6 +356,8 @@ export type Database = {
           mess_id?: string
           mess_password?: string
           name?: string | null
+          status?: Database["public"]["Enums"]["mess_status"]
+          suspend_reason?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -336,6 +451,59 @@ export type Database = {
           },
         ]
       }
+      payments: {
+        Row: {
+          amount: number
+          bkash_number: string | null
+          created_at: string
+          id: string
+          mess_id: string
+          payment_method: string
+          plan_type: Database["public"]["Enums"]["subscription_type"]
+          reject_reason: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: Database["public"]["Enums"]["payment_status"]
+          transaction_id: string | null
+        }
+        Insert: {
+          amount: number
+          bkash_number?: string | null
+          created_at?: string
+          id?: string
+          mess_id: string
+          payment_method: string
+          plan_type?: Database["public"]["Enums"]["subscription_type"]
+          reject_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: Database["public"]["Enums"]["payment_status"]
+          transaction_id?: string | null
+        }
+        Update: {
+          amount?: number
+          bkash_number?: string | null
+          created_at?: string
+          id?: string
+          mess_id?: string
+          payment_method?: string
+          plan_type?: Database["public"]["Enums"]["subscription_type"]
+          reject_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: Database["public"]["Enums"]["payment_status"]
+          transaction_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_mess_id_fkey"
+            columns: ["mess_id"]
+            isOneToOne: false
+            referencedRelation: "messes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pin_access_logs: {
         Row: {
           accessed_by: string | null
@@ -371,6 +539,30 @@ export type Database = {
           },
         ]
       }
+      pricing_settings: {
+        Row: {
+          id: string
+          monthly_price: number
+          updated_at: string
+          updated_by: string | null
+          yearly_price: number
+        }
+        Insert: {
+          id?: string
+          monthly_price?: number
+          updated_at?: string
+          updated_by?: string | null
+          yearly_price?: number
+        }
+        Update: {
+          id?: string
+          monthly_price?: number
+          updated_at?: string
+          updated_by?: string | null
+          yearly_price?: number
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
@@ -392,6 +584,42 @@ export type Database = {
           id?: string
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      promotions: {
+        Row: {
+          coupon_code: string | null
+          created_at: string
+          cta_text_bn: string
+          cta_text_en: string
+          id: string
+          is_active: boolean
+          offer_name_bn: string
+          offer_name_en: string
+          updated_at: string
+        }
+        Insert: {
+          coupon_code?: string | null
+          created_at?: string
+          cta_text_bn?: string
+          cta_text_en?: string
+          id?: string
+          is_active?: boolean
+          offer_name_bn: string
+          offer_name_en: string
+          updated_at?: string
+        }
+        Update: {
+          coupon_code?: string | null
+          created_at?: string
+          cta_text_bn?: string
+          cta_text_en?: string
+          id?: string
+          is_active?: boolean
+          offer_name_bn?: string
+          offer_name_en?: string
+          updated_at?: string
         }
         Relationships: []
       }
@@ -481,9 +709,12 @@ export type Database = {
       }
     }
     Enums: {
+      mess_status: "active" | "inactive" | "suspended"
+      payment_status: "pending" | "approved" | "rejected"
       subscription_status: "active" | "expired" | "cancelled"
       subscription_type: "monthly" | "yearly"
-      user_role: "manager" | "member"
+      ticket_status: "open" | "in_progress" | "resolved" | "closed"
+      user_role: "manager" | "member" | "admin"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -611,9 +842,12 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      mess_status: ["active", "inactive", "suspended"],
+      payment_status: ["pending", "approved", "rejected"],
       subscription_status: ["active", "expired", "cancelled"],
       subscription_type: ["monthly", "yearly"],
-      user_role: ["manager", "member"],
+      ticket_status: ["open", "in_progress", "resolved", "closed"],
+      user_role: ["manager", "member", "admin"],
     },
   },
 } as const
