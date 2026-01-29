@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Navbar } from '@/components/landing/Navbar';
 import { Footer } from '@/components/landing/Footer';
 import { motion } from 'framer-motion';
-import { Mail, MessageCircle, Send, Loader2, CheckCircle } from 'lucide-react';
+import { Mail, MessageCircle, Send, Loader2, CheckCircle, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -29,6 +29,49 @@ const contactSchema = z.object({
     .max(1000, { message: 'Message must be less than 1000 characters' }),
 });
 
+// Load Turnstile script
+const loadTurnstileScript = (): Promise<void> => {
+  return new Promise((resolve, reject) => {
+    if (window.turnstile) {
+      resolve();
+      return;
+    }
+
+    const existingScript = document.getElementById('turnstile-script');
+    if (existingScript) {
+      existingScript.addEventListener('load', () => resolve());
+      return;
+    }
+
+    const script = document.createElement('script');
+    script.id = 'turnstile-script';
+    script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js';
+    script.async = true;
+    script.defer = true;
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error('Failed to load Turnstile'));
+    document.head.appendChild(script);
+  });
+};
+
+// Extend Window interface
+declare global {
+  interface Window {
+    turnstile: {
+      render: (container: string | HTMLElement, options: {
+        sitekey: string;
+        callback?: (token: string) => void;
+        'expired-callback'?: () => void;
+        'error-callback'?: () => void;
+        theme?: 'light' | 'dark' | 'auto';
+        size?: 'normal' | 'compact';
+      }) => string;
+      reset: (widgetId: string) => void;
+      remove: (widgetId: string) => void;
+    };
+  }
+}
+
 export default function ContactPage() {
   const { t, language } = useLanguage();
   const { toast } = useToast();
@@ -41,10 +84,94 @@ export default function ContactPage() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [turnstileLoaded, setTurnstileLoaded] = useState(false);
+  const [turnstileError, setTurnstileError] = useState(false);
+  const [turnstileSiteKey, setTurnstileSiteKey] = useState<string | null>(null);
+  
+  const turnstileContainerRef = useRef<HTMLDivElement>(null);
+  const turnstileWidgetId = useRef<string | null>(null);
+
+  // Fetch Turnstile site key and initialize widget
+  useEffect(() => {
+    let mounted = true;
+
+    const fetchSiteKeyAndInit = async () => {
+      try {
+        // Fetch site key from edge function
+        const { data, error } = await supabase.functions.invoke('get-turnstile-key');
+        
+        if (error || !data?.siteKey) {
+          console.error('Failed to fetch Turnstile site key:', error);
+          setTurnstileError(true);
+          return;
+        }
+
+        if (!mounted) return;
+        setTurnstileSiteKey(data.siteKey);
+
+        // Load Turnstile script
+        await loadTurnstileScript();
+        
+        if (!mounted || !turnstileContainerRef.current || !window.turnstile) return;
+
+        // Clear existing widget if any
+        if (turnstileWidgetId.current) {
+          try {
+            window.turnstile.remove(turnstileWidgetId.current);
+          } catch (e) {
+            // Ignore removal errors
+          }
+        }
+
+        // Render new widget
+        turnstileWidgetId.current = window.turnstile.render(turnstileContainerRef.current, {
+          sitekey: data.siteKey,
+          callback: (token: string) => {
+            setTurnstileToken(token);
+            setTurnstileError(false);
+          },
+          'expired-callback': () => {
+            setTurnstileToken(null);
+          },
+          'error-callback': () => {
+            setTurnstileError(true);
+            setTurnstileToken(null);
+          },
+          theme: 'auto',
+          size: 'normal',
+        });
+
+        setTurnstileLoaded(true);
+      } catch (error) {
+        console.error('Failed to initialize Turnstile:', error);
+        if (mounted) setTurnstileError(true);
+      }
+    };
+
+    fetchSiteKeyAndInit();
+
+    return () => {
+      mounted = false;
+      if (turnstileWidgetId.current && window.turnstile) {
+        try {
+          window.turnstile.remove(turnstileWidgetId.current);
+        } catch (e) {
+          // Ignore removal errors
+        }
+      }
+    };
+  }, []);
+
+  const resetTurnstile = useCallback(() => {
+    if (turnstileWidgetId.current && window.turnstile) {
+      window.turnstile.reset(turnstileWidgetId.current);
+      setTurnstileToken(null);
+    }
+  }, []);
 
   const handleChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
-    // Clear error when user starts typing
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: '' }));
     }
@@ -66,23 +193,55 @@ export default function ContactPage() {
       return;
     }
 
+    // Check Turnstile verification
+    if (!turnstileToken) {
+      toast({
+        title: language === 'bn' ? 'যাচাই প্রয়োজন' : 'Verification Required',
+        description: language === 'bn' 
+          ? 'অনুগ্রহ করে যাচাই সম্পন্ন করুন।'
+          : 'Please complete the verification.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setIsSubmitting(true);
     setErrors({});
 
     try {
-      const { error } = await supabase
-        .from('contact_messages')
-        .insert({
+      // Call edge function with Turnstile token
+      const { data, error } = await supabase.functions.invoke('submit-contact-form', {
+        body: {
           name: result.data.name,
           email: result.data.email,
           message: result.data.message,
-          status: 'new',
-        });
+          turnstileToken: turnstileToken,
+        },
+      });
 
-      if (error) throw error;
+      if (error) {
+        throw error;
+      }
+
+      if (data?.error) {
+        // Handle Turnstile verification failure
+        if (data.error.includes('Turnstile')) {
+          resetTurnstile();
+          toast({
+            title: language === 'bn' ? 'যাচাই ব্যর্থ' : 'Verification Failed',
+            description: language === 'bn' 
+              ? 'অনুগ্রহ করে যাচাই সম্পন্ন করুন।'
+              : 'Please complete the verification again.',
+            variant: 'destructive',
+          });
+          return;
+        }
+        throw new Error(data.error);
+      }
 
       setIsSubmitted(true);
       setFormData({ name: '', email: '', message: '' });
+      resetTurnstile();
       
       toast({
         title: language === 'bn' ? 'সফল!' : 'Success!',
@@ -91,10 +250,10 @@ export default function ContactPage() {
           : 'Your message has been sent successfully. We will reply soon.',
       });
 
-      // Reset submitted state after 5 seconds
       setTimeout(() => setIsSubmitted(false), 5000);
     } catch (error: any) {
       console.error('Error submitting contact form:', error);
+      resetTurnstile();
       toast({
         title: language === 'bn' ? 'ত্রুটি' : 'Error',
         description: language === 'bn' 
@@ -106,6 +265,8 @@ export default function ContactPage() {
       setIsSubmitting(false);
     }
   };
+
+  const isFormValid = turnstileToken && formData.name && formData.email && formData.message;
 
   return (
     <div className="min-h-screen bg-background">
@@ -279,10 +440,35 @@ export default function ContactPage() {
                     </p>
                   </div>
                   
+                  {/* Turnstile Widget */}
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <ShieldCheck className="w-4 h-4" />
+                      <span>{language === 'bn' ? 'স্প্যাম প্রতিরোধ যাচাই' : 'Spam protection verification'}</span>
+                    </div>
+                    <div 
+                      ref={turnstileContainerRef}
+                      className="flex justify-center"
+                    />
+                    {turnstileError && (
+                      <p className="text-sm text-destructive text-center">
+                        {language === 'bn' 
+                          ? 'যাচাই লোড করতে সমস্যা হয়েছে। পেজ রিফ্রেশ করুন।'
+                          : 'Failed to load verification. Please refresh the page.'}
+                      </p>
+                    )}
+                    {turnstileToken && (
+                      <p className="text-sm text-success text-center flex items-center justify-center gap-1">
+                        <CheckCircle className="w-3 h-3" />
+                        {language === 'bn' ? 'যাচাই সম্পন্ন' : 'Verification complete'}
+                      </p>
+                    )}
+                  </div>
+                  
                   <Button 
                     type="submit" 
                     className="w-full gap-2"
-                    disabled={isSubmitting}
+                    disabled={isSubmitting || !isFormValid}
                   >
                     {isSubmitting ? (
                       <>
@@ -296,6 +482,14 @@ export default function ContactPage() {
                       </>
                     )}
                   </Button>
+                  
+                  {!turnstileToken && !turnstileError && turnstileLoaded && (
+                    <p className="text-xs text-muted-foreground text-center">
+                      {language === 'bn' 
+                        ? 'ফর্ম জমা দিতে উপরের যাচাই সম্পন্ন করুন'
+                        : 'Complete the verification above to submit the form'}
+                    </p>
+                  )}
                 </form>
               )}
             </motion.div>

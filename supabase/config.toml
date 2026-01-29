@@ -14,3 +14,9 @@ verify_jwt = false
 
 [functions.send-contact-reply]
 verify_jwt = false
+
+[functions.submit-contact-form]
+verify_jwt = false
+
+[functions.get-turnstile-key]
+verify_jwt = false
