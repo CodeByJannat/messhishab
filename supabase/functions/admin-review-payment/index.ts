@@ -68,9 +68,34 @@ serve(async (req) => {
     }
 
     if (action === "approve") {
-      // Calculate end date based on plan type
-      const startDate = new Date();
-      const endDate = new Date();
+      // Check if subscription exists and is still active
+      const { data: existingSub } = await supabase
+        .from("subscriptions")
+        .select("id, status, end_date")
+        .eq("mess_id", payment.mess_id)
+        .single();
+
+      // Calculate dates based on existing subscription
+      const now = new Date();
+      let startDate = now;
+      let endDate: Date;
+
+      // FIXED: Extend from current end_date if subscription is still active
+      if (existingSub && existingSub.status === 'active') {
+        const currentEndDate = new Date(existingSub.end_date);
+        
+        // If current subscription hasn't expired, extend from that date
+        if (currentEndDate > now) {
+          startDate = currentEndDate;
+          endDate = new Date(currentEndDate);
+        } else {
+          endDate = new Date(now);
+        }
+      } else {
+        endDate = new Date(now);
+      }
+
+      // Add the plan duration
       if (payment.plan_type === "yearly") {
         endDate.setFullYear(endDate.getFullYear() + 1);
       } else {
@@ -89,22 +114,16 @@ serve(async (req) => {
 
       if (updatePaymentError) throw updatePaymentError;
 
-      // Check if subscription exists
-      const { data: existingSub } = await supabase
-        .from("subscriptions")
-        .select("id")
-        .eq("mess_id", payment.mess_id)
-        .single();
-
       if (existingSub) {
-        // Update existing subscription
+        // Update existing subscription with extended dates
         const { error: subError } = await supabase
           .from("subscriptions")
           .update({
             type: payment.plan_type,
             status: "active",
-            start_date: startDate.toISOString(),
+            start_date: now.toISOString(), // New payment starts now
             end_date: endDate.toISOString(),
+            coupon_code: payment.coupon_code || null,
           })
           .eq("id", existingSub.id);
 
@@ -117,8 +136,9 @@ serve(async (req) => {
             mess_id: payment.mess_id,
             type: payment.plan_type,
             status: "active",
-            start_date: startDate.toISOString(),
+            start_date: now.toISOString(),
             end_date: endDate.toISOString(),
+            coupon_code: payment.coupon_code || null,
           });
 
         if (subError) throw subError;

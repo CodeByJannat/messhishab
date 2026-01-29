@@ -31,6 +31,7 @@ import NotificationsPage from "./pages/dashboard/NotificationsPage";
 import PinRecordsPage from "./pages/dashboard/PinRecordsPage";
 import SubscriptionPage from "./pages/dashboard/SubscriptionPage";
 import PaymentPage from "./pages/dashboard/PaymentPage";
+import PaymentHistoryPage from "./pages/dashboard/PaymentHistoryPage";
 import ManagerHelpDeskPage from "./pages/dashboard/ManagerHelpDeskPage";
 // Member Dashboard
 import MemberDashboard from "./pages/member/MemberDashboard";
@@ -79,6 +80,7 @@ function App() {
                   <Route path="/dashboard/pins" element={<ProtectedRoute requiredRole="manager"><PinRecordsPage /></ProtectedRoute>} />
                   <Route path="/dashboard/subscription" element={<ProtectedRoute requiredRole="manager"><SubscriptionPage /></ProtectedRoute>} />
                   <Route path="/dashboard/payment" element={<ProtectedRoute requiredRole="manager"><PaymentPage /></ProtectedRoute>} />
+                  <Route path="/dashboard/payment-history" element={<ProtectedRoute requiredRole="manager"><PaymentHistoryPage /></ProtectedRoute>} />
                   <Route path="/dashboard/helpdesk" element={<ProtectedRoute requiredRole="manager"><ManagerHelpDeskPage /></ProtectedRoute>} />
                   {/* Member Dashboard Routes */}
                   <Route path="/member" element={<ProtectedRoute requiredRole="member"><MemberDashboard /></ProtectedRoute>} />

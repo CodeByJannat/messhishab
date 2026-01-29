@@ -95,7 +95,35 @@ serve(async (req) => {
       );
     }
 
-    // Insert payment record with pending status
+    // Calculate discount amount if coupon was applied
+    let discountAmount = 0;
+    if (coupon_code) {
+      const { data: couponData } = await supabaseAdmin
+        .from("coupons")
+        .select("discount_type, discount_value")
+        .eq("code", coupon_code)
+        .eq("status", "active")
+        .single();
+      
+      if (couponData) {
+        // Get base price to calculate discount
+        const { data: pricingData } = await supabaseAdmin
+          .from("pricing_settings")
+          .select("monthly_price, yearly_price")
+          .single();
+        
+        if (pricingData) {
+          const basePrice = plan_type === "yearly" ? pricingData.yearly_price : pricingData.monthly_price;
+          if (couponData.discount_type === "percentage") {
+            discountAmount = (basePrice * couponData.discount_value) / 100;
+          } else {
+            discountAmount = couponData.discount_value;
+          }
+        }
+      }
+    }
+
+    // Insert payment record with pending status and coupon info
     const { data: payment, error: insertError } = await supabaseAdmin
       .from("payments")
       .insert({
@@ -106,6 +134,8 @@ serve(async (req) => {
         transaction_id,
         amount,
         status: "pending",
+        coupon_code: coupon_code || null,
+        discount_amount: discountAmount,
       })
       .select()
       .single();

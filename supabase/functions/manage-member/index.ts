@@ -3,7 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
 // Simple hash function for PIN (in production, use bcrypt via a proper library)
@@ -47,24 +47,19 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     );
 
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_ANON_KEY')!,
-      { global: { headers: { Authorization: authHeader } } }
-    );
-
-    // Verify user
+    // Verify user using admin client with the token
     const token = authHeader.replace('Bearer ', '');
-    const { data: claimsData, error: claimsError } = await supabaseClient.auth.getClaims(token);
-    if (claimsError || !claimsData?.claims) {
+    const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token);
+    
+    if (userError || !user) {
+      console.error('Auth error:', userError?.message || 'No user found');
       return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
+        JSON.stringify({ error: 'Unauthorized: Invalid token' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    const userId = claimsData.claims.sub;
-
+    const userId = user.id;
     const { action, messId, name, email, phone, roomNumber, pin } = await req.json();
 
     if (action === 'create') {
@@ -80,6 +75,14 @@ serve(async (req) => {
         return new Response(
           JSON.stringify({ error: 'Not authorized for this mess' }),
           { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Validate required fields
+      if (!name || !pin) {
+        return new Response(
+          JSON.stringify({ error: 'Name and PIN are required' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
@@ -104,6 +107,7 @@ serve(async (req) => {
         .single();
 
       if (memberError) {
+        console.error('Member creation error:', memberError);
         return new Response(
           JSON.stringify({ error: memberError.message }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -122,6 +126,7 @@ serve(async (req) => {
     );
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown error';
+    console.error('Server error:', message);
     return new Response(
       JSON.stringify({ error: message }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

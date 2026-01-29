@@ -27,6 +27,7 @@ import {
   Key,
   CreditCard,
   MessageSquare,
+  History,
 } from 'lucide-react';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -42,6 +43,7 @@ const managerNavItems = [
   { href: '/dashboard/notifications', icon: Bell, labelBn: 'নোটিফিকেশন', labelEn: 'Notifications' },
   { href: '/dashboard/pins', icon: Key, labelBn: 'পিন রেকর্ড', labelEn: 'PIN Records' },
   { href: '/dashboard/subscription', icon: CreditCard, labelBn: 'সাবস্ক্রিপশন', labelEn: 'Subscription' },
+  { href: '/dashboard/payment-history', icon: History, labelBn: 'পেমেন্ট হিস্ট্রি', labelEn: 'Payment History' },
   { href: '/dashboard/helpdesk', icon: MessageSquare, labelBn: 'হেল্প ডেস্ক', labelEn: 'Help Desk' },
 ];
 

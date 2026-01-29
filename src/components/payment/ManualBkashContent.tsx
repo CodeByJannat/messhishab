@@ -9,12 +9,29 @@ import bkashQrCode from "@/assets/bkash-qr-code.jpg";
 
 interface ManualBkashContentProps {
   totalAmount: number;
-  messId: string; // Changed from messName to messId
+  messId: string;
   bkashNumber: string;
   trxId: string;
   onBkashNumberChange: (value: string) => void;
   onTrxIdChange: (value: string) => void;
+  onValidationChange?: (isValid: boolean) => void;
 }
+
+// Validation functions
+const validateBkashNumber = (number: string): { isValid: boolean; error: string } => {
+  if (!number) return { isValid: false, error: '' };
+  if (!/^\d+$/.test(number)) return { isValid: false, error: 'শুধুমাত্র সংখ্যা দিন / Only numbers allowed' };
+  if (!number.startsWith('01')) return { isValid: false, error: '01 দিয়ে শুরু হতে হবে / Must start with 01' };
+  if (number.length !== 11) return { isValid: false, error: '১১ ডিজিট হতে হবে / Must be 11 digits' };
+  return { isValid: true, error: '' };
+};
+
+const validateTrxId = (trxId: string): { isValid: boolean; error: string } => {
+  if (!trxId) return { isValid: false, error: '' };
+  if (!/^[A-Z0-9]+$/i.test(trxId)) return { isValid: false, error: 'শুধুমাত্র ইংরেজি অক্ষর ও সংখ্যা / Only alphanumeric' };
+  if (trxId.length !== 10) return { isValid: false, error: '১০ অক্ষর হতে হবে / Must be 10 characters' };
+  return { isValid: true, error: '' };
+};
 
 export function ManualBkashContent({
   totalAmount,
@@ -23,10 +40,13 @@ export function ManualBkashContent({
   trxId,
   onBkashNumberChange,
   onTrxIdChange,
+  onValidationChange,
 }: ManualBkashContentProps) {
   const { language } = useLanguage();
   const { toast } = useToast();
   const [copiedField, setCopiedField] = useState<string | null>(null);
+  const [bkashError, setBkashError] = useState('');
+  const [trxIdError, setTrxIdError] = useState('');
 
   const handleCopy = async (text: string, field: string) => {
     try {
@@ -55,6 +75,34 @@ export function ManualBkashContent({
     </button>
   );
 
+  // Handle bKash number change with validation
+  const handleBkashNumberChange = (value: string) => {
+    // Only allow digits
+    const cleanValue = value.replace(/\D/g, '').slice(0, 11);
+    onBkashNumberChange(cleanValue);
+    
+    const validation = validateBkashNumber(cleanValue);
+    setBkashError(cleanValue ? validation.error : '');
+    
+    // Update parent about validation state
+    const trxValidation = validateTrxId(trxId);
+    onValidationChange?.(validation.isValid && trxValidation.isValid);
+  };
+
+  // Handle TrxID change with validation
+  const handleTrxIdChange = (value: string) => {
+    // Only allow alphanumeric, convert to uppercase
+    const cleanValue = value.replace(/[^A-Za-z0-9]/g, '').toUpperCase().slice(0, 10);
+    onTrxIdChange(cleanValue);
+    
+    const validation = validateTrxId(cleanValue);
+    setTrxIdError(cleanValue ? validation.error : '');
+    
+    // Update parent about validation state
+    const bkashValidation = validateBkashNumber(bkashNumber);
+    onValidationChange?.(bkashValidation.isValid && validation.isValid);
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -67,28 +115,56 @@ export function ManualBkashContent({
         <div className="space-y-2">
           <Label htmlFor="bkash-number" className="text-sm font-medium">
             {language === "bn" ? "বিকাশ নাম্বার" : "bKash Number"}
+            <span className="text-destructive ml-1">*</span>
           </Label>
           <Input
             id="bkash-number"
             type="tel"
             placeholder={language === "bn" ? "01XXXXXXXXX" : "01XXXXXXXXX"}
             value={bkashNumber}
-            onChange={(e) => onBkashNumberChange(e.target.value)}
-            className="h-12 rounded-xl border-2 focus:border-[#E2136E] focus:ring-[#E2136E]/20"
+            onChange={(e) => handleBkashNumberChange(e.target.value)}
+            className={`h-12 rounded-xl border-2 focus:border-[#E2136E] focus:ring-[#E2136E]/20 ${
+              bkashError ? 'border-destructive' : bkashNumber.length === 11 ? 'border-success' : ''
+            }`}
+            maxLength={11}
           />
+          {bkashError && (
+            <p className="text-xs text-destructive flex items-center gap-1">
+              <span>⚠️</span> {bkashError}
+            </p>
+          )}
+          {bkashNumber.length === 11 && !bkashError && (
+            <p className="text-xs text-success flex items-center gap-1">
+              <span>✓</span> {language === "bn" ? "সঠিক" : "Valid"}
+            </p>
+          )}
         </div>
         <div className="space-y-2">
           <Label htmlFor="trx-id" className="text-sm font-medium">
             {language === "bn" ? "ট্রানজেকশন আইডি (TrxID)" : "Transaction ID (TrxID)"}
+            <span className="text-destructive ml-1">*</span>
           </Label>
           <Input
             id="trx-id"
             type="text"
-            placeholder={language === "bn" ? "যেমন: ABC123XYZ" : "e.g., ABC123XYZ"}
+            placeholder={language === "bn" ? "যেমন: ABC123XY90" : "e.g., ABC123XY90"}
             value={trxId}
-            onChange={(e) => onTrxIdChange(e.target.value.toUpperCase())}
-            className="h-12 rounded-xl border-2 focus:border-[#E2136E] focus:ring-[#E2136E]/20 uppercase"
+            onChange={(e) => handleTrxIdChange(e.target.value)}
+            className={`h-12 rounded-xl border-2 focus:border-[#E2136E] focus:ring-[#E2136E]/20 uppercase ${
+              trxIdError ? 'border-destructive' : trxId.length === 10 ? 'border-success' : ''
+            }`}
+            maxLength={10}
           />
+          {trxIdError && (
+            <p className="text-xs text-destructive flex items-center gap-1">
+              <span>⚠️</span> {trxIdError}
+            </p>
+          )}
+          {trxId.length === 10 && !trxIdError && (
+            <p className="text-xs text-success flex items-center gap-1">
+              <span>✓</span> {language === "bn" ? "সঠিক" : "Valid"}
+            </p>
+          )}
         </div>
       </div>
 
