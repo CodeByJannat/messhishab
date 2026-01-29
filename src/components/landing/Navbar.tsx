@@ -1,10 +1,10 @@
-import { Link } from 'react-router-dom';
-import { useLanguage } from '@/contexts/LanguageContext';
-import { useTheme } from '@/contexts/ThemeContext';
-import { Button } from '@/components/ui/button';
-import { Menu, X, Sun, Moon, Globe } from 'lucide-react';
-import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { Link } from "react-router-dom";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { useTheme } from "@/contexts/ThemeContext";
+import { Button } from "@/components/ui/button";
+import { Menu, X, Sun, Moon, Globe } from "lucide-react";
+import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 
 export function Navbar() {
   const { t, language, setLanguage } = useLanguage();
@@ -12,13 +12,13 @@ export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
 
   const toggleLanguage = () => {
-    setLanguage(language === 'bn' ? 'en' : 'bn');
+    setLanguage(language === "bn" ? "en" : "bn");
   };
 
   const navLinks = [
-    { href: '#pricing', label: t('nav.pricing') },
-    { href: '#how-it-works', label: t('nav.howItWorks') },
-    { href: '#faq', label: t('nav.faq') },
+    { href: "/#pricing", label: t("nav.pricing") },
+    { href: "/#how-it-works", label: t("nav.howItWorks") },
+    { href: "/#faq", label: t("nav.faq") },
   ];
 
   return (
@@ -53,54 +53,32 @@ export function Navbar() {
               size="icon"
               onClick={toggleLanguage}
               className="rounded-xl"
-              title={language === 'bn' ? 'Switch to English' : 'বাংলায় দেখুন'}
+              title={language === "bn" ? "Switch to English" : "বাংলায় দেখুন"}
             >
               <Globe className="h-5 w-5" />
             </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={toggleTheme}
-              className="rounded-xl"
-            >
-              {theme === 'light' ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
+            <Button variant="ghost" size="icon" onClick={toggleTheme} className="rounded-xl">
+              {theme === "light" ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
             </Button>
             <Link to="/login">
               <Button variant="outline" className="rounded-xl">
-                {t('nav.login')}
+                {t("nav.login")}
               </Button>
             </Link>
             <Link to="/register">
-              <Button className="btn-primary-glow">
-                {t('nav.register')}
-              </Button>
+              <Button className="btn-primary-glow">{t("nav.register")}</Button>
             </Link>
           </div>
 
           {/* Mobile Menu Button */}
           <div className="flex md:hidden items-center gap-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={toggleLanguage}
-              className="rounded-xl"
-            >
+            <Button variant="ghost" size="icon" onClick={toggleLanguage} className="rounded-xl">
               <Globe className="h-5 w-5" />
             </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={toggleTheme}
-              className="rounded-xl"
-            >
-              {theme === 'light' ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
+            <Button variant="ghost" size="icon" onClick={toggleTheme} className="rounded-xl">
+              {theme === "light" ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
             </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setIsOpen(!isOpen)}
-              className="rounded-xl"
-            >
+            <Button variant="ghost" size="icon" onClick={() => setIsOpen(!isOpen)} className="rounded-xl">
               {isOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
             </Button>
           </div>
@@ -111,7 +89,7 @@ export function Navbar() {
           {isOpen && (
             <motion.div
               initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
+              animate={{ opacity: 1, height: "auto" }}
               exit={{ opacity: 0, height: 0 }}
               className="md:hidden overflow-hidden"
             >
@@ -129,13 +107,11 @@ export function Navbar() {
                 <div className="flex gap-3 pt-4">
                   <Link to="/login" className="flex-1" onClick={() => setIsOpen(false)}>
                     <Button variant="outline" className="w-full rounded-xl">
-                      {t('nav.login')}
+                      {t("nav.login")}
                     </Button>
                   </Link>
                   <Link to="/register" className="flex-1" onClick={() => setIsOpen(false)}>
-                    <Button className="w-full btn-primary-glow">
-                      {t('nav.register')}
-                    </Button>
+                    <Button className="w-full btn-primary-glow">{t("nav.register")}</Button>
                   </Link>
                 </div>
               </div>
