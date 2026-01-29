@@ -65,8 +65,8 @@ export function AdminDashboardLayout({ children }: { children: React.ReactNode }
         </Button>
         
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-destructive rounded-lg flex items-center justify-center">
-            <Shield className="h-4 w-4 text-destructive-foreground" />
+          <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+            <Shield className="h-4 w-4 text-primary-foreground" />
           </div>
           <span className="font-bold text-foreground">Admin Panel</span>
         </div>
@@ -104,12 +104,12 @@ export function AdminDashboardLayout({ children }: { children: React.ReactNode }
           {/* Logo */}
           <div className="p-6 border-b border-border">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-destructive rounded-xl flex items-center justify-center">
-                <Shield className="h-5 w-5 text-destructive-foreground" />
+              <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center">
+                <Shield className="h-5 w-5 text-primary-foreground" />
               </div>
               <div>
                 <span className="font-bold text-lg text-foreground block">MessHishab</span>
-                <span className="text-xs text-destructive font-medium">Admin Panel</span>
+                <span className="text-xs text-primary font-medium">Admin Panel</span>
               </div>
             </div>
           </div>
@@ -127,7 +127,7 @@ export function AdminDashboardLayout({ children }: { children: React.ReactNode }
                       onClick={() => setIsSidebarOpen(false)}
                       className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
                         isActive
-                          ? 'bg-destructive text-destructive-foreground'
+                          ? 'bg-primary text-primary-foreground'
                           : 'text-muted-foreground hover:text-foreground hover:bg-muted'
                       }`}
                     >
@@ -154,12 +154,12 @@ export function AdminDashboardLayout({ children }: { children: React.ReactNode }
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="w-full justify-start rounded-xl">
-                  <div className="w-8 h-8 bg-destructive/20 rounded-lg flex items-center justify-center mr-3">
-                    <span className="text-sm font-medium text-destructive">{user?.email?.[0].toUpperCase()}</span>
+                  <div className="w-8 h-8 bg-primary/20 rounded-lg flex items-center justify-center mr-3">
+                    <span className="text-sm font-medium text-primary">{user?.email?.[0].toUpperCase()}</span>
                   </div>
                   <div className="text-left flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">{user?.email}</p>
-                    <p className="text-xs text-destructive font-medium">
+                    <p className="text-xs text-primary font-medium">
                       {language === 'bn' ? 'এডমিন' : 'Admin'}
                     </p>
                   </div>
@@ -167,7 +167,7 @@ export function AdminDashboardLayout({ children }: { children: React.ReactNode }
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleSignOut} className="text-destructive">
+                <DropdownMenuItem onClick={handleSignOut} className="text-muted-foreground hover:text-foreground">
                   <LogOut className="w-4 h-4 mr-2" />
                   {language === 'bn' ? 'লগআউট' : 'Logout'}
                 </DropdownMenuItem>

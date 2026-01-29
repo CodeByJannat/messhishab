@@ -62,28 +62,48 @@ export default function AdminMessPage() {
   const fetchMesses = async () => {
     setIsLoading(true);
     try {
-      // Fetch messes with manager info
+      // Fetch messes - using a simpler query that works with RLS
       const { data: messesData, error } = await supabase
         .from('messes')
-        .select(`
-          *,
-          profiles:manager_id(email),
-          subscriptions(type, status, end_date)
-        `)
+        .select('*')
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching messes:', error);
+        throw error;
+      }
 
-      if (messesData) {
-        const formattedMesses: Mess[] = messesData.map((m: any) => ({
+      if (messesData && messesData.length > 0) {
+        // Fetch profiles separately to get manager emails
+        const managerIds = messesData.map(m => m.manager_id);
+        const { data: profilesData } = await supabase
+          .from('profiles')
+          .select('user_id, email')
+          .in('user_id', managerIds);
+
+        // Fetch subscriptions separately
+        const messIds = messesData.map(m => m.id);
+        const { data: subscriptionsData } = await supabase
+          .from('subscriptions')
+          .select('mess_id, type, status, end_date')
+          .in('mess_id', messIds);
+
+        const profileMap = new Map(profilesData?.map(p => [p.user_id, p.email]) || []);
+        const subscriptionMap = new Map(subscriptionsData?.map(s => [s.mess_id, s]) || []);
+
+        const formattedMesses: Mess[] = messesData.map((m) => ({
           id: m.id,
           mess_id: m.mess_id,
           name: m.name,
-          status: m.status,
+          status: m.status as 'active' | 'inactive' | 'suspended',
           suspend_reason: m.suspend_reason,
           created_at: m.created_at,
-          manager_email: m.profiles?.email,
-          subscription: m.subscriptions?.[0] || null,
+          manager_email: profileMap.get(m.manager_id) || undefined,
+          subscription: subscriptionMap.get(m.id) ? {
+            type: subscriptionMap.get(m.id)!.type as 'monthly' | 'yearly',
+            status: subscriptionMap.get(m.id)!.status,
+            end_date: subscriptionMap.get(m.id)!.end_date,
+          } : null,
         }));
         
         setMesses(formattedMesses);
@@ -93,9 +113,16 @@ export default function AdminMessPage() {
         const yearly = formattedMesses.filter(m => m.subscription?.type === 'yearly' && m.subscription?.status === 'active').length;
         setMonthlyCount(monthly);
         setYearlyCount(yearly);
+      } else {
+        setMesses([]);
       }
     } catch (error) {
       console.error('Error fetching messes:', error);
+      toast({
+        title: language === 'bn' ? 'ত্রুটি' : 'Error',
+        description: language === 'bn' ? 'মেস লোড করতে সমস্যা হয়েছে' : 'Failed to load messes',
+        variant: 'destructive',
+      });
     } finally {
       setIsLoading(false);
     }
@@ -106,10 +133,11 @@ export default function AdminMessPage() {
 
     // Search filter
     if (searchQuery) {
+      const query = searchQuery.toLowerCase();
       filtered = filtered.filter(m => 
-        m.mess_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        m.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        m.manager_email?.toLowerCase().includes(searchQuery.toLowerCase())
+        m.mess_id.toLowerCase().includes(query) ||
+        m.name?.toLowerCase().includes(query) ||
+        m.manager_email?.toLowerCase().includes(query)
       );
     }
 
@@ -121,9 +149,9 @@ export default function AdminMessPage() {
     // Plan filter
     if (planFilter !== 'all') {
       if (planFilter === 'monthly') {
-        filtered = filtered.filter(m => m.subscription?.type === 'monthly');
+        filtered = filtered.filter(m => m.subscription?.type === 'monthly' && m.subscription?.status === 'active');
       } else if (planFilter === 'yearly') {
-        filtered = filtered.filter(m => m.subscription?.type === 'yearly');
+        filtered = filtered.filter(m => m.subscription?.type === 'yearly' && m.subscription?.status === 'active');
       }
     }
 
@@ -286,7 +314,7 @@ export default function AdminMessPage() {
               <div className="flex-1 relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
-                  placeholder={language === 'bn' ? 'মেস আইডি দিয়ে খুঁজুন...' : 'Search by Mess ID...'}
+                  placeholder={language === 'bn' ? 'মেস আইডি, নাম বা ইমেইল দিয়ে খুঁজুন...' : 'Search by Mess ID, name or email...'}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-10 rounded-xl"

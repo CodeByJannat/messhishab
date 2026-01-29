@@ -9,10 +9,12 @@ import { TestimonialSection } from '@/components/landing/TestimonialSection';
 import { FAQSection } from '@/components/landing/FAQSection';
 import { FinalCTASection } from '@/components/landing/FinalCTASection';
 import { Footer } from '@/components/landing/Footer';
+import { PromotionModal } from '@/components/landing/PromotionModal';
 
 const Index = () => {
   return (
     <div className="min-h-screen">
+      <PromotionModal />
       <Navbar />
       <HeroSection />
       <TrustBadges />

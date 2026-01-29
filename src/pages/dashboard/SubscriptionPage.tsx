@@ -9,8 +9,9 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
-import { CreditCard, Calendar, Tag, Check, Clock, Shield, ArrowRight } from 'lucide-react';
+import { usePricing } from '@/hooks/usePricing';
+import { useCoupon } from '@/hooks/useCoupon';
+import { CreditCard, Calendar, Tag, Check, Clock, Shield, ArrowRight, Loader2, X } from 'lucide-react';
 import { format } from 'date-fns';
 import { motion } from 'framer-motion';
 
@@ -19,15 +20,11 @@ export default function SubscriptionPage() {
   const { language } = useLanguage();
   const { subscription, mess, refreshMess } = useAuth();
   const { toast } = useToast();
+  const { pricing, isLoading: isPricingLoading } = usePricing();
+  const { appliedCoupon, isApplying, validateAndApplyCoupon, clearCoupon, calculateDiscount } = useCoupon();
   
   const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'yearly'>('monthly');
   const [couponCode, setCouponCode] = useState('');
-  const [appliedCoupon, setAppliedCoupon] = useState<{
-    code: string;
-    discount_percent: number;
-    description: string;
-  } | null>(null);
-  const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
   const [showMessNameModal, setShowMessNameModal] = useState(false);
 
   // Check if mess name is set OR mess_id is PENDING - if so, show modal
@@ -39,37 +36,17 @@ export default function SubscriptionPage() {
     }
   }, [mess]);
 
-  const basePrice = selectedPlan === 'yearly' ? 200 : 20;
-  const discountAmount = appliedCoupon ? (basePrice * appliedCoupon.discount_percent) / 100 : 0;
-  const finalPrice = basePrice - discountAmount;
+  const basePrice = selectedPlan === 'yearly' ? pricing.yearly_price : pricing.monthly_price;
+  const { discountAmount, finalPrice } = calculateDiscount(basePrice);
 
   const handleApplyCoupon = async () => {
     if (!couponCode.trim()) return;
-    
-    setIsApplyingCoupon(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('apply-coupon', {
-        body: { coupon_code: couponCode, subscription_type: selectedPlan },
-      });
+    await validateAndApplyCoupon(couponCode, basePrice);
+  };
 
-      if (error) throw error;
-
-      if (data.success) {
-        setAppliedCoupon(data.coupon);
-        toast({
-          title: language === 'bn' ? 'সফল!' : 'Success!',
-          description: data.coupon.description,
-        });
-      }
-    } catch (error: any) {
-      toast({
-        title: language === 'bn' ? 'ত্রুটি' : 'Error',
-        description: error.message || 'Invalid coupon code',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsApplyingCoupon(false);
-    }
+  const handleRemoveCoupon = () => {
+    clearCoupon();
+    setCouponCode('');
   };
 
   const handleProceedToPayment = () => {
@@ -91,6 +68,9 @@ export default function SubscriptionPage() {
       state: { 
         plan: selectedPlan,
         coupon: appliedCoupon,
+        finalPrice,
+        basePrice,
+        discountAmount,
       } 
     });
   };
@@ -183,9 +163,13 @@ export default function SubscriptionPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold text-foreground">
-                  ৳২০ <span className="text-sm font-normal text-muted-foreground">/{language === 'bn' ? 'মাস' : 'month'}</span>
-                </div>
+                {isPricingLoading ? (
+                  <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                ) : (
+                  <div className="text-3xl font-bold text-foreground">
+                    ৳{pricing.monthly_price} <span className="text-sm font-normal text-muted-foreground">/{language === 'bn' ? 'মাস' : 'month'}</span>
+                  </div>
+                )}
                 <ul className="mt-4 space-y-2">
                   <li className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Check className="w-4 h-4 text-primary" />
@@ -223,9 +207,13 @@ export default function SubscriptionPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold text-foreground">
-                  ৳২০০ <span className="text-sm font-normal text-muted-foreground">/{language === 'bn' ? 'বছর' : 'year'}</span>
-                </div>
+                {isPricingLoading ? (
+                  <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                ) : (
+                  <div className="text-3xl font-bold text-foreground">
+                    ৳{pricing.yearly_price} <span className="text-sm font-normal text-muted-foreground">/{language === 'bn' ? 'বছর' : 'year'}</span>
+                  </div>
+                )}
                 <ul className="mt-4 space-y-2">
                   <li className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Check className="w-4 h-4 text-primary" />
@@ -261,17 +249,28 @@ export default function SubscriptionPage() {
                 value={couponCode}
                 onChange={(e) => setCouponCode(e.target.value)}
                 className="flex-1"
+                disabled={isApplying || !!appliedCoupon}
               />
-              <Button 
-                variant="outline" 
-                onClick={handleApplyCoupon}
-                disabled={isApplyingCoupon || !couponCode.trim()}
-              >
-                {isApplyingCoupon 
-                  ? (language === 'bn' ? 'চেক করা হচ্ছে...' : 'Checking...')
-                  : (language === 'bn' ? 'প্রয়োগ করুন' : 'Apply')
-                }
-              </Button>
+              {appliedCoupon ? (
+                <Button 
+                  variant="outline" 
+                  onClick={handleRemoveCoupon}
+                >
+                  <X className="w-4 h-4 mr-1" />
+                  {language === 'bn' ? 'সরান' : 'Remove'}
+                </Button>
+              ) : (
+                <Button 
+                  variant="outline" 
+                  onClick={handleApplyCoupon}
+                  disabled={isApplying || !couponCode.trim()}
+                >
+                  {isApplying 
+                    ? <Loader2 className="w-4 h-4 animate-spin" />
+                    : (language === 'bn' ? 'প্রয়োগ করুন' : 'Apply')
+                  }
+                </Button>
+              )}
             </div>
 
             {appliedCoupon && (
@@ -281,7 +280,12 @@ export default function SubscriptionPage() {
                     <span className="font-medium text-primary">{appliedCoupon.code}</span>
                     <p className="text-sm text-muted-foreground">{appliedCoupon.description}</p>
                   </div>
-                  <Badge variant="secondary">{appliedCoupon.discount_percent}% OFF</Badge>
+                  <Badge variant="secondary">
+                    {appliedCoupon.discount_type === 'percentage' 
+                      ? `${appliedCoupon.discount_value}% OFF`
+                      : `৳${appliedCoupon.discount_value} OFF`
+                    }
+                  </Badge>
                 </div>
               </div>
             )}
@@ -297,15 +301,15 @@ export default function SubscriptionPage() {
                 </span>
                 <span>৳{basePrice}</span>
               </div>
-              {appliedCoupon && (
+              {appliedCoupon && discountAmount > 0 && (
                 <div className="flex justify-between text-sm text-primary">
                   <span>{language === 'bn' ? 'ডিসকাউন্ট' : 'Discount'}</span>
-                  <span>-৳{discountAmount}</span>
+                  <span>-৳{discountAmount.toFixed(2)}</span>
                 </div>
               )}
               <div className="flex justify-between font-bold text-lg border-t border-border pt-2 mt-2">
                 <span>{language === 'bn' ? 'মোট' : 'Total'}</span>
-                <span>৳{finalPrice}</span>
+                <span>৳{finalPrice.toFixed(2)}</span>
               </div>
             </div>
 
