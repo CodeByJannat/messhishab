@@ -433,14 +433,14 @@ export default function AdminCouponPage() {
                 <div className="space-y-2">
                   <Label>{language === 'bn' ? 'কুপন কোড' : 'Coupon Code'}</Label>
                   <Select 
-                    value={promotionForm.coupon_code} 
-                    onValueChange={(value) => setPromotionForm(prev => ({ ...prev, coupon_code: value }))}
+                    value={promotionForm.coupon_code || "none"} 
+                    onValueChange={(value) => setPromotionForm(prev => ({ ...prev, coupon_code: value === "none" ? "" : value }))}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder={language === 'bn' ? 'কুপন নির্বাচন করুন' : 'Select coupon'} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">{language === 'bn' ? 'কোনো কুপন নেই' : 'No coupon'}</SelectItem>
+                      <SelectItem value="none">{language === 'bn' ? 'কোনো কুপন নেই' : 'No coupon'}</SelectItem>
                       {activeCoupons.map(coupon => (
                         <SelectItem key={coupon.id} value={coupon.code}>
                           {coupon.code} ({coupon.discount_type === 'percentage' ? `${coupon.discount_value}%` : `৳${coupon.discount_value}`})
