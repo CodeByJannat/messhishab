@@ -23,7 +23,7 @@ const SUBSCRIPTION_REQUIRED_ROUTES = [
   '/dashboard/bazar',
   '/dashboard/deposits',
   '/dashboard/balance',
-  '/dashboard/pin-records', // PIN Records requires subscription
+  '/dashboard/pins', // PIN Records requires subscription
 ];
 
 export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) {
