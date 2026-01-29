@@ -8,6 +8,8 @@ interface Mess {
   mess_password: string;
   name: string | null;
   current_month: string;
+  status: 'active' | 'inactive' | 'suspended';
+  suspend_reason: string | null;
 }
 
 interface Subscription {
