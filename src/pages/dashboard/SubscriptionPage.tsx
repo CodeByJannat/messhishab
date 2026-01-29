@@ -318,7 +318,7 @@ export default function SubscriptionPage() {
             <div className="text-center">
               <p className="text-sm text-muted-foreground">
                 {language === "bn" ? "ম্যানুয়াল পেমেন্টের জন্য যোগাযোগ করুন: " : "For manual payment, contact: "}
-                <a href="tel:+8801XXXXXXXXX" className="text-primary font-medium">
+                <a href="tel:+8801732854793" className="text-primary font-medium">
                   +880 1732-854793
                 </a>
               </p>
