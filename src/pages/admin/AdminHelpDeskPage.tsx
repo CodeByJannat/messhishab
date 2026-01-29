@@ -6,11 +6,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { MessageSquare, Send, Loader2, User, Shield } from 'lucide-react';
+import { MessageSquare, Send, Loader2, User, Shield, Mail, Clock, ArrowLeft, Inbox } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { format } from 'date-fns';
 
@@ -36,10 +38,29 @@ interface Message {
   created_at: string;
 }
 
+interface ContactMessage {
+  id: string;
+  name: string;
+  email: string;
+  message: string;
+  status: string;
+  created_at: string;
+}
+
+interface ContactReply {
+  id: string;
+  contact_message_id: string;
+  admin_id: string;
+  reply_message: string;
+  sent_at: string;
+}
+
 export default function AdminHelpDeskPage() {
   const { language } = useLanguage();
   const { user } = useAuth();
   const { toast } = useToast();
+  
+  // Ticket state
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -47,15 +68,24 @@ export default function AdminHelpDeskPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
 
+  // Contact messages state
+  const [contactMessages, setContactMessages] = useState<ContactMessage[]>([]);
+  const [selectedContactMessage, setSelectedContactMessage] = useState<ContactMessage | null>(null);
+  const [contactReplies, setContactReplies] = useState<ContactReply[]>([]);
+  const [newContactReply, setNewContactReply] = useState('');
+  const [isLoadingContacts, setIsLoadingContacts] = useState(true);
+  const [isSendingContactReply, setIsSendingContactReply] = useState(false);
+  const [contactFilter, setContactFilter] = useState<'all' | 'new' | 'replied'>('all');
+
   useEffect(() => {
     fetchTickets();
+    fetchContactMessages();
   }, []);
 
   useEffect(() => {
     if (selectedTicket) {
       fetchMessages(selectedTicket.id);
       
-      // Subscribe to new messages
       const channel = supabase
         .channel(`ticket-${selectedTicket.id}`)
         .on(
@@ -77,6 +107,12 @@ export default function AdminHelpDeskPage() {
       };
     }
   }, [selectedTicket]);
+
+  useEffect(() => {
+    if (selectedContactMessage) {
+      fetchContactReplies(selectedContactMessage.id);
+    }
+  }, [selectedContactMessage]);
 
   const fetchTickets = async () => {
     setIsLoading(true);
@@ -109,7 +145,6 @@ export default function AdminHelpDeskPage() {
       if (error) throw error;
       setMessages(data as Message[]);
 
-      // Mark messages as read
       await supabase
         .from('help_desk_messages')
         .update({ is_read: true })
@@ -117,6 +152,38 @@ export default function AdminHelpDeskPage() {
         .eq('sender_type', 'manager');
     } catch (error) {
       console.error('Error fetching messages:', error);
+    }
+  };
+
+  const fetchContactMessages = async () => {
+    setIsLoadingContacts(true);
+    try {
+      const { data, error } = await supabase
+        .from('contact_messages')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setContactMessages(data as ContactMessage[]);
+    } catch (error) {
+      console.error('Error fetching contact messages:', error);
+    } finally {
+      setIsLoadingContacts(false);
+    }
+  };
+
+  const fetchContactReplies = async (messageId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('contact_message_replies')
+        .select('*')
+        .eq('contact_message_id', messageId)
+        .order('sent_at', { ascending: true });
+
+      if (error) throw error;
+      setContactReplies(data as ContactReply[]);
+    } catch (error) {
+      console.error('Error fetching contact replies:', error);
     }
   };
 
@@ -136,7 +203,6 @@ export default function AdminHelpDeskPage() {
 
       if (error) throw error;
 
-      // Create notification for manager
       const { data: messData } = await supabase
         .from('messes')
         .select('manager_id')
@@ -157,7 +223,6 @@ export default function AdminHelpDeskPage() {
 
       setNewMessage('');
       
-      // Update ticket status to in_progress if it was open
       if (selectedTicket.status === 'open') {
         await supabase
           .from('help_desk_tickets')
@@ -175,6 +240,50 @@ export default function AdminHelpDeskPage() {
       });
     } finally {
       setIsSending(false);
+    }
+  };
+
+  const handleSendContactReply = async () => {
+    if (!newContactReply.trim() || !selectedContactMessage || !user) return;
+
+    setIsSendingContactReply(true);
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData.session) throw new Error('Not authenticated');
+
+      const response = await supabase.functions.invoke('send-contact-reply', {
+        body: {
+          contactMessageId: selectedContactMessage.id,
+          recipientEmail: selectedContactMessage.email,
+          recipientName: selectedContactMessage.name,
+          replyMessage: newContactReply.trim(),
+        },
+      });
+
+      if (response.error) throw new Error(response.error.message);
+
+      toast({
+        title: language === 'bn' ? 'সফল!' : 'Success!',
+        description: language === 'bn' 
+          ? 'উত্তর সফলভাবে পাঠানো হয়েছে'
+          : 'Reply sent successfully',
+      });
+
+      setNewContactReply('');
+      setSelectedContactMessage(prev => prev ? { ...prev, status: 'replied' } : null);
+      fetchContactMessages();
+      fetchContactReplies(selectedContactMessage.id);
+    } catch (error: any) {
+      console.error('Error sending contact reply:', error);
+      toast({
+        title: language === 'bn' ? 'ত্রুটি' : 'Error',
+        description: language === 'bn' 
+          ? 'উত্তর পাঠাতে সমস্যা হয়েছে'
+          : 'Failed to send reply',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSendingContactReply(false);
     }
   };
 
@@ -208,11 +317,13 @@ export default function AdminHelpDeskPage() {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'open':
-        return <Badge className="bg-warning">{language === 'bn' ? 'খোলা' : 'Open'}</Badge>;
+      case 'new':
+        return <Badge className="bg-warning">{language === 'bn' ? 'নতুন' : 'New'}</Badge>;
       case 'in_progress':
         return <Badge className="bg-accent">{language === 'bn' ? 'চলমান' : 'In Progress'}</Badge>;
       case 'resolved':
-        return <Badge className="bg-success">{language === 'bn' ? 'সমাধান' : 'Resolved'}</Badge>;
+      case 'replied':
+        return <Badge className="bg-success">{language === 'bn' ? 'উত্তর দেওয়া হয়েছে' : 'Replied'}</Badge>;
       case 'closed':
         return <Badge variant="secondary">{language === 'bn' ? 'বন্ধ' : 'Closed'}</Badge>;
       default:
@@ -221,6 +332,12 @@ export default function AdminHelpDeskPage() {
   };
 
   const openTickets = tickets.filter(t => t.status === 'open').length;
+  const newContactMessages = contactMessages.filter(m => m.status === 'new').length;
+
+  const filteredContactMessages = contactMessages.filter(m => {
+    if (contactFilter === 'all') return true;
+    return m.status === contactFilter;
+  });
 
   return (
     <AdminDashboardLayout>
@@ -231,183 +348,422 @@ export default function AdminHelpDeskPage() {
             {language === 'bn' ? 'হেল্প ডেস্ক' : 'Help Desk'}
           </h1>
           <p className="text-muted-foreground mt-1">
-            {language === 'bn' ? 'ম্যানেজারদের সাপোর্ট টিকেট' : 'Support tickets from managers'}
-            {openTickets > 0 && (
-              <span className="ml-2 text-warning font-medium">
-                ({openTickets} {language === 'bn' ? 'নতুন' : 'new'})
-              </span>
-            )}
+            {language === 'bn' ? 'সাপোর্ট টিকেট ও যোগাযোগ বার্তা' : 'Support tickets and contact messages'}
           </p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-200px)]">
-          {/* Ticket List */}
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="lg:col-span-1"
-          >
-            <Card className="glass-card h-full">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-lg">
-                  {language === 'bn' ? 'টিকেট তালিকা' : 'Tickets'} ({tickets.length})
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-0">
-                <ScrollArea className="h-[calc(100vh-320px)]">
-                  {isLoading ? (
-                    <div className="flex items-center justify-center py-8">
-                      <Loader2 className="w-6 h-6 animate-spin" />
-                    </div>
-                  ) : tickets.length === 0 ? (
-                    <p className="text-center text-muted-foreground py-8">
-                      {language === 'bn' ? 'কোনো টিকেট নেই' : 'No tickets'}
-                    </p>
-                  ) : (
-                    <div className="space-y-1 p-2">
-                      {tickets.map(ticket => (
-                        <button
-                          key={ticket.id}
-                          onClick={() => setSelectedTicket(ticket)}
-                          className={`w-full text-left p-3 rounded-xl transition-all ${
-                            selectedTicket?.id === ticket.id
-                              ? 'bg-primary/10 border border-primary'
-                              : 'hover:bg-muted'
-                          }`}
-                        >
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="flex-1 min-w-0">
-                              <p className="font-medium truncate">{ticket.subject}</p>
-                              <p className="text-xs text-muted-foreground">
-                                {ticket.mess?.mess_id || 'Unknown'}
-                              </p>
-                            </div>
-                            {getStatusBadge(ticket.status)}
-                          </div>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            {format(new Date(ticket.created_at), 'dd/MM/yyyy HH:mm')}
-                          </p>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </ScrollArea>
-              </CardContent>
-            </Card>
-          </motion.div>
+        <Tabs defaultValue="tickets" className="w-full">
+          <TabsList className="grid w-full max-w-md grid-cols-2">
+            <TabsTrigger value="tickets" className="gap-2">
+              <MessageSquare className="w-4 h-4" />
+              {language === 'bn' ? 'টিকেট' : 'Tickets'}
+              {openTickets > 0 && (
+                <Badge variant="secondary" className="ml-1">{openTickets}</Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="contact" className="gap-2">
+              <Inbox className="w-4 h-4" />
+              {language === 'bn' ? 'যোগাযোগ বার্তা' : 'Contact Messages'}
+              {newContactMessages > 0 && (
+                <Badge variant="secondary" className="ml-1">{newContactMessages}</Badge>
+              )}
+            </TabsTrigger>
+          </TabsList>
 
-          {/* Chat Area */}
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="lg:col-span-2"
-          >
-            <Card className="glass-card h-full flex flex-col">
-              {selectedTicket ? (
-                <>
-                  <CardHeader className="border-b">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <CardTitle>{selectedTicket.subject}</CardTitle>
-                        <p className="text-sm text-muted-foreground">
-                          {selectedTicket.mess?.name || selectedTicket.mess?.mess_id}
-                        </p>
-                      </div>
-                      <Select value={selectedTicket.status} onValueChange={(v) => handleUpdateStatus(v as Ticket['status'])}>
-                        <SelectTrigger className="w-40">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="open">{language === 'bn' ? 'খোলা' : 'Open'}</SelectItem>
-                          <SelectItem value="in_progress">{language === 'bn' ? 'চলমান' : 'In Progress'}</SelectItem>
-                          <SelectItem value="resolved">{language === 'bn' ? 'সমাধান' : 'Resolved'}</SelectItem>
-                          <SelectItem value="closed">{language === 'bn' ? 'বন্ধ' : 'Closed'}</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
+          {/* Tickets Tab */}
+          <TabsContent value="tickets" className="mt-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-280px)]">
+              {/* Ticket List */}
+              <motion.div
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                className="lg:col-span-1"
+              >
+                <Card className="glass-card h-full">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-lg">
+                      {language === 'bn' ? 'টিকেট তালিকা' : 'Tickets'} ({tickets.length})
+                    </CardTitle>
                   </CardHeader>
-                  
-                  <CardContent className="flex-1 overflow-hidden p-0">
-                    <ScrollArea className="h-[calc(100vh-450px)] p-4">
-                      <div className="space-y-4">
-                        {messages.map(message => (
-                          <div
-                            key={message.id}
-                            className={`flex ${message.sender_type === 'admin' ? 'justify-end' : 'justify-start'}`}
-                          >
-                            <div className={`max-w-[80%] ${message.sender_type === 'admin' ? 'order-2' : 'order-1'}`}>
-                              <div className="flex items-center gap-2 mb-1">
-                                <div className={`w-6 h-6 rounded-full flex items-center justify-center ${
-                                  message.sender_type === 'admin' ? 'bg-destructive' : 'bg-primary'
-                                }`}>
-                                  {message.sender_type === 'admin' 
-                                    ? <Shield className="w-3 h-3 text-white" />
-                                    : <User className="w-3 h-3 text-white" />
-                                  }
+                  <CardContent className="p-0">
+                    <ScrollArea className="h-[calc(100vh-400px)]">
+                      {isLoading ? (
+                        <div className="flex items-center justify-center py-8">
+                          <Loader2 className="w-6 h-6 animate-spin" />
+                        </div>
+                      ) : tickets.length === 0 ? (
+                        <p className="text-center text-muted-foreground py-8">
+                          {language === 'bn' ? 'কোনো টিকেট নেই' : 'No tickets'}
+                        </p>
+                      ) : (
+                        <div className="space-y-1 p-2">
+                          {tickets.map(ticket => (
+                            <button
+                              key={ticket.id}
+                              onClick={() => setSelectedTicket(ticket)}
+                              className={`w-full text-left p-3 rounded-xl transition-all ${
+                                selectedTicket?.id === ticket.id
+                                  ? 'bg-primary/10 border border-primary'
+                                  : 'hover:bg-muted'
+                              }`}
+                            >
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-medium truncate">{ticket.subject}</p>
+                                  <p className="text-xs text-muted-foreground">
+                                    {ticket.mess?.mess_id || 'Unknown'}
+                                  </p>
                                 </div>
-                                <span className="text-xs text-muted-foreground">
-                                  {message.sender_type === 'admin' 
-                                    ? (language === 'bn' ? 'এডমিন' : 'Admin')
-                                    : (language === 'bn' ? 'ম্যানেজার' : 'Manager')
-                                  }
-                                </span>
-                              </div>
-                              <div className={`p-3 rounded-xl ${
-                                message.sender_type === 'admin' 
-                                  ? 'bg-destructive text-destructive-foreground' 
-                                  : 'bg-muted'
-                              }`}>
-                                <p className="whitespace-pre-wrap">{message.message}</p>
+                                {getStatusBadge(ticket.status)}
                               </div>
                               <p className="text-xs text-muted-foreground mt-1">
-                                {format(new Date(message.created_at), 'HH:mm')}
+                                {format(new Date(ticket.created_at), 'dd/MM/yyyy HH:mm')}
                               </p>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
+                            </button>
+                          ))}
+                        </div>
+                      )}
                     </ScrollArea>
                   </CardContent>
+                </Card>
+              </motion.div>
 
-                  <div className="p-4 border-t">
-                    <div className="flex gap-2">
-                      <Textarea
-                        value={newMessage}
-                        onChange={(e) => setNewMessage(e.target.value)}
-                        placeholder={language === 'bn' ? 'মেসেজ লিখুন...' : 'Type a message...'}
-                        className="min-h-[60px] resize-none"
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' && !e.shiftKey) {
-                            e.preventDefault();
-                            handleSendMessage();
-                          }
-                        }}
-                      />
+              {/* Chat Area */}
+              <motion.div
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                className="lg:col-span-2"
+              >
+                <Card className="glass-card h-full flex flex-col">
+                  {selectedTicket ? (
+                    <>
+                      <CardHeader className="border-b">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <CardTitle>{selectedTicket.subject}</CardTitle>
+                            <p className="text-sm text-muted-foreground">
+                              {selectedTicket.mess?.name || selectedTicket.mess?.mess_id}
+                            </p>
+                          </div>
+                          <Select value={selectedTicket.status} onValueChange={(v) => handleUpdateStatus(v as Ticket['status'])}>
+                            <SelectTrigger className="w-40">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="open">{language === 'bn' ? 'খোলা' : 'Open'}</SelectItem>
+                              <SelectItem value="in_progress">{language === 'bn' ? 'চলমান' : 'In Progress'}</SelectItem>
+                              <SelectItem value="resolved">{language === 'bn' ? 'সমাধান' : 'Resolved'}</SelectItem>
+                              <SelectItem value="closed">{language === 'bn' ? 'বন্ধ' : 'Closed'}</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </CardHeader>
+                      
+                      <CardContent className="flex-1 overflow-hidden p-0">
+                        <ScrollArea className="h-[calc(100vh-530px)] p-4">
+                          <div className="space-y-4">
+                            {messages.map(message => (
+                              <div
+                                key={message.id}
+                                className={`flex ${message.sender_type === 'admin' ? 'justify-end' : 'justify-start'}`}
+                              >
+                                <div className={`max-w-[80%] ${message.sender_type === 'admin' ? 'order-2' : 'order-1'}`}>
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <div className={`w-6 h-6 rounded-full flex items-center justify-center ${
+                                      message.sender_type === 'admin' ? 'bg-destructive' : 'bg-primary'
+                                    }`}>
+                                      {message.sender_type === 'admin' 
+                                        ? <Shield className="w-3 h-3 text-white" />
+                                        : <User className="w-3 h-3 text-white" />
+                                      }
+                                    </div>
+                                    <span className="text-xs text-muted-foreground">
+                                      {message.sender_type === 'admin' 
+                                        ? (language === 'bn' ? 'এডমিন' : 'Admin')
+                                        : (language === 'bn' ? 'ম্যানেজার' : 'Manager')
+                                      }
+                                    </span>
+                                  </div>
+                                  <div className={`p-3 rounded-xl ${
+                                    message.sender_type === 'admin' 
+                                      ? 'bg-destructive text-destructive-foreground' 
+                                      : 'bg-muted'
+                                  }`}>
+                                    <p className="whitespace-pre-wrap">{message.message}</p>
+                                  </div>
+                                  <p className="text-xs text-muted-foreground mt-1">
+                                    {format(new Date(message.created_at), 'HH:mm')}
+                                  </p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </ScrollArea>
+                      </CardContent>
+
+                      <div className="p-4 border-t">
+                        <div className="flex gap-2">
+                          <Textarea
+                            value={newMessage}
+                            onChange={(e) => setNewMessage(e.target.value)}
+                            placeholder={language === 'bn' ? 'মেসেজ লিখুন...' : 'Type a message...'}
+                            className="min-h-[60px] resize-none"
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' && !e.shiftKey) {
+                                e.preventDefault();
+                                handleSendMessage();
+                              }
+                            }}
+                          />
+                          <Button
+                            onClick={handleSendMessage}
+                            disabled={!newMessage.trim() || isSending}
+                            className="px-4"
+                          >
+                            {isSending ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <Send className="w-4 h-4" />
+                            )}
+                          </Button>
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="flex-1 flex items-center justify-center text-muted-foreground">
+                      <div className="text-center">
+                        <MessageSquare className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                        <p>{language === 'bn' ? 'একটি টিকেট নির্বাচন করুন' : 'Select a ticket to view'}</p>
+                      </div>
+                    </div>
+                  )}
+                </Card>
+              </motion.div>
+            </div>
+          </TabsContent>
+
+          {/* Contact Messages Tab */}
+          <TabsContent value="contact" className="mt-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-280px)]">
+              {/* Message List */}
+              <motion.div
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                className="lg:col-span-1"
+              >
+                <Card className="glass-card h-full">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-lg flex items-center justify-between">
+                      <span>{language === 'bn' ? 'বার্তা তালিকা' : 'Messages'}</span>
+                      <span className="text-sm font-normal text-muted-foreground">
+                        ({filteredContactMessages.length})
+                      </span>
+                    </CardTitle>
+                    <div className="flex gap-1 mt-2">
                       <Button
-                        onClick={handleSendMessage}
-                        disabled={!newMessage.trim() || isSending}
-                        className="px-4"
+                        size="sm"
+                        variant={contactFilter === 'all' ? 'default' : 'outline'}
+                        onClick={() => setContactFilter('all')}
+                        className="text-xs"
                       >
-                        {isSending ? (
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                        ) : (
-                          <Send className="w-4 h-4" />
-                        )}
+                        {language === 'bn' ? 'সব' : 'All'}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant={contactFilter === 'new' ? 'default' : 'outline'}
+                        onClick={() => setContactFilter('new')}
+                        className="text-xs"
+                      >
+                        {language === 'bn' ? 'নতুন' : 'New'}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant={contactFilter === 'replied' ? 'default' : 'outline'}
+                        onClick={() => setContactFilter('replied')}
+                        className="text-xs"
+                      >
+                        {language === 'bn' ? 'উত্তর দেওয়া' : 'Replied'}
                       </Button>
                     </div>
-                  </div>
-                </>
-              ) : (
-                <div className="flex-1 flex items-center justify-center text-muted-foreground">
-                  <div className="text-center">
-                    <MessageSquare className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                    <p>{language === 'bn' ? 'একটি টিকেট নির্বাচন করুন' : 'Select a ticket to view'}</p>
-                  </div>
-                </div>
-              )}
-            </Card>
-          </motion.div>
-        </div>
+                  </CardHeader>
+                  <CardContent className="p-0">
+                    <ScrollArea className="h-[calc(100vh-450px)]">
+                      {isLoadingContacts ? (
+                        <div className="flex items-center justify-center py-8">
+                          <Loader2 className="w-6 h-6 animate-spin" />
+                        </div>
+                      ) : filteredContactMessages.length === 0 ? (
+                        <p className="text-center text-muted-foreground py-8">
+                          {language === 'bn' ? 'কোনো বার্তা নেই' : 'No messages'}
+                        </p>
+                      ) : (
+                        <div className="space-y-1 p-2">
+                          {filteredContactMessages.map(msg => (
+                            <button
+                              key={msg.id}
+                              onClick={() => setSelectedContactMessage(msg)}
+                              className={`w-full text-left p-3 rounded-xl transition-all ${
+                                selectedContactMessage?.id === msg.id
+                                  ? 'bg-primary/10 border border-primary'
+                                  : 'hover:bg-muted'
+                              }`}
+                            >
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-medium truncate">{msg.name}</p>
+                                  <p className="text-xs text-muted-foreground truncate">
+                                    {msg.email}
+                                  </p>
+                                </div>
+                                {getStatusBadge(msg.status)}
+                              </div>
+                              <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
+                                {msg.message}
+                              </p>
+                              <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                                <Clock className="w-3 h-3" />
+                                {format(new Date(msg.created_at), 'dd/MM/yyyy HH:mm')}
+                              </p>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </ScrollArea>
+                  </CardContent>
+                </Card>
+              </motion.div>
+
+              {/* Message Detail & Reply */}
+              <motion.div
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                className="lg:col-span-2"
+              >
+                <Card className="glass-card h-full flex flex-col">
+                  {selectedContactMessage ? (
+                    <>
+                      <CardHeader className="border-b">
+                        <div className="flex items-center gap-3">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setSelectedContactMessage(null)}
+                            className="lg:hidden"
+                          >
+                            <ArrowLeft className="w-4 h-4" />
+                          </Button>
+                          <div className="flex-1">
+                            <CardTitle className="flex items-center gap-2">
+                              <User className="w-5 h-5" />
+                              {selectedContactMessage.name}
+                            </CardTitle>
+                            <div className="flex items-center gap-2 mt-1 text-sm text-muted-foreground">
+                              <Mail className="w-4 h-4" />
+                              <a href={`mailto:${selectedContactMessage.email}`} className="hover:text-primary">
+                                {selectedContactMessage.email}
+                              </a>
+                            </div>
+                          </div>
+                          {getStatusBadge(selectedContactMessage.status)}
+                        </div>
+                      </CardHeader>
+                      
+                      <CardContent className="flex-1 overflow-hidden p-0">
+                        <ScrollArea className="h-[calc(100vh-530px)] p-4">
+                          {/* Original Message */}
+                          <div className="mb-6">
+                            <div className="flex items-center gap-2 mb-2">
+                              <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
+                                <User className="w-4 h-4 text-primary-foreground" />
+                              </div>
+                              <div>
+                                <p className="font-medium text-sm">{selectedContactMessage.name}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  {format(new Date(selectedContactMessage.created_at), 'dd MMM yyyy, HH:mm')}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="bg-muted p-4 rounded-xl ml-10">
+                              <p className="whitespace-pre-wrap">{selectedContactMessage.message}</p>
+                            </div>
+                          </div>
+
+                          {/* Replies */}
+                          {contactReplies.length > 0 && (
+                            <div className="space-y-4">
+                              <h4 className="text-sm font-medium text-muted-foreground">
+                                {language === 'bn' ? 'উত্তরসমূহ' : 'Replies'}
+                              </h4>
+                              {contactReplies.map(reply => (
+                                <div key={reply.id} className="flex justify-end">
+                                  <div className="max-w-[85%]">
+                                    <div className="flex items-center gap-2 mb-1 justify-end">
+                                      <p className="text-xs text-muted-foreground">
+                                        {format(new Date(reply.sent_at), 'dd MMM yyyy, HH:mm')}
+                                      </p>
+                                      <div className="w-6 h-6 rounded-full bg-destructive flex items-center justify-center">
+                                        <Shield className="w-3 h-3 text-white" />
+                                      </div>
+                                    </div>
+                                    <div className="bg-destructive text-destructive-foreground p-4 rounded-xl">
+                                      <p className="whitespace-pre-wrap">{reply.reply_message}</p>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </ScrollArea>
+                      </CardContent>
+
+                      <div className="p-4 border-t">
+                        <div className="space-y-2">
+                          <Label className="text-sm font-medium">
+                            {language === 'bn' ? 'উত্তর পাঠান' : 'Send Reply'}
+                          </Label>
+                          <div className="flex gap-2">
+                            <Textarea
+                              value={newContactReply}
+                              onChange={(e) => setNewContactReply(e.target.value)}
+                              placeholder={language === 'bn' ? 'উত্তর লিখুন...' : 'Write your reply...'}
+                              className="min-h-[80px] resize-none"
+                            />
+                            <Button
+                              onClick={handleSendContactReply}
+                              disabled={!newContactReply.trim() || isSendingContactReply}
+                              className="px-6"
+                            >
+                              {isSendingContactReply ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <>
+                                  <Send className="w-4 h-4 mr-2" />
+                                  {language === 'bn' ? 'পাঠান' : 'Send'}
+                                </>
+                              )}
+                            </Button>
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            {language === 'bn' 
+                              ? 'উত্তর ইমেইলে পাঠানো হবে এবং এখানে সংরক্ষিত থাকবে'
+                              : 'Reply will be sent via email and saved here'}
+                          </p>
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="flex-1 flex items-center justify-center text-muted-foreground">
+                      <div className="text-center">
+                        <Inbox className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                        <p>{language === 'bn' ? 'একটি বার্তা নির্বাচন করুন' : 'Select a message to view'}</p>
+                      </div>
+                    </div>
+                  )}
+                </Card>
+              </motion.div>
+            </div>
+          </TabsContent>
+        </Tabs>
       </div>
     </AdminDashboardLayout>
   );

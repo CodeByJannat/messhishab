@@ -1,15 +1,111 @@
+import { useState } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Navbar } from '@/components/landing/Navbar';
 import { Footer } from '@/components/landing/Footer';
 import { motion } from 'framer-motion';
-import { Mail, MessageCircle, Send } from 'lucide-react';
+import { Mail, MessageCircle, Send, Loader2, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
+import { z } from 'zod';
+
+// Validation schema
+const contactSchema = z.object({
+  name: z.string()
+    .trim()
+    .min(1, { message: 'Name is required' })
+    .max(100, { message: 'Name must be less than 100 characters' }),
+  email: z.string()
+    .trim()
+    .min(1, { message: 'Email is required' })
+    .email({ message: 'Invalid email address' })
+    .max(255, { message: 'Email must be less than 255 characters' }),
+  message: z.string()
+    .trim()
+    .min(1, { message: 'Message is required' })
+    .max(1000, { message: 'Message must be less than 1000 characters' }),
+});
 
 export default function ContactPage() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+  const { toast } = useToast();
+  
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    message: '',
+  });
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSubmitted, setIsSubmitted] = useState(false);
+
+  const handleChange = (field: string, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+    // Clear error when user starts typing
+    if (errors[field]) {
+      setErrors(prev => ({ ...prev, [field]: '' }));
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // Validate form
+    const result = contactSchema.safeParse(formData);
+    if (!result.success) {
+      const fieldErrors: Record<string, string> = {};
+      result.error.errors.forEach(err => {
+        if (err.path[0]) {
+          fieldErrors[err.path[0] as string] = err.message;
+        }
+      });
+      setErrors(fieldErrors);
+      return;
+    }
+
+    setIsSubmitting(true);
+    setErrors({});
+
+    try {
+      const { error } = await supabase
+        .from('contact_messages')
+        .insert({
+          name: result.data.name,
+          email: result.data.email,
+          message: result.data.message,
+          status: 'new',
+        });
+
+      if (error) throw error;
+
+      setIsSubmitted(true);
+      setFormData({ name: '', email: '', message: '' });
+      
+      toast({
+        title: language === 'bn' ? 'সফল!' : 'Success!',
+        description: language === 'bn' 
+          ? 'আপনার মেসেজ সফলভাবে পাঠানো হয়েছে। আমরা দ্রুত উত্তর দিবো।'
+          : 'Your message has been sent successfully. We will reply soon.',
+      });
+
+      // Reset submitted state after 5 seconds
+      setTimeout(() => setIsSubmitted(false), 5000);
+    } catch (error: any) {
+      console.error('Error submitting contact form:', error);
+      toast({
+        title: language === 'bn' ? 'ত্রুটি' : 'Error',
+        description: language === 'bn' 
+          ? 'মেসেজ পাঠাতে সমস্যা হয়েছে। আবার চেষ্টা করুন।'
+          : 'Failed to send message. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -117,37 +213,91 @@ export default function ContactPage() {
               <h2 className="text-xl font-bold text-foreground mb-6">
                 {t('contact.form.title')}
               </h2>
-              <form className="space-y-5">
-                <div className="space-y-2">
-                  <Label htmlFor="name">{t('contact.form.name')}</Label>
-                  <Input
-                    id="name"
-                    placeholder={t('contact.form.namePlaceholder')}
-                    className="bg-background/50"
-                  />
+              
+              {isSubmitted ? (
+                <div className="flex flex-col items-center justify-center py-8 text-center">
+                  <div className="w-16 h-16 bg-success/10 rounded-full flex items-center justify-center mb-4">
+                    <CheckCircle className="w-8 h-8 text-success" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-foreground mb-2">
+                    {language === 'bn' ? 'ধন্যবাদ!' : 'Thank you!'}
+                  </h3>
+                  <p className="text-muted-foreground">
+                    {language === 'bn' 
+                      ? 'আপনার মেসেজ সফলভাবে পাঠানো হয়েছে।'
+                      : 'Your message has been sent successfully.'}
+                  </p>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="email">{t('contact.form.email')}</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder={t('contact.form.emailPlaceholder')}
-                    className="bg-background/50"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="message">{t('contact.form.message')}</Label>
-                  <Textarea
-                    id="message"
-                    placeholder={t('contact.form.messagePlaceholder')}
-                    className="bg-background/50 min-h-[120px]"
-                  />
-                </div>
-                <Button type="button" className="w-full gap-2">
-                  <Send className="w-4 h-4" />
-                  {t('contact.form.submit')}
-                </Button>
-              </form>
+              ) : (
+                <form onSubmit={handleSubmit} className="space-y-5">
+                  <div className="space-y-2">
+                    <Label htmlFor="name">{t('contact.form.name')}</Label>
+                    <Input
+                      id="name"
+                      value={formData.name}
+                      onChange={(e) => handleChange('name', e.target.value)}
+                      placeholder={t('contact.form.namePlaceholder')}
+                      className={`bg-background/50 ${errors.name ? 'border-destructive' : ''}`}
+                      disabled={isSubmitting}
+                    />
+                    {errors.name && (
+                      <p className="text-sm text-destructive">{errors.name}</p>
+                    )}
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="email">{t('contact.form.email')}</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      value={formData.email}
+                      onChange={(e) => handleChange('email', e.target.value)}
+                      placeholder={t('contact.form.emailPlaceholder')}
+                      className={`bg-background/50 ${errors.email ? 'border-destructive' : ''}`}
+                      disabled={isSubmitting}
+                    />
+                    {errors.email && (
+                      <p className="text-sm text-destructive">{errors.email}</p>
+                    )}
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="message">{t('contact.form.message')}</Label>
+                    <Textarea
+                      id="message"
+                      value={formData.message}
+                      onChange={(e) => handleChange('message', e.target.value)}
+                      placeholder={t('contact.form.messagePlaceholder')}
+                      className={`bg-background/50 min-h-[120px] ${errors.message ? 'border-destructive' : ''}`}
+                      disabled={isSubmitting}
+                    />
+                    {errors.message && (
+                      <p className="text-sm text-destructive">{errors.message}</p>
+                    )}
+                    <p className="text-xs text-muted-foreground text-right">
+                      {formData.message.length}/1000
+                    </p>
+                  </div>
+                  
+                  <Button 
+                    type="submit" 
+                    className="w-full gap-2"
+                    disabled={isSubmitting}
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        {language === 'bn' ? 'পাঠানো হচ্ছে...' : 'Sending...'}
+                      </>
+                    ) : (
+                      <>
+                        <Send className="w-4 h-4" />
+                        {t('contact.form.submit')}
+                      </>
+                    )}
+                  </Button>
+                </form>
+              )}
             </motion.div>
           </div>
         </div>
