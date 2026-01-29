@@ -1,3 +1,5 @@
+import { useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { Navbar } from '@/components/landing/Navbar';
 import { HeroSection } from '@/components/landing/HeroSection';
 import { TrustBadges } from '@/components/landing/TrustBadges';
@@ -12,6 +14,19 @@ import { Footer } from '@/components/landing/Footer';
 import { PromotionModal } from '@/components/landing/PromotionModal';
 
 const Index = () => {
+  const location = useLocation();
+
+  // Handle hash scrolling when navigating from other pages
+  useEffect(() => {
+    if (location.hash) {
+      setTimeout(() => {
+        const element = document.querySelector(location.hash);
+        if (element) {
+          element.scrollIntoView({ behavior: "smooth" });
+        }
+      }, 100);
+    }
+  }, [location.hash]);
   return (
     <div className="min-h-screen">
       <PromotionModal />

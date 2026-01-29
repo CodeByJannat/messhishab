@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { Button } from "@/components/ui/button";
@@ -10,16 +10,34 @@ export function Navbar() {
   const { t, language, setLanguage } = useLanguage();
   const { theme, toggleTheme } = useTheme();
   const [isOpen, setIsOpen] = useState(false);
+  const location = useLocation();
+  const navigate = useNavigate();
 
   const toggleLanguage = () => {
     setLanguage(language === "bn" ? "en" : "bn");
   };
 
   const navLinks = [
-    { href: "/#pricing", label: t("nav.pricing") },
-    { href: "/#how-it-works", label: t("nav.howItWorks") },
-    { href: "/#faq", label: t("nav.faq") },
+    { href: "#pricing", label: t("nav.pricing") },
+    { href: "#how-it-works", label: t("nav.howItWorks") },
+    { href: "#faq", label: t("nav.faq") },
   ];
+
+  const handleNavClick = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
+    e.preventDefault();
+    const hash = href;
+    
+    if (location.pathname === "/") {
+      // Already on homepage, just scroll to section
+      const element = document.querySelector(hash);
+      if (element) {
+        element.scrollIntoView({ behavior: "smooth" });
+      }
+    } else {
+      // Navigate to homepage with hash
+      navigate("/" + hash);
+    }
+  };
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 glass-nav">
@@ -39,7 +57,8 @@ export function Navbar() {
               <a
                 key={link.href}
                 href={link.href}
-                className="text-muted-foreground hover:text-foreground transition-colors font-medium"
+                onClick={(e) => handleNavClick(e, link.href)}
+                className="text-muted-foreground hover:text-foreground transition-colors font-medium cursor-pointer"
               >
                 {link.label}
               </a>
@@ -98,8 +117,11 @@ export function Navbar() {
                   <a
                     key={link.href}
                     href={link.href}
-                    className="block text-muted-foreground hover:text-foreground transition-colors font-medium py-2"
-                    onClick={() => setIsOpen(false)}
+                    className="block text-muted-foreground hover:text-foreground transition-colors font-medium py-2 cursor-pointer"
+                    onClick={(e) => {
+                      handleNavClick(e, link.href);
+                      setIsOpen(false);
+                    }}
                   >
                     {link.label}
                   </a>
