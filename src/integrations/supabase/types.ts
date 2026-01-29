@@ -68,6 +68,65 @@ export type Database = {
           },
         ]
       }
+      contact_message_replies: {
+        Row: {
+          admin_id: string
+          contact_message_id: string
+          id: string
+          reply_message: string
+          sent_at: string
+        }
+        Insert: {
+          admin_id: string
+          contact_message_id: string
+          id?: string
+          reply_message: string
+          sent_at?: string
+        }
+        Update: {
+          admin_id?: string
+          contact_message_id?: string
+          id?: string
+          reply_message?: string
+          sent_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contact_message_replies_contact_message_id_fkey"
+            columns: ["contact_message_id"]
+            isOneToOne: false
+            referencedRelation: "contact_messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contact_messages: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          message: string
+          name: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          message: string
+          name: string
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          message?: string
+          name?: string
+          status?: string
+        }
+        Relationships: []
+      }
       coupons: {
         Row: {
           code: string
