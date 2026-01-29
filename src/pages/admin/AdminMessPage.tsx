@@ -81,8 +81,22 @@ export default function AdminMessPage() {
           .select('user_id, email')
           .in('user_id', managerIds);
 
+        // Fetch user_roles to filter out admins
+        const { data: userRolesData } = await supabase
+          .from('user_roles')
+          .select('user_id, role')
+          .in('user_id', managerIds);
+
+        // Create a set of admin user IDs to exclude
+        const adminUserIds = new Set(
+          userRolesData?.filter(r => r.role === 'admin').map(r => r.user_id) || []
+        );
+
+        // Filter out messes where manager is an admin
+        const nonAdminMesses = messesData.filter(m => !adminUserIds.has(m.manager_id));
+
         // Fetch subscriptions separately
-        const messIds = messesData.map(m => m.id);
+        const messIds = nonAdminMesses.map(m => m.id);
         const { data: subscriptionsData } = await supabase
           .from('subscriptions')
           .select('mess_id, type, status, end_date')
@@ -91,7 +105,7 @@ export default function AdminMessPage() {
         const profileMap = new Map(profilesData?.map(p => [p.user_id, p.email]) || []);
         const subscriptionMap = new Map(subscriptionsData?.map(s => [s.mess_id, s]) || []);
 
-        const formattedMesses: Mess[] = messesData.map((m) => ({
+        const formattedMesses: Mess[] = nonAdminMesses.map((m) => ({
           id: m.id,
           mess_id: m.mess_id,
           name: m.name,
