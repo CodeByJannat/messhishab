@@ -119,8 +119,19 @@ export function Navbar() {
                     href={link.href}
                     className="block text-muted-foreground hover:text-foreground transition-colors font-medium py-2 cursor-pointer"
                     onClick={(e) => {
-                      handleNavClick(e, link.href);
+                      e.preventDefault();
                       setIsOpen(false);
+                      // Delay scroll to allow menu animation to complete
+                      setTimeout(() => {
+                        if (location.pathname === "/") {
+                          const element = document.querySelector(link.href);
+                          if (element) {
+                            element.scrollIntoView({ behavior: "smooth" });
+                          }
+                        } else {
+                          navigate("/" + link.href);
+                        }
+                      }, 150);
                     }}
                   >
                     {link.label}
