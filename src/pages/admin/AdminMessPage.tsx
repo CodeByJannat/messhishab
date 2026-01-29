@@ -74,12 +74,7 @@ export default function AdminMessPage() {
       }
 
       if (messesData && messesData.length > 0) {
-        // Fetch profiles separately to get manager emails
         const managerIds = messesData.map(m => m.manager_id);
-        const { data: profilesData } = await supabase
-          .from('profiles')
-          .select('user_id, email')
-          .in('user_id', managerIds);
 
         // Fetch user_roles to filter out admins
         const { data: userRolesData } = await supabase
@@ -94,6 +89,11 @@ export default function AdminMessPage() {
 
         // Filter out messes where manager is an admin
         const nonAdminMesses = messesData.filter(m => !adminUserIds.has(m.manager_id));
+        const nonAdminManagerIds = nonAdminMesses.map(m => m.manager_id);
+
+        // Fetch manager emails using admin function (bypasses RLS)
+        const { data: emailsData } = await supabase
+          .rpc('get_user_emails_for_admin', { user_ids: nonAdminManagerIds });
 
         // Fetch subscriptions separately
         const messIds = nonAdminMesses.map(m => m.id);
@@ -102,7 +102,7 @@ export default function AdminMessPage() {
           .select('mess_id, type, status, end_date')
           .in('mess_id', messIds);
 
-        const profileMap = new Map(profilesData?.map(p => [p.user_id, p.email]) || []);
+        const profileMap = new Map(emailsData?.map((p: { user_id: string; email: string }) => [p.user_id, p.email]) || []);
         const subscriptionMap = new Map(subscriptionsData?.map(s => [s.mess_id, s]) || []);
 
         const formattedMesses: Mess[] = nonAdminMesses.map((m) => ({
