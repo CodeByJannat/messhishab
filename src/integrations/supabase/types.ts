@@ -695,6 +695,13 @@ export type Database = {
         Returns: string
       }
       generate_mess_id: { Args: never; Returns: string }
+      get_user_emails_for_admin: {
+        Args: { user_ids: string[] }
+        Returns: {
+          email: string
+          user_id: string
+        }[]
+      }
       get_user_mess_id: { Args: { _user_id: string }; Returns: string }
       has_role: {
         Args: {
