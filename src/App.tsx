@@ -69,11 +69,9 @@ const queryClient = new QueryClient({
   },
 });
 
-// Loading fallback component
+// Minimal loading fallback - skeletons handle the real loading UX
 const PageLoader = () => (
-  <div className="min-h-screen flex items-center justify-center bg-background">
-    <Loader2 className="w-8 h-8 animate-spin text-primary" />
-  </div>
+  <div className="min-h-screen bg-background" />
 );
 
 function App() {
