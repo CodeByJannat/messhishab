@@ -36,7 +36,14 @@ export default function Login() {
         password,
       });
       
-      if (error) throw error;
+      if (error) {
+        // Handle aborted signal error gracefully
+        if (error.message?.includes('abort') || error.name === 'AbortError') {
+          console.warn('Login request was aborted');
+          return;
+        }
+        throw error;
+      }
       
       if (!data.user || !data.session) {
         throw new Error(language === 'bn' ? 'লগইন ব্যর্থ হয়েছে' : 'Login failed');
@@ -75,13 +82,20 @@ export default function Login() {
         description: language === 'bn' ? 'লগইন সফল হয়েছে' : 'Login successful',
       });
       
-      // Redirect based on role
-      if (role === 'admin') {
-        window.location.href = '/admin/dashboard';
-      } else {
-        window.location.href = '/manager/dashboard';
-      }
+      // Use setTimeout to ensure toast is shown before redirect
+      setTimeout(() => {
+        if (role === 'admin') {
+          window.location.href = '/admin/dashboard';
+        } else {
+          window.location.href = '/manager/dashboard';
+        }
+      }, 100);
     } catch (error: any) {
+      // Ignore abort errors
+      if (error?.message?.includes('abort') || error?.name === 'AbortError') {
+        console.warn('Request aborted:', error);
+        return;
+      }
       console.error('Login error:', error);
       toast({
         title: language === 'bn' ? 'ত্রুটি' : 'Error',
@@ -103,7 +117,14 @@ export default function Login() {
         password,
       });
       
-      if (error) throw error;
+      if (error) {
+        // Handle aborted signal error gracefully
+        if (error.message?.includes('abort') || error.name === 'AbortError') {
+          console.warn('Login request was aborted');
+          return;
+        }
+        throw error;
+      }
       
       if (!data.user) {
         throw new Error(language === 'bn' ? 'লগইন ব্যর্থ হয়েছে' : 'Login failed');
@@ -155,8 +176,16 @@ export default function Login() {
         description: language === 'bn' ? 'লগইন সফল হয়েছে' : 'Login successful',
       });
       
-      window.location.href = '/member/dashboard';
+      // Use setTimeout to ensure toast is shown before redirect
+      setTimeout(() => {
+        window.location.href = '/member/dashboard';
+      }, 100);
     } catch (error: any) {
+      // Ignore abort errors
+      if (error?.message?.includes('abort') || error?.name === 'AbortError') {
+        console.warn('Request aborted:', error);
+        return;
+      }
       console.error('Login error:', error);
       toast({
         title: language === 'bn' ? 'ত্রুটি' : 'Error',
