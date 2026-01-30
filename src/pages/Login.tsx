@@ -36,12 +36,19 @@ export default function Login() {
       
       if (error) throw error;
       
+      // Wait a moment for session to be fully set
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
       // Check user role to determine redirect
-      const { data: roleData } = await supabase
+      const { data: roleData, error: roleError } = await supabase
         .from('user_roles')
         .select('role')
         .eq('user_id', data.user.id)
         .single();
+      
+      if (roleError) {
+        console.error('Role fetch error:', roleError);
+      }
       
       toast({
         title: language === 'bn' ? 'সফল!' : 'Success!',
@@ -50,15 +57,18 @@ export default function Login() {
       
       // CRITICAL: Use window.location.href for immediate redirect
       // This ensures auth state is fully synchronized before navigation
-      if (roleData?.role === 'admin') {
+      const role = roleData?.role;
+      
+      if (role === 'admin') {
         window.location.href = '/admin/dashboard';
-      } else if (roleData?.role === 'member') {
+      } else if (role === 'member') {
         window.location.href = '/member/dashboard';
       } else {
         // Default to manager dashboard
         window.location.href = '/manager/dashboard';
       }
     } catch (error: any) {
+      console.error('Login error:', error);
       toast({
         title: language === 'bn' ? 'ত্রুটি' : 'Error',
         description: error.message,
