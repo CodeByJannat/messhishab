@@ -135,21 +135,21 @@ serve(async (req) => {
         
         if (decryptedEmail && decryptedEmail.toLowerCase().trim() === normalizedEmail) {
           return new Response(
-            JSON.stringify({ 
+            JSON.stringify({
               error: 'This email is already registered in another mess. One member can only be in one mess at a time.',
               errorBn: 'এই ইমেইল অন্য একটি মেসে নিবন্ধিত। একজন মেম্বার একবারে শুধুমাত্র একটি মেসে থাকতে পারে।'
             }),
-            { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
         
         if (decryptedPhone && decryptedPhone.replace(/\D/g, '') === normalizedPhone) {
           return new Response(
-            JSON.stringify({ 
+            JSON.stringify({
               error: 'This phone number is already registered in another mess. One member can only be in one mess at a time.',
               errorBn: 'এই ফোন নম্বর অন্য একটি মেসে নিবন্ধিত। একজন মেম্বার একবারে শুধুমাত্র একটি মেসে থাকতে পারে।'
             }),
-            { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
       }
@@ -166,21 +166,21 @@ serve(async (req) => {
         
         if (decryptedEmail && decryptedEmail.toLowerCase().trim() === normalizedEmail) {
           return new Response(
-            JSON.stringify({ 
+            JSON.stringify({
               error: 'This email is already registered in this mess.',
               errorBn: 'এই ইমেইল ইতিমধ্যে এই মেসে নিবন্ধিত।'
             }),
-            { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
         
         if (decryptedPhone && decryptedPhone.replace(/\D/g, '') === normalizedPhone) {
           return new Response(
-            JSON.stringify({ 
+            JSON.stringify({
               error: 'This phone number is already registered in this mess.',
               errorBn: 'এই ফোন নম্বর ইতিমধ্যে এই মেসে নিবন্ধিত।'
             }),
-            { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
       }
