@@ -5,7 +5,8 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Sun, Moon, Globe, ArrowLeft, Eye, EyeOff } from 'lucide-react';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Sun, Moon, Globe, ArrowLeft, Eye, EyeOff, Users, UserCog } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -15,6 +16,7 @@ export default function Login() {
   const { theme, toggleTheme } = useTheme();
   const { toast } = useToast();
   
+  const [activeTab, setActiveTab] = useState<'manager' | 'member'>('manager');
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState('');
@@ -24,7 +26,7 @@ export default function Login() {
     setLanguage(language === 'bn' ? 'en' : 'bn');
   };
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleManagerLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     
@@ -48,6 +50,16 @@ export default function Login() {
       
       if (roleError) {
         console.error('Role fetch error:', roleError);
+        await supabase.auth.signOut();
+        throw new Error(language === 'bn' ? 'ব্যবহারকারী রোল পাওয়া যায়নি' : 'User role not found');
+      }
+      
+      const role = roleData?.role;
+      
+      // Only allow manager or admin roles through manager tab
+      if (role !== 'manager' && role !== 'admin') {
+        await supabase.auth.signOut();
+        throw new Error(language === 'bn' ? 'এই অ্যাকাউন্ট ম্যানেজার/এডমিন নয়। মেম্বার ট্যাব ব্যবহার করুন।' : 'This account is not a manager/admin. Please use the Member tab.');
       }
       
       toast({
@@ -55,18 +67,78 @@ export default function Login() {
         description: language === 'bn' ? 'লগইন সফল হয়েছে' : 'Login successful',
       });
       
-      // CRITICAL: Use window.location.href for immediate redirect
-      // This ensures auth state is fully synchronized before navigation
-      const role = roleData?.role;
-      
+      // Redirect based on role
       if (role === 'admin') {
         window.location.href = '/admin/dashboard';
-      } else if (role === 'member') {
-        window.location.href = '/member/dashboard';
       } else {
-        // Default to manager dashboard
         window.location.href = '/manager/dashboard';
       }
+    } catch (error: any) {
+      console.error('Login error:', error);
+      toast({
+        title: language === 'bn' ? 'ত্রুটি' : 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+      setIsLoading(false);
+    }
+  };
+
+  const handleMemberLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      
+      if (error) throw error;
+      
+      // Wait a moment for session to be fully set
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Check user role - must be member
+      const { data: roleData, error: roleError } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', data.user.id)
+        .single();
+      
+      if (roleError) {
+        console.error('Role fetch error:', roleError);
+        await supabase.auth.signOut();
+        throw new Error(language === 'bn' ? 'ব্যবহারকারী রোল পাওয়া যায়নি' : 'User role not found');
+      }
+      
+      const role = roleData?.role;
+      
+      // Only allow member role through member tab
+      if (role !== 'member') {
+        await supabase.auth.signOut();
+        throw new Error(language === 'bn' ? 'এই অ্যাকাউন্ট মেম্বার নয়। ম্যানেজার ট্যাব ব্যবহার করুন।' : 'This account is not a member. Please use the Manager tab.');
+      }
+      
+      // Verify member is active
+      const { data: memberData, error: memberError } = await supabase
+        .from('members')
+        .select('id, is_active')
+        .eq('user_id', data.user.id)
+        .eq('is_active', true)
+        .single();
+      
+      if (memberError || !memberData) {
+        await supabase.auth.signOut();
+        throw new Error(language === 'bn' ? 'মেম্বার অ্যাকাউন্ট সক্রিয় নেই' : 'Member account is not active');
+      }
+      
+      toast({
+        title: language === 'bn' ? 'সফল!' : 'Success!',
+        description: language === 'bn' ? 'লগইন সফল হয়েছে' : 'Login successful',
+      });
+      
+      window.location.href = '/member/dashboard';
     } catch (error: any) {
       console.error('Login error:', error);
       toast({
@@ -123,55 +195,121 @@ export default function Login() {
             {language === 'bn' ? 'লগইন করুন' : 'Login'}
           </h2>
 
-          <form onSubmit={handleLogin} className="space-y-3">
-            <div className="space-y-1.5">
-              <Label htmlFor="email" className="text-sm">{t('auth.email')}</Label>
-              <Input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="example@email.com"
-                className="rounded-xl h-9"
-                required
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="password" className="text-sm">{t('auth.password')}</Label>
-              <div className="relative">
-                <Input
-                  id="password"
-                  type={showPassword ? 'text' : 'password'}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="rounded-xl h-9 pr-9"
-                  required
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
-            </div>
-            <div className="text-right">
-              <Link to="/forgot-password" className="text-sm text-primary hover:underline">
-                {t('auth.forgotPassword')}
-              </Link>
-            </div>
-            <Button type="submit" className="w-full btn-primary-glow" disabled={isLoading}>
-              {isLoading ? t('common.loading') : t('auth.login')}
-            </Button>
-          </form>
+          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'manager' | 'member')} className="w-full">
+            <TabsList className="grid w-full grid-cols-2 mb-4">
+              <TabsTrigger value="manager" className="flex items-center gap-2">
+                <UserCog className="w-4 h-4" />
+                {language === 'bn' ? 'ম্যানেজার' : 'Manager'}
+              </TabsTrigger>
+              <TabsTrigger value="member" className="flex items-center gap-2">
+                <Users className="w-4 h-4" />
+                {language === 'bn' ? 'মেম্বার' : 'Member'}
+              </TabsTrigger>
+            </TabsList>
 
-          <p className="text-center text-muted-foreground text-sm mt-4">
-            {t('auth.noAccount')}{' '}
-            <Link to="/register" className="text-primary hover:underline">
-              {t('auth.registerHere')}
-            </Link>
-          </p>
+            <TabsContent value="manager">
+              <form onSubmit={handleManagerLogin} className="space-y-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="manager-email" className="text-sm">{t('auth.email')}</Label>
+                  <Input
+                    id="manager-email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="example@email.com"
+                    className="rounded-xl h-9"
+                    required
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="manager-password" className="text-sm">{t('auth.password')}</Label>
+                  <div className="relative">
+                    <Input
+                      id="manager-password"
+                      type={showPassword ? 'text' : 'password'}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="rounded-xl h-9 pr-9"
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <Link to="/forgot-password" className="text-sm text-primary hover:underline">
+                    {t('auth.forgotPassword')}
+                  </Link>
+                </div>
+                <Button type="submit" className="w-full btn-primary-glow" disabled={isLoading}>
+                  {isLoading ? t('common.loading') : t('auth.login')}
+                </Button>
+              </form>
+
+              <p className="text-center text-muted-foreground text-sm mt-4">
+                {t('auth.noAccount')}{' '}
+                <Link to="/register" className="text-primary hover:underline">
+                  {t('auth.registerHere')}
+                </Link>
+              </p>
+            </TabsContent>
+
+            <TabsContent value="member">
+              <form onSubmit={handleMemberLogin} className="space-y-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="member-email" className="text-sm">{t('auth.email')}</Label>
+                  <Input
+                    id="member-email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="example@email.com"
+                    className="rounded-xl h-9"
+                    required
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="member-password" className="text-sm">{t('auth.password')}</Label>
+                  <div className="relative">
+                    <Input
+                      id="member-password"
+                      type={showPassword ? 'text' : 'password'}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="rounded-xl h-9 pr-9"
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <Link to="/forgot-password" className="text-sm text-primary hover:underline">
+                    {t('auth.forgotPassword')}
+                  </Link>
+                </div>
+                <Button type="submit" className="w-full btn-primary-glow" disabled={isLoading}>
+                  {isLoading ? t('common.loading') : t('auth.login')}
+                </Button>
+              </form>
+
+              <p className="text-center text-muted-foreground text-xs mt-4">
+                {language === 'bn' 
+                  ? 'মেম্বার অ্যাকাউন্ট ম্যানেজার দ্বারা তৈরি করা হয়' 
+                  : 'Member accounts are created by managers'}
+              </p>
+            </TabsContent>
+          </Tabs>
         </div>
       </motion.div>
     </div>
