@@ -29,27 +29,34 @@ export default function Login() {
   const handleManagerLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    console.log('Manager login started');
     
     try {
+      console.log('Calling signInWithPassword...');
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
+      console.log('signInWithPassword response:', { data, error });
       
       if (error) throw error;
       
-      if (!data.user) {
+      if (!data.user || !data.session) {
         throw new Error(language === 'bn' ? 'লগইন ব্যর্থ হয়েছে' : 'Login failed');
       }
 
       const userId = data.user.id;
+      console.log('Login successful, userId:', userId);
       
       // Check user role to determine redirect
+      console.log('Fetching user role...');
       const { data: roleData, error: roleError } = await supabase
         .from('user_roles')
         .select('role')
         .eq('user_id', userId)
         .maybeSingle();
+      
+      console.log('Role data:', roleData, 'Error:', roleError);
       
       if (roleError) {
         console.error('Role fetch error:', roleError);
