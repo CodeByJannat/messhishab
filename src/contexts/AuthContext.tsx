@@ -43,37 +43,56 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const fetchUserData = async (userId: string) => {
     try {
-      // Fetch user role
-      const { data: roleData } = await supabase
+      // Fetch user role - use maybeSingle to avoid error when no data found
+      const { data: roleData, error: roleError } = await supabase
         .from('user_roles')
         .select('role')
         .eq('user_id', userId)
-        .single();
+        .maybeSingle();
+
+      if (roleError) {
+        console.error('Error fetching role:', roleError);
+      }
 
       if (roleData) {
         setUserRole(roleData.role as 'manager' | 'member' | 'admin');
+      } else {
+        setUserRole(null);
       }
 
-      // Fetch mess data (as manager)
-      const { data: messData } = await supabase
+      // Fetch mess data (as manager) - use maybeSingle to avoid error
+      const { data: messData, error: messError } = await supabase
         .from('messes')
         .select('*')
         .eq('manager_id', userId)
-        .single();
+        .maybeSingle();
+
+      if (messError) {
+        console.error('Error fetching mess:', messError);
+      }
 
       if (messData) {
         setMess(messData as Mess);
 
-        // Fetch subscription
-        const { data: subData } = await supabase
+        // Fetch subscription - use maybeSingle to avoid error
+        const { data: subData, error: subError } = await supabase
           .from('subscriptions')
           .select('*')
           .eq('mess_id', messData.id)
-          .single();
+          .maybeSingle();
+
+        if (subError) {
+          console.error('Error fetching subscription:', subError);
+        }
 
         if (subData) {
           setSubscription(subData as Subscription);
+        } else {
+          setSubscription(null);
         }
+      } else {
+        setMess(null);
+        setSubscription(null);
       }
     } catch (error) {
       console.error('Error fetching user data:', error);
