@@ -88,7 +88,7 @@ function App() {
                     <Route path="/dashboard/payment-history" element={<ProtectedRoute requiredRole="manager"><PaymentHistoryPage /></ProtectedRoute>} />
                     <Route path="/dashboard/helpdesk" element={<ProtectedRoute requiredRole="manager"><ManagerHelpDeskPage /></ProtectedRoute>} />
                     {/* Member Dashboard Routes */}
-                    <Route path="/member" element={<MemberProtectedRoute><MemberDashboard /></MemberProtectedRoute>} />
+                    <Route path="/member" element={<MemberDashboard />} />
                     <Route path="/member/portal" element={<MemberProtectedRoute><MemberPortalPage /></MemberProtectedRoute>} />
                     <Route path="/member/bazar" element={<MemberProtectedRoute><MemberBazarPage /></MemberProtectedRoute>} />
                     <Route path="/member/notifications" element={<MemberProtectedRoute><MemberNotificationsPage /></MemberProtectedRoute>} />
