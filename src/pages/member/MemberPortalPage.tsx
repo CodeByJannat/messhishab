@@ -8,12 +8,12 @@ import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
+import { MemberPortalSkeleton } from '@/components/ui/loading-skeletons';
 import { 
   Utensils, 
   Wallet, 
   TrendingUp, 
   TrendingDown, 
-  Loader2, 
   Sun, 
   Coffee,
   Moon,
@@ -119,9 +119,7 @@ export default function MemberPortalPage() {
   if (isLoading) {
     return (
       <MemberDashboardLayout>
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="w-8 h-8 animate-spin text-primary" />
-        </div>
+        <MemberPortalSkeleton />
       </MemberDashboardLayout>
     );
   }

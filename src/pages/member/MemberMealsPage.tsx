@@ -13,7 +13,8 @@ import {
 } from '@/components/ui/table';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Utensils, Coffee, Sun, Moon } from 'lucide-react';
+import { MemberMealsSkeleton } from '@/components/ui/loading-skeletons';
+import { Utensils, Coffee, Sun, Moon } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 interface Meal {
@@ -74,6 +75,14 @@ export default function MemberMealsPage() {
     }
   };
 
+  if (isLoading) {
+    return (
+      <MemberDashboardLayout>
+        <MemberMealsSkeleton />
+      </MemberDashboardLayout>
+    );
+  }
+
   return (
     <MemberDashboardLayout>
       <div className="space-y-6">
@@ -128,11 +137,7 @@ export default function MemberMealsPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0">
-            {isLoading ? (
-              <div className="flex items-center justify-center py-12">
-                <Loader2 className="w-8 h-8 animate-spin text-primary" />
-              </div>
-            ) : meals.length === 0 ? (
+            {meals.length === 0 ? (
               <div className="text-center py-12">
                 <Utensils className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
                 <p className="text-muted-foreground">

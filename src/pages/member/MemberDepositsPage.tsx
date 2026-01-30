@@ -13,7 +13,8 @@ import {
 } from '@/components/ui/table';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Wallet, TrendingUp, TrendingDown } from 'lucide-react';
+import { MemberDepositsSkeleton } from '@/components/ui/loading-skeletons';
+import { Wallet, TrendingUp, TrendingDown } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 interface Deposit {
@@ -67,6 +68,14 @@ export default function MemberDepositsPage() {
       setIsLoading(false);
     }
   };
+
+  if (isLoading) {
+    return (
+      <MemberDashboardLayout>
+        <MemberDepositsSkeleton />
+      </MemberDashboardLayout>
+    );
+  }
 
   return (
     <MemberDashboardLayout>
@@ -136,11 +145,7 @@ export default function MemberDepositsPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0">
-            {isLoading ? (
-              <div className="flex items-center justify-center py-12">
-                <Loader2 className="w-8 h-8 animate-spin text-primary" />
-              </div>
-            ) : deposits.length === 0 ? (
+            {deposits.length === 0 ? (
               <div className="text-center py-12">
                 <Wallet className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
                 <p className="text-muted-foreground">
