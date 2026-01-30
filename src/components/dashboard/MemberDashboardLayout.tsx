@@ -69,7 +69,7 @@ export function MemberDashboardLayout({ children }: { children: React.ReactNode 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="lg:hidden fixed inset-0 bg-black/50 z-40 hover:bg-primary/10"
+            className="lg:hidden fixed inset-0 bg-black/50 z-40"
             onClick={() => setIsSidebarOpen(false)}
           />
         )}
@@ -143,7 +143,7 @@ export function MemberDashboardLayout({ children }: { children: React.ReactNode 
                   </div>
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56 hover:bg-primary/10">
+              <DropdownMenuContent align="end" className="w-56">
                 <DropdownMenuItem onClick={handleSignOut} className="text-destructive">
                   <LogOut className="w-4 h-4 mr-2" />
                   {language === "bn" ? "লগআউট" : "Logout"}
