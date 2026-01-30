@@ -24,9 +24,9 @@ Deno.serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Verify session token (simple validation - token format: member_id_timestamp_hash)
-    const tokenParts = session_token.split('_');
-    if (tokenParts.length < 2 || tokenParts[0] !== member_id.substring(0, 8)) {
+    // Verify session token exists and is a valid UUID format
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(session_token)) {
       return new Response(
         JSON.stringify({ error: 'Invalid session' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
