@@ -35,17 +35,17 @@ interface Deposit {
   note: string | null;
 }
 
-interface AdminMessage {
-  id: string;
-  message: string;
-  target_type: string;
-  created_at: string;
-}
-
 interface Notification {
   id: string;
   message: string;
   to_all: boolean;
+  created_at: string;
+}
+
+interface AdminMessage {
+  id: string;
+  message: string;
+  target_type: string;
   created_at: string;
 }
 
@@ -73,82 +73,30 @@ export default function MemberPortalPage() {
     setIsLoading(true);
 
     try {
-      const memberId = memberSession.member.id;
-      const messId = memberSession.mess.id;
+      const { data, error } = await supabase.functions.invoke('get-member-portal-data', {
+        body: {
+          member_id: memberSession.member.id,
+          mess_id: memberSession.mess.id,
+          session_token: memberSession.session_token,
+        },
+      });
 
-      // Fetch meals breakdown
-      const { data: mealsData } = await supabase
-        .from('meals')
-        .select('breakfast, lunch, dinner')
-        .eq('member_id', memberId);
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
 
-      const breakfast = mealsData?.reduce((sum, m) => sum + m.breakfast, 0) || 0;
-      const lunch = mealsData?.reduce((sum, m) => sum + m.lunch, 0) || 0;
-      const dinner = mealsData?.reduce((sum, m) => sum + m.dinner, 0) || 0;
-      const totalMeals = breakfast + lunch + dinner;
-      setMealBreakdown({ breakfast, lunch, dinner, total: totalMeals });
+      const portalData = data.data;
+      
+      setMealBreakdown(portalData.mealBreakdown);
+      setBazarContribution(portalData.bazarContribution);
+      setDeposits(portalData.deposits);
+      setTotalDeposit(portalData.totalDeposit);
+      setMealRate(portalData.mealRate);
+      setBalance(portalData.balance);
 
-      // Fetch bazar contribution for this member
-      const { data: bazarData } = await supabase
-        .from('bazars')
-        .select('cost')
-        .eq('member_id', memberId);
-
-      const bazarTotal = bazarData?.reduce((sum, b) => sum + Number(b.cost), 0) || 0;
-      setBazarContribution(bazarTotal);
-
-      // Fetch deposits
-      const { data: depositsData } = await supabase
-        .from('deposits')
-        .select('id, amount, date, note')
-        .eq('member_id', memberId)
-        .order('date', { ascending: false });
-
-      setDeposits(depositsData || []);
-      const depositTotal = depositsData?.reduce((sum, d) => sum + Number(d.amount), 0) || 0;
-      setTotalDeposit(depositTotal);
-
-      // Calculate meal rate from all mess data
-      const { data: allBazars } = await supabase
-        .from('bazars')
-        .select('cost')
-        .eq('mess_id', messId);
-
-      const { data: allMeals } = await supabase
-        .from('meals')
-        .select('breakfast, lunch, dinner')
-        .eq('mess_id', messId);
-
-      const totalBazar = allBazars?.reduce((sum, b) => sum + Number(b.cost), 0) || 0;
-      const allMealsCount = allMeals?.reduce((sum, m) => sum + m.breakfast + m.lunch + m.dinner, 0) || 0;
-      const rate = allMealsCount > 0 ? totalBazar / allMealsCount : 0;
-      setMealRate(rate);
-
-      // Calculate balance
-      const mealCost = totalMeals * rate;
-      setBalance(depositTotal - mealCost);
-
-      // Fetch notifications (manager messages)
-      const { data: notifData } = await supabase
-        .from('notifications')
-        .select('id, message, to_all, created_at')
-        .eq('mess_id', messId)
-        .or(`to_all.eq.true,to_member_id.eq.${memberId}`)
-        .order('created_at', { ascending: false })
-        .limit(10);
-
-      // Fetch admin messages
-      const { data: adminMsgData } = await supabase
-        .from('admin_messages')
-        .select('id, message, target_type, created_at')
-        .or(`target_type.eq.global,target_mess_id.eq.${messId}`)
-        .order('created_at', { ascending: false })
-        .limit(10);
-
-      // Combine and sort
+      // Combine notifications
       const combined = [
-        ...(notifData || []).map(n => ({ ...n, isAdmin: false })),
-        ...(adminMsgData || []).map(a => ({ ...a, isAdmin: true, to_all: a.target_type === 'global' }))
+        ...(portalData.notifications || []).map((n: Notification) => ({ ...n, isAdmin: false })),
+        ...(portalData.adminMessages || []).map((a: AdminMessage) => ({ ...a, isAdmin: true, to_all: a.target_type === 'global' }))
       ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
       setNotifications(combined.slice(0, 10));
@@ -220,9 +168,9 @@ export default function MemberPortalPage() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.2 }}
-                className="text-center p-4 bg-secondary/10 rounded-xl"
+                className="text-center p-4 bg-muted rounded-xl"
               >
-                <Moon className="w-6 h-6 mx-auto text-secondary mb-2" />
+                <Moon className="w-6 h-6 mx-auto text-muted-foreground mb-2" />
                 <p className="text-sm text-muted-foreground">{language === 'bn' ? 'রাত' : 'Dinner'}</p>
                 <p className="text-2xl font-bold text-foreground">{mealBreakdown.dinner}</p>
               </motion.div>
@@ -241,7 +189,23 @@ export default function MemberPortalPage() {
         </Card>
 
         {/* Financial Summary */}
-        <div className="grid md:grid-cols-3 gap-4">
+        <div className="grid md:grid-cols-4 gap-4">
+          <Card className="glass-card">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">
+                    {language === 'bn' ? 'মিল রেট' : 'Meal Rate'}
+                  </p>
+                  <p className="text-2xl font-bold text-foreground mt-1">৳{mealRate.toFixed(2)}</p>
+                </div>
+                <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center">
+                  <Utensils className="w-6 h-6 text-muted-foreground" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
           <Card className="glass-card">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">

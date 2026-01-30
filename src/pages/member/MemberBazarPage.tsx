@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
+import { useMemberAuth } from '@/contexts/MemberAuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { MemberDashboardLayout } from '@/components/dashboard/MemberDashboardLayout';
 import { Card, CardContent } from '@/components/ui/card';
@@ -25,42 +25,35 @@ interface Bazar {
 }
 
 export default function MemberBazarPage() {
-  const { user } = useAuth();
+  const { memberSession } = useMemberAuth();
   const { language } = useLanguage();
   const { toast } = useToast();
   const [bazars, setBazars] = useState<Bazar[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (user) {
+    if (memberSession) {
       fetchBazars();
     }
-  }, [user]);
+  }, [memberSession]);
 
   const fetchBazars = async () => {
-    if (!user) return;
+    if (!memberSession) return;
     setIsLoading(true);
 
     try {
-      // First get member's mess_id
-      const { data: memberData, error: memberError } = await supabase
-        .from('members')
-        .select('mess_id')
-        .eq('user_id', user.id)
-        .eq('is_active', true)
-        .single();
-
-      if (memberError) throw memberError;
-
-      // Then fetch bazars for that mess
-      const { data, error } = await supabase
-        .from('bazars')
-        .select('id, date, person_name, items, cost')
-        .eq('mess_id', memberData.mess_id)
-        .order('date', { ascending: false });
+      const { data, error } = await supabase.functions.invoke('get-member-portal-data', {
+        body: {
+          member_id: memberSession.member.id,
+          mess_id: memberSession.mess.id,
+          session_token: memberSession.session_token,
+        },
+      });
 
       if (error) throw error;
-      setBazars(data || []);
+      if (data.error) throw new Error(data.error);
+
+      setBazars(data.data.allBazars || []);
     } catch (error: any) {
       toast({
         title: language === 'bn' ? 'ত্রুটি' : 'Error',

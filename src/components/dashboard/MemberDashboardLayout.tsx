@@ -9,13 +9,15 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Home, ShoppingCart, Bell, LogOut, Menu, Sun, Moon, Globe, Send, User } from "lucide-react";
+import { Home, ShoppingCart, Bell, LogOut, Menu, Sun, Moon, Globe, Send, User, Utensils, Wallet } from "lucide-react";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
 const memberNavItems = [
   { href: "/member/portal", icon: User, labelBn: "আমার পোর্টাল", labelEn: "My Portal" },
+  { href: "/member/meals", icon: Utensils, labelBn: "মিল", labelEn: "Meals" },
   { href: "/member/bazar", icon: ShoppingCart, labelBn: "বাজার", labelEn: "Bazar" },
+  { href: "/member/deposits", icon: Wallet, labelBn: "জমা", labelEn: "Deposits" },
   { href: "/member/notifications", icon: Bell, labelBn: "নোটিফিকেশন", labelEn: "Notifications" },
   { href: "/member/contact", icon: Send, labelBn: "ম্যানেজারকে মেসেজ", labelEn: "Message Manager" },
 ];
