@@ -160,89 +160,100 @@ export default function Register() {
         animate={{ opacity: 1, y: 0 }}
         className="w-full max-w-md relative z-10"
       >
-        <div className="glass-card p-8">
+        <div className="glass-card p-6">
           {/* Logo */}
-          <div className="flex items-center justify-center gap-2 mb-8">
-            <div className="w-12 h-12 bg-primary rounded-xl flex items-center justify-center">
-              <span className="text-primary-foreground font-bold text-2xl">M</span>
+          <div className="flex items-center justify-center gap-2 mb-4">
+            <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center">
+              <span className="text-primary-foreground font-bold text-xl">M</span>
             </div>
-            <span className="font-bold text-2xl text-foreground">MessHishab</span>
+            <span className="font-bold text-xl text-foreground">MessHishab</span>
           </div>
 
-          <h1 className="text-2xl font-bold text-center text-foreground mb-6">
+          <h1 className="text-xl font-bold text-center text-foreground mb-4">
             {t('auth.register')}
           </h1>
 
-          <form onSubmit={handleRegister} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">{t('auth.email')}</Label>
-              <Input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="example@gmail.com"
-                className="rounded-xl"
-                required
-              />
-              <p className="text-xs text-muted-foreground">
-                {language === 'bn' ? 'Gmail, Outlook, Yahoo, Proton, iCloud' : 'Gmail, Outlook, Yahoo, Proton, iCloud'}
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="phone">{language === 'bn' ? 'ফোন নম্বর' : 'Phone Number'}</Label>
-              <Input
-                id="phone"
-                type="tel"
-                value={phone}
-                onChange={(e) => {
-                  const value = e.target.value.replace(/\D/g, '').slice(0, 11);
-                  setPhone(value);
-                }}
-                placeholder="01XXXXXXXXX"
-                className="rounded-xl"
-                maxLength={11}
-                required
-              />
-              {phone && phone.length !== 11 && (
-                <p className="text-xs text-destructive">
-                  {language === 'bn' ? `${phone.length}/১১ সংখ্যা` : `${phone.length}/11 digits`}
-                </p>
-              )}
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="password">{t('auth.password')}</Label>
-              <div className="relative">
+          <form onSubmit={handleRegister} className="space-y-3">
+            {/* Email & Phone in grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="email" className="text-sm">{t('auth.email')}</Label>
                 <Input
-                  id="password"
-                  type={showPassword ? 'text' : 'password'}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="rounded-xl pr-10"
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="example@gmail.com"
+                  className="rounded-xl h-9"
                   required
                 />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                >
-                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                </button>
+                <p className="text-xs text-muted-foreground">
+                  Gmail, Outlook, Yahoo, Proton, iCloud
+                </p>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="phone" className="text-sm">{language === 'bn' ? 'ফোন নম্বর' : 'Phone'}</Label>
+                <Input
+                  id="phone"
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/\D/g, '').slice(0, 11);
+                    setPhone(value);
+                  }}
+                  placeholder="01XXXXXXXXX"
+                  className="rounded-xl h-9"
+                  maxLength={11}
+                  required
+                />
+                {phone && phone.length !== 11 && (
+                  <p className="text-xs text-destructive">
+                    {language === 'bn' ? `${phone.length}/১১ সংখ্যা` : `${phone.length}/11 digits`}
+                  </p>
+                )}
+                {phone && phone.length > 0 && !phone.startsWith('01') && (
+                  <p className="text-xs text-destructive">
+                    {language === 'bn' ? '০১ দিয়ে শুরু করুন' : 'Must start with 01'}
+                  </p>
+                )}
               </div>
             </div>
             
-            <div className="space-y-2">
-              <Label htmlFor="confirm-password">{t('auth.confirmPassword')}</Label>
-              <Input
-                id="confirm-password"
-                type={showPassword ? 'text' : 'password'}
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                className="rounded-xl"
-                required
-              />
+            {/* Password fields in grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="password" className="text-sm">{t('auth.password')}</Label>
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="rounded-xl h-9 pr-9"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+              
+              <div className="space-y-1.5">
+                <Label htmlFor="confirm-password" className="text-sm">{t('auth.confirmPassword')}</Label>
+                <Input
+                  id="confirm-password"
+                  type={showPassword ? 'text' : 'password'}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="rounded-xl h-9"
+                  required
+                />
+              </div>
             </div>
 
             <div className="flex items-center space-x-2">
