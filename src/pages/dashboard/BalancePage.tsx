@@ -2,9 +2,16 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { DashboardLayout } from '@/components/dashboard/DashboardLayout';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   Table,
   TableBody,
@@ -21,8 +28,10 @@ import {
 } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Eye, Loader2, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { useDateValidation } from '@/hooks/useDateValidation';
+import { Eye, Loader2, TrendingUp, TrendingDown, Minus, Calendar } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { format, parseISO, endOfMonth } from 'date-fns';
 
 interface Member {
   id: string;
@@ -44,13 +53,29 @@ interface MemberDetails {
   roomNumber: string;
 }
 
+interface AvailableMonth {
+  value: string;
+  label: string;
+}
+
 export default function BalancePage() {
   const { mess } = useAuth();
   const { language } = useLanguage();
   const { toast } = useToast();
+  const { filterValidMonths } = useDateValidation();
+  
   const [balances, setBalances] = useState<MemberBalance[]>([]);
   const [mealRate, setMealRate] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  
+  // Monthly selection
+  const [availableMonths, setAvailableMonths] = useState<AvailableMonth[]>([]);
+  const [selectedMonth, setSelectedMonth] = useState(format(new Date(), 'yyyy-MM'));
+  
+  // Month totals
+  const [monthlyTotalBazar, setMonthlyTotalBazar] = useState(0);
+  const [monthlyTotalMeals, setMonthlyTotalMeals] = useState(0);
+  const [monthlyTotalDeposits, setMonthlyTotalDeposits] = useState(0);
   
   // PIN verification state
   const [isPinOpen, setIsPinOpen] = useState(false);
@@ -62,15 +87,65 @@ export default function BalancePage() {
 
   useEffect(() => {
     if (mess) {
-      fetchBalances();
+      fetchAvailableMonths();
     }
   }, [mess]);
 
-  const fetchBalances = async () => {
+  useEffect(() => {
+    if (mess && selectedMonth) {
+      fetchBalances();
+    }
+  }, [mess, selectedMonth]);
+
+  const fetchAvailableMonths = async () => {
     if (!mess) return;
+
+    try {
+      // Get months from meals, bazars, and deposits
+      const [mealsRes, bazarsRes, depositsRes] = await Promise.all([
+        supabase.from('meals').select('date').eq('mess_id', mess.id),
+        supabase.from('bazars').select('date').eq('mess_id', mess.id),
+        supabase.from('deposits').select('date').eq('mess_id', mess.id),
+      ]);
+
+      const monthsSet = new Set<string>();
+      
+      // Add current month
+      monthsSet.add(format(new Date(), 'yyyy-MM'));
+      
+      // Add months from data
+      [...(mealsRes.data || []), ...(bazarsRes.data || []), ...(depositsRes.data || [])].forEach(item => {
+        const month = item.date.substring(0, 7);
+        monthsSet.add(month);
+      });
+
+      const months = Array.from(monthsSet).sort((a, b) => b.localeCompare(a)).map(month => {
+        const date = parseISO(`${month}-01`);
+        return {
+          value: month,
+          label: format(date, language === 'bn' ? 'MMMM yyyy' : 'MMMM yyyy'),
+        };
+      });
+
+      const validMonths = filterValidMonths(months);
+      setAvailableMonths(validMonths);
+      
+      if (validMonths.length > 0 && !validMonths.find(m => m.value === selectedMonth)) {
+        setSelectedMonth(validMonths[0].value);
+      }
+    } catch (error: any) {
+      console.error('Error fetching months:', error);
+    }
+  };
+
+  const fetchBalances = async () => {
+    if (!mess || !selectedMonth) return;
     setIsLoading(true);
 
     try {
+      const startDate = `${selectedMonth}-01`;
+      const endDate = format(endOfMonth(parseISO(startDate)), 'yyyy-MM-dd');
+
       // Fetch members
       const { data: members, error: membersError } = await supabase
         .from('members')
@@ -80,41 +155,52 @@ export default function BalancePage() {
 
       if (membersError) throw membersError;
 
-      // Fetch all meals
+      // Fetch meals for selected month
       const { data: meals, error: mealsError } = await supabase
         .from('meals')
         .select('member_id, breakfast, lunch, dinner')
-        .eq('mess_id', mess.id);
+        .eq('mess_id', mess.id)
+        .gte('date', startDate)
+        .lte('date', endDate);
 
       if (mealsError) throw mealsError;
 
-      // Fetch all bazars
+      // Fetch bazars for selected month
       const { data: bazars, error: bazarsError } = await supabase
         .from('bazars')
         .select('cost')
-        .eq('mess_id', mess.id);
+        .eq('mess_id', mess.id)
+        .gte('date', startDate)
+        .lte('date', endDate);
 
       if (bazarsError) throw bazarsError;
 
-      // Fetch all deposits
+      // Fetch deposits for selected month
       const { data: deposits, error: depositsError } = await supabase
         .from('deposits')
         .select('member_id, amount')
-        .eq('mess_id', mess.id);
+        .eq('mess_id', mess.id)
+        .gte('date', startDate)
+        .lte('date', endDate);
 
       if (depositsError) throw depositsError;
 
-      // Calculate totals
+      // Calculate monthly totals
       const totalBazar = bazars?.reduce((sum, b) => sum + Number(b.cost), 0) || 0;
       const totalMeals = meals?.reduce(
         (sum, m) => sum + m.breakfast + m.lunch + m.dinner,
         0
       ) || 0;
+      const totalDepositsAmount = deposits?.reduce((sum, d) => sum + Number(d.amount), 0) || 0;
+
+      setMonthlyTotalBazar(totalBazar);
+      setMonthlyTotalMeals(totalMeals);
+      setMonthlyTotalDeposits(totalDepositsAmount);
 
       const calculatedMealRate = totalMeals > 0 ? totalBazar / totalMeals : 0;
       setMealRate(calculatedMealRate);
 
-      // Calculate per-member balances
+      // Calculate per-member balances for the month
       const memberBalances: MemberBalance[] = (members || []).map((member) => {
         const memberMeals = meals?.filter((m) => m.member_id === member.id) || [];
         const memberTotalMeals = memberMeals.reduce(
@@ -212,21 +298,72 @@ export default function BalancePage() {
     return <Minus className="w-4 h-4 text-muted-foreground" />;
   };
 
+  const totalBalance = balances.reduce((sum, m) => sum + m.balance, 0);
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
         {/* Page Header */}
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-foreground">
-            {language === 'bn' ? 'ব্যালেন্স ওভারভিউ' : 'Balance Overview'}
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            {language === 'bn' ? 'মিল রেট: ' : 'Meal Rate: '}
-            <span className="font-bold text-primary">৳{mealRate.toFixed(2)}</span>
-            <span className="text-sm ml-1">
-              {language === 'bn' ? '/ মিল' : '/ meal'}
-            </span>
-          </p>
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold text-foreground">
+              {language === 'bn' ? 'ব্যালেন্স ওভারভিউ' : 'Balance Overview'}
+            </h1>
+            <p className="text-muted-foreground mt-1">
+              {language === 'bn' ? 'মিল রেট: ' : 'Meal Rate: '}
+              <span className="font-bold text-primary">৳{mealRate.toFixed(2)}</span>
+              <span className="text-sm ml-1">
+                {language === 'bn' ? '/ মিল' : '/ meal'}
+              </span>
+            </p>
+          </div>
+          
+          {/* Month Selector */}
+          <div className="flex items-center gap-2">
+            <Calendar className="w-5 h-5 text-muted-foreground" />
+            <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+              <SelectTrigger className="w-[180px] rounded-xl">
+                <SelectValue placeholder={language === 'bn' ? 'মাস সিলেক্ট করুন' : 'Select month'} />
+              </SelectTrigger>
+              <SelectContent>
+                {availableMonths.map((month) => (
+                  <SelectItem key={month.value} value={month.value}>
+                    {month.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        {/* Monthly Summary Cards */}
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Card className="glass-card">
+            <CardContent className="p-4 text-center">
+              <p className="text-sm text-muted-foreground">{language === 'bn' ? 'মোট মিল' : 'Total Meals'}</p>
+              <p className="text-2xl font-bold text-secondary">{monthlyTotalMeals}</p>
+            </CardContent>
+          </Card>
+          <Card className="glass-card">
+            <CardContent className="p-4 text-center">
+              <p className="text-sm text-muted-foreground">{language === 'bn' ? 'মোট বাজার' : 'Total Bazar'}</p>
+              <p className="text-2xl font-bold text-warning">৳{monthlyTotalBazar.toFixed(2)}</p>
+            </CardContent>
+          </Card>
+          <Card className="glass-card">
+            <CardContent className="p-4 text-center">
+              <p className="text-sm text-muted-foreground">{language === 'bn' ? 'মোট জমা' : 'Total Deposits'}</p>
+              <p className="text-2xl font-bold text-success">৳{monthlyTotalDeposits.toFixed(2)}</p>
+            </CardContent>
+          </Card>
+          <Card className={`glass-card ${totalBalance >= 0 ? 'border-success/30 bg-success/5' : 'border-destructive/30 bg-destructive/5'}`}>
+            <CardContent className="p-4 text-center">
+              <p className="text-sm text-muted-foreground">{language === 'bn' ? 'মোট ব্যালেন্স' : 'Total Balance'}</p>
+              <p className={`text-2xl font-bold ${totalBalance >= 0 ? 'text-success' : 'text-destructive'}`}>
+                ৳{Math.abs(totalBalance).toFixed(2)}
+              </p>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Balance Table */}

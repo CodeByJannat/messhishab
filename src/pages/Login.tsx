@@ -56,11 +56,12 @@ export default function Login() {
         description: language === 'bn' ? 'লগইন সফল হয়েছে' : 'Login successful',
       });
       
-      // Redirect based on role
+      // CRITICAL: Use window.location.href for immediate redirect
+      // This ensures auth state is fully synchronized before navigation
       if (roleData?.role === 'admin') {
-        navigate('/admin');
+        window.location.href = '/admin';
       } else {
-        navigate('/dashboard');
+        window.location.href = '/dashboard';
       }
     } catch (error: any) {
       toast({
@@ -68,7 +69,6 @@ export default function Login() {
         description: error.message,
         variant: 'destructive',
       });
-    } finally {
       setIsLoading(false);
     }
   };
