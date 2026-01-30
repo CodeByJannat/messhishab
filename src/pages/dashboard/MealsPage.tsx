@@ -396,6 +396,15 @@ export default function MealsPage() {
                 />
               </div>
               
+              {/* Min date explanation */}
+              {getMinDate() && (
+                <p className="text-xs text-muted-foreground">
+                  {language === 'bn' 
+                    ? `তারিখ নির্বাচনের সীমা: ${getMinDate()} থেকে ${getMaxDate()} পর্যন্ত`
+                    : `Date range: ${getMinDate()} to ${getMaxDate()}`}
+                </p>
+              )}
+              
               {/* Date validation error */}
               {dateError && (
                 <Alert variant="destructive" className="py-2">
