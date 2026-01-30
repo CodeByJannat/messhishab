@@ -174,86 +174,80 @@ export default function Register() {
           </h1>
 
           <form onSubmit={handleRegister} className="space-y-3">
-            {/* Email & Phone in grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label htmlFor="email" className="text-sm">{t('auth.email')}</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="example@gmail.com"
-                  className="rounded-xl h-9"
-                  required
-                />
-                <p className="text-xs text-muted-foreground">
-                  Gmail, Outlook, Yahoo, Proton, iCloud
-                </p>
-              </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="email" className="text-sm">{t('auth.email')}</Label>
+              <Input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="example@gmail.com"
+                className="rounded-xl h-9"
+                required
+              />
+              <p className="text-xs text-muted-foreground">
+                Gmail, Outlook, Yahoo, Proton, iCloud
+              </p>
+            </div>
 
-              <div className="space-y-1.5">
-                <Label htmlFor="phone" className="text-sm">{language === 'bn' ? 'ফোন নম্বর' : 'Phone'}</Label>
+            <div className="space-y-1.5">
+              <Label htmlFor="phone" className="text-sm">{language === 'bn' ? 'ফোন নম্বর' : 'Phone'}</Label>
+              <Input
+                id="phone"
+                type="tel"
+                value={phone}
+                onChange={(e) => {
+                  const value = e.target.value.replace(/\D/g, '').slice(0, 11);
+                  setPhone(value);
+                }}
+                placeholder="01XXXXXXXXX"
+                className="rounded-xl h-9"
+                maxLength={11}
+                required
+              />
+              {phone && phone.length !== 11 && (
+                <p className="text-xs text-destructive">
+                  {language === 'bn' ? `${phone.length}/১১ সংখ্যা` : `${phone.length}/11 digits`}
+                </p>
+              )}
+              {phone && phone.length > 0 && !phone.startsWith('01') && (
+                <p className="text-xs text-destructive">
+                  {language === 'bn' ? '০১ দিয়ে শুরু করুন' : 'Must start with 01'}
+                </p>
+              )}
+            </div>
+            
+            <div className="space-y-1.5">
+              <Label htmlFor="password" className="text-sm">{t('auth.password')}</Label>
+              <div className="relative">
                 <Input
-                  id="phone"
-                  type="tel"
-                  value={phone}
-                  onChange={(e) => {
-                    const value = e.target.value.replace(/\D/g, '').slice(0, 11);
-                    setPhone(value);
-                  }}
-                  placeholder="01XXXXXXXXX"
-                  className="rounded-xl h-9"
-                  maxLength={11}
+                  id="password"
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="rounded-xl h-9 pr-9"
                   required
                 />
-                {phone && phone.length !== 11 && (
-                  <p className="text-xs text-destructive">
-                    {language === 'bn' ? `${phone.length}/১১ সংখ্যা` : `${phone.length}/11 digits`}
-                  </p>
-                )}
-                {phone && phone.length > 0 && !phone.startsWith('01') && (
-                  <p className="text-xs text-destructive">
-                    {language === 'bn' ? '০১ দিয়ে শুরু করুন' : 'Must start with 01'}
-                  </p>
-                )}
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
               </div>
             </div>
             
-            {/* Password fields in grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label htmlFor="password" className="text-sm">{t('auth.password')}</Label>
-                <div className="relative">
-                  <Input
-                    id="password"
-                    type={showPassword ? 'text' : 'password'}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="rounded-xl h-9 pr-9"
-                    required
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  >
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-              </div>
-              
-              <div className="space-y-1.5">
-                <Label htmlFor="confirm-password" className="text-sm">{t('auth.confirmPassword')}</Label>
-                <Input
-                  id="confirm-password"
-                  type={showPassword ? 'text' : 'password'}
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="rounded-xl h-9"
-                  required
-                />
-              </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="confirm-password" className="text-sm">{t('auth.confirmPassword')}</Label>
+              <Input
+                id="confirm-password"
+                type={showPassword ? 'text' : 'password'}
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                className="rounded-xl h-9"
+                required
+              />
             </div>
 
             <div className="flex items-center space-x-2">
