@@ -60,24 +60,24 @@ serve(async (req) => {
     }
 
     const userId = user.id;
-    const { action, messId, name, email, phone, roomNumber, pin } = await req.json();
+    const { action, messId, memberId, name, email, phone, roomNumber, pin } = await req.json();
+
+    // Verify user is manager of this mess
+    const { data: mess, error: messError } = await supabaseAdmin
+      .from('messes')
+      .select('id')
+      .eq('id', messId)
+      .eq('manager_id', userId)
+      .single();
+
+    if (messError || !mess) {
+      return new Response(
+        JSON.stringify({ error: 'Not authorized for this mess' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     if (action === 'create') {
-      // Verify user is manager of this mess
-      const { data: mess, error: messError } = await supabaseAdmin
-        .from('messes')
-        .select('id')
-        .eq('id', messId)
-        .eq('manager_id', userId)
-        .single();
-
-      if (messError || !mess) {
-        return new Response(
-          JSON.stringify({ error: 'Not authorized for this mess' }),
-          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-
       // Validate required fields
       if (!name || !pin) {
         return new Response(
@@ -116,6 +116,46 @@ serve(async (req) => {
 
       return new Response(
         JSON.stringify({ success: true, memberId: member.id }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (action === 'update') {
+      if (!memberId || !name) {
+        return new Response(
+          JSON.stringify({ error: 'Member ID and name are required' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Encrypt PII
+      const emailEncrypted = email ? await encryptData(email) : null;
+      const phoneEncrypted = phone ? await encryptData(phone) : null;
+      const roomEncrypted = roomNumber ? await encryptData(roomNumber) : null;
+
+      // Update member
+      const { error: updateError } = await supabaseAdmin
+        .from('members')
+        .update({
+          name,
+          email_encrypted: emailEncrypted,
+          phone_encrypted: phoneEncrypted,
+          room_number_encrypted: roomEncrypted,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', memberId)
+        .eq('mess_id', messId);
+
+      if (updateError) {
+        console.error('Member update error:', updateError);
+        return new Response(
+          JSON.stringify({ error: updateError.message }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      return new Response(
+        JSON.stringify({ success: true }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
