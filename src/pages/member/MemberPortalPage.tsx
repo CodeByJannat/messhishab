@@ -4,8 +4,10 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { MemberDashboardLayout } from '@/components/dashboard/MemberDashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useNavigate } from 'react-router-dom';
 import { 
   Utensils, 
   Wallet, 
@@ -17,7 +19,8 @@ import {
   Moon,
   Bell,
   ShoppingCart,
-  Calendar
+  Calendar,
+  ArrowRight
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
@@ -53,6 +56,7 @@ export default function MemberPortalPage() {
   const { memberSession } = useMemberAuth();
   const { language } = useLanguage();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
   const [mealBreakdown, setMealBreakdown] = useState<MealBreakdown>({ breakfast: 0, lunch: 0, dinner: 0, total: 0 });
   const [bazarContribution, setBazarContribution] = useState(0);
@@ -268,11 +272,22 @@ export default function MemberPortalPage() {
 
         {/* Deposit History */}
         <Card className="glass-card">
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="flex items-center gap-2">
               <Calendar className="w-5 h-5 text-primary" />
               {language === 'bn' ? 'জমার ইতিহাস' : 'Deposit History'}
             </CardTitle>
+            {deposits.length > 5 && (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => navigate('/member/deposits')}
+                className="text-primary hover:text-primary"
+              >
+                {language === 'bn' ? 'সব দেখুন' : 'Show All'}
+                <ArrowRight className="w-4 h-4 ml-1" />
+              </Button>
+            )}
           </CardHeader>
           <CardContent>
             {deposits.length === 0 ? (
@@ -299,11 +314,22 @@ export default function MemberPortalPage() {
 
         {/* Notifications */}
         <Card className="glass-card">
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="flex items-center gap-2">
               <Bell className="w-5 h-5 text-primary" />
               {language === 'bn' ? 'নোটিফিকেশন' : 'Notifications'}
             </CardTitle>
+            {notifications.length > 5 && (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => navigate('/member/notifications')}
+                className="text-primary hover:text-primary"
+              >
+                {language === 'bn' ? 'সব দেখুন' : 'Show All'}
+                <ArrowRight className="w-4 h-4 ml-1" />
+              </Button>
+            )}
           </CardHeader>
           <CardContent>
             {notifications.length === 0 ? (
@@ -312,7 +338,7 @@ export default function MemberPortalPage() {
               </p>
             ) : (
               <div className="space-y-3">
-                {notifications.map((notif: any) => (
+                {notifications.slice(0, 5).map((notif: any) => (
                   <div key={notif.id} className="p-3 bg-muted/50 rounded-xl">
                     <div className="flex items-center gap-2 mb-1">
                       <Badge variant={notif.isAdmin ? 'default' : 'secondary'} className="text-xs">
