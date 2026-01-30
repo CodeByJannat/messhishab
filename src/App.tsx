@@ -36,7 +36,7 @@ const BazarPage = lazy(() => import("./pages/dashboard/BazarPage"));
 const DepositsPage = lazy(() => import("./pages/dashboard/DepositsPage"));
 const BalancePage = lazy(() => import("./pages/dashboard/BalancePage"));
 const NotificationsPage = lazy(() => import("./pages/dashboard/NotificationsPage"));
-const PinRecordsPage = lazy(() => import("./pages/dashboard/PinRecordsPage"));
+
 const SubscriptionPage = lazy(() => import("./pages/dashboard/SubscriptionPage"));
 const PaymentPage = lazy(() => import("./pages/dashboard/PaymentPage"));
 const PaymentHistoryPage = lazy(() => import("./pages/dashboard/PaymentHistoryPage"));
@@ -106,7 +106,7 @@ function App() {
                       <Route path="/dashboard/deposits" element={<ProtectedRoute requiredRole="manager"><DepositsPage /></ProtectedRoute>} />
                       <Route path="/dashboard/balance" element={<ProtectedRoute requiredRole="manager"><BalancePage /></ProtectedRoute>} />
                       <Route path="/dashboard/notifications" element={<ProtectedRoute requiredRole="manager"><NotificationsPage /></ProtectedRoute>} />
-                      <Route path="/dashboard/pins" element={<ProtectedRoute requiredRole="manager"><PinRecordsPage /></ProtectedRoute>} />
+                      
                       <Route path="/dashboard/subscription" element={<ProtectedRoute requiredRole="manager"><SubscriptionPage /></ProtectedRoute>} />
                       <Route path="/dashboard/payment" element={<ProtectedRoute requiredRole="manager"><PaymentPage /></ProtectedRoute>} />
                       <Route path="/dashboard/payment-history" element={<ProtectedRoute requiredRole="manager"><PaymentHistoryPage /></ProtectedRoute>} />
