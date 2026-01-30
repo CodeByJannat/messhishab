@@ -27,7 +27,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const adminNavItems = [
-  { href: '/admin', icon: LayoutDashboard, labelBn: 'ড্যাশবোর্ড', labelEn: 'Dashboard' },
+  { href: '/admin/dashboard', icon: LayoutDashboard, labelBn: 'ড্যাশবোর্ড', labelEn: 'Dashboard' },
   { href: '/admin/subscription', icon: CreditCard, labelBn: 'সাবস্ক্রিপশন', labelEn: 'Subscription' },
   { href: '/admin/mess', icon: Building2, labelBn: 'মেস', labelEn: 'Mess' },
   { href: '/admin/coupon', icon: Ticket, labelBn: 'কুপন', labelEn: 'Coupon' },
@@ -120,7 +120,7 @@ export function AdminDashboardLayout({ children }: { children: React.ReactNode }
             <ul className="space-y-2">
               {adminNavItems.map((item) => {
                 const isActive = location.pathname === item.href || 
-                  (item.href !== '/admin' && location.pathname.startsWith(item.href));
+                  (item.href !== '/admin/dashboard' && location.pathname.startsWith(item.href));
                 return (
                   <li key={item.href}>
                     <Link

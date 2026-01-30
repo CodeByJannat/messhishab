@@ -18,9 +18,9 @@ export function MemberProtectedRoute({ children }: MemberProtectedRouteProps) {
   // If user is authenticated but not a member, redirect to appropriate dashboard
   if (user && userRole && userRole !== 'member') {
     if (userRole === 'admin') {
-      return <Navigate to="/admin" replace />;
+      return <Navigate to="/admin/dashboard" replace />;
     }
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to="/manager/dashboard" replace />;
   }
 
   // If not authenticated at all, redirect to login

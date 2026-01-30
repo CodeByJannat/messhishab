@@ -484,7 +484,7 @@ export default function ManagerDashboard() {
                     : 'Subscribe to access all features. Only ৳20/month.'}
                 </p>
               </div>
-              <Link to="/dashboard/subscription">
+              <Link to="/manager/subscription">
                 <Button className="bg-primary hover:bg-primary/90 text-primary-foreground font-medium px-6">
                   {language === 'bn' ? 'সাবস্ক্রাইব করুন' : 'Subscribe Now'}
                 </Button>
