@@ -1,158 +1,62 @@
 
+# Fix Login Flow and White Screen Issues
 
-# Date Entry Validation Fix - Implementation Plan
+## Problem Summary
+After successful login, users see a white screen on the dashboard because of a race condition in the authentication flow. The system correctly authenticates but fails to properly load user data before rendering the dashboard.
 
-## Current State Analysis
+## Root Cause
+There are multiple issues working together:
 
-After reviewing the codebase, I found that:
+1. **Race condition in authentication context**: The `onAuthStateChange` listener fires but doesn't properly wait for user data to load before allowing navigation
+2. **Incorrect role checking**: When `userRole` is still loading (`null`), the protected route incorrectly redirects users
+3. **Database queries using `.single()`**: Some queries throw errors when no data is found instead of returning null gracefully
 
-1. **The `useDateValidation` hook (`src/hooks/useDateValidation.ts`) already implements the correct formula:**
-   - Rule 1: No future dates (`isAfter(entryDate, today)` check)
-   - Rule 2: No dates before subscription start date (`isBefore(entryDate, subscriptionStartDate)`)
-   - Rule 3: No months before subscription start month (`entryMonth < subscriptionStartMonth`)
+## Solution
 
-2. **Frontend pages are using the hook correctly:**
-   - `MealsPage.tsx`, `BazarPage.tsx`, `DepositsPage.tsx` all use `useDateValidation`
-   - Date inputs have `max={getMaxDate()}` and `min={getMinDate()}` constraints
-   - Error messages are displayed and submit buttons are disabled when invalid
+### Part 1: Fix AuthContext Race Condition
+Restructure the authentication initialization to follow the proven pattern:
+- Set up `onAuthStateChange` listener BEFORE calling `getSession()`  
+- Ensure `isLoading` stays `true` until ALL user data is fetched
+- Fix the `onAuthStateChange` to properly handle the loading state during subsequent auth events
 
-3. **What's missing:**
-   - **Backend validation** in edge functions/database triggers to re-enforce the same rules server-side
+### Part 2: Fix ProtectedRoute Logic
+Update the role checking to handle the case when `userRole` is still `null`:
+- Consider loading as incomplete if user exists but role hasn't loaded yet
+- Only perform role-based redirects after role data is available
 
----
+### Part 3: Fix MemberAuthContext Database Queries
+Replace `.single()` with `.maybeSingle()` in MemberAuthContext to prevent errors when records don't exist.
 
-## Implementation Tasks
-
-### 1. Create Backend Validation Edge Function
-
-Create a new shared validation edge function `validate-entry-date` that can be called by other functions or used as a reusable validation utility.
-
-**Validation Logic (Backend):**
-```text
-Allow entry ONLY if:
-1. entry_date <= today
-2. entry_date >= subscription_start_date
-3. entry_month >= subscription_start_month
-```
-
-**Error Messages:**
-- Future date: `"ভবিষ্যতের তারিখে এন্ট্রি করা যাবে না"`
-- Before subscription: `"সাবস্ক্রিপশন শুরু হওয়ার আগের মাস বা তারিখে এন্ট্রি করা যাবে না"`
-
----
-
-### 2. Create Database Trigger for Validation
-
-Add PostgreSQL triggers on the following tables to enforce date validation at the database level:
-- `meals`
-- `bazars`
-- `deposits`
-
-The triggers will:
-1. Reject `INSERT` or `UPDATE` if the date is in the future
-2. Reject if the date is before the mess's active subscription start date
-3. Return clear error messages
-
----
-
-### 3. Verify Frontend Implementation
-
-Confirm the existing frontend validation is complete:
-
-| Module | Future Date Block | Min Date Constraint | Error Display | Submit Disable |
-|--------|-------------------|---------------------|---------------|----------------|
-| Meals  | Yes | Yes | Yes | Yes |
-| Bazar  | Yes | Yes | Yes | Yes |
-| Deposits | Yes | Yes | Yes | Yes |
-
-No changes needed to the frontend - it's already correctly implemented.
+### Part 4: Simplify Login Redirect
+Use React Router's `navigate()` instead of `window.location.href` to prevent full page reloads that cause the race condition to manifest.
 
 ---
 
 ## Technical Details
 
-### Database Trigger Function
+### File 1: `src/contexts/AuthContext.tsx`
+- Add a new state variable to track if user data fetch is complete
+- Restructure the `useEffect` to set up the auth listener before getting the session
+- Ensure `isLoading` only becomes `false` after both session AND user data are ready
+- Make `onAuthStateChange` trigger user data refresh properly
 
-```sql
-CREATE OR REPLACE FUNCTION validate_entry_date()
-RETURNS TRIGGER AS $$
-DECLARE
-  v_subscription_start_date DATE;
-  v_entry_month TEXT;
-  v_subscription_start_month TEXT;
-  v_today DATE := CURRENT_DATE;
-BEGIN
-  -- Rule 1: No future dates
-  IF NEW.date > v_today THEN
-    RAISE EXCEPTION 'Cannot enter data for future dates';
-  END IF;
+### File 2: `src/components/auth/ProtectedRoute.tsx`
+- Add check: if user exists but userRole is null, consider it still loading
+- This prevents premature role-based redirects
 
-  -- Get subscription start date for this mess
-  SELECT start_date::DATE INTO v_subscription_start_date
-  FROM subscriptions
-  WHERE mess_id = NEW.mess_id
-    AND status = 'active'
-  ORDER BY start_date ASC
-  LIMIT 1;
+### File 3: `src/contexts/MemberAuthContext.tsx`
+- Replace all `.single()` calls with `.maybeSingle()` to prevent errors
+- Add proper null checks
 
-  -- If no active subscription, allow (subscription check handled elsewhere)
-  IF v_subscription_start_date IS NOT NULL THEN
-    -- Rule 2: No dates before subscription start
-    IF NEW.date < v_subscription_start_date THEN
-      RAISE EXCEPTION 'Cannot enter data before subscription start date';
-    END IF;
-
-    -- Rule 3: No months before subscription start month
-    v_entry_month := TO_CHAR(NEW.date, 'YYYY-MM');
-    v_subscription_start_month := TO_CHAR(v_subscription_start_date, 'YYYY-MM');
-    
-    IF v_entry_month < v_subscription_start_month THEN
-      RAISE EXCEPTION 'Cannot enter data for months before subscription start';
-    END IF;
-  END IF;
-
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-```
-
-### Triggers to Create
-
-```sql
--- Meals table trigger
-CREATE TRIGGER validate_meals_date
-BEFORE INSERT OR UPDATE ON meals
-FOR EACH ROW EXECUTE FUNCTION validate_entry_date();
-
--- Bazars table trigger
-CREATE TRIGGER validate_bazars_date
-BEFORE INSERT OR UPDATE ON bazars
-FOR EACH ROW EXECUTE FUNCTION validate_entry_date();
-
--- Deposits table trigger
-CREATE TRIGGER validate_deposits_date
-BEFORE INSERT OR UPDATE ON deposits
-FOR EACH ROW EXECUTE FUNCTION validate_entry_date();
-```
+### File 4: `src/pages/Login.tsx`
+- Consider using `navigate()` with proper state instead of `window.location.href`
+- Remove setTimeout workaround as it's no longer needed with proper auth handling
 
 ---
 
-## Files to Create/Modify
-
-| File | Action | Description |
-|------|--------|-------------|
-| Database Migration | Create | Add `validate_entry_date()` function and triggers |
-
----
-
-## Summary
-
-The frontend date validation is already correctly implemented with the right formula. This plan adds the critical **backend enforcement layer** through PostgreSQL triggers that will:
-
-1. Block future date entries at the database level
-2. Block entries before subscription start date
-3. Block entries for months before subscription start month
-4. Return clear error messages when validation fails
-
-This ensures data integrity even if someone bypasses the frontend validation.
-
+## Expected Outcome
+After implementing these fixes:
+- Login will complete and redirect to the correct dashboard
+- The dashboard will render properly instead of showing a white screen
+- No more "signal aborted" or loading loop issues
+- Proper error handling for missing database records
