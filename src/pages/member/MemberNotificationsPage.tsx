@@ -42,44 +42,27 @@ export default function MemberNotificationsPage() {
     setIsLoading(true);
 
     try {
-      const memberId = memberSession.member.id;
-      const messId = memberSession.mess.id;
+      // Use the edge function to fetch data (bypasses RLS for PIN-authenticated members)
+      const { data, error } = await supabase.functions.invoke('get-member-portal-data', {
+        body: {
+          member_id: memberSession.member.id,
+          mess_id: memberSession.mess.id,
+          session_token: memberSession.session_token,
+        },
+      });
 
-      // Fetch notifications for this member (manager messages)
-      const { data: notifData, error: notifError } = await supabase
-        .from('notifications')
-        .select('*')
-        .eq('mess_id', messId)
-        .or(`to_all.eq.true,to_member_id.eq.${memberId}`)
-        .order('created_at', { ascending: false });
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
 
-      if (notifError) throw notifError;
+      const portalData = data.data;
 
-      // Fetch admin messages
-      const { data: adminMsgData, error: adminError } = await supabase
-        .from('admin_messages')
-        .select('id, message, target_type, created_at')
-        .or(`target_type.eq.global,target_mess_id.eq.${messId}`)
-        .order('created_at', { ascending: false });
-
-      if (adminError) throw adminError;
-
-      // Combine and sort
+      // Combine and sort notifications
       const combined = [
-        ...(notifData || []).map(n => ({ ...n, isAdmin: false, source: 'manager' })),
-        ...(adminMsgData || []).map(a => ({ ...a, isAdmin: true, source: 'admin', to_all: a.target_type === 'global' }))
+        ...(portalData.notifications || []).map((n: Notification) => ({ ...n, isAdmin: false, source: 'manager' })),
+        ...(portalData.adminMessages || []).map((a: AdminMessage) => ({ ...a, isAdmin: true, source: 'admin', to_all: a.target_type === 'global' }))
       ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
       setNotifications(combined);
-
-      // Mark unread notifications as read
-      const unreadIds = (notifData || []).filter((n) => !n.is_read).map((n) => n.id);
-      if (unreadIds.length > 0) {
-        await supabase
-          .from('notifications')
-          .update({ is_read: true })
-          .in('id', unreadIds);
-      }
     } catch (error: any) {
       toast({
         title: language === 'bn' ? 'ত্রুটি' : 'Error',
