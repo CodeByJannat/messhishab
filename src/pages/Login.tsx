@@ -108,49 +108,41 @@ export default function Login() {
         animate={{ opacity: 1, y: 0 }}
         className="w-full max-w-md relative z-10"
       >
-        <div className="glass-card p-8">
-          {/* Logo */}
-          <div className="flex items-center justify-center gap-2 mb-6">
-            <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center">
-              <span className="text-primary-foreground font-bold text-xl">M</span>
-            </div>
-            <span className="font-bold text-xl text-foreground">MessHishab</span>
-          </div>
-
-          <h2 className="text-xl font-semibold text-center mb-6">
+        <div className="glass-card p-6">
+          <h2 className="text-xl font-semibold text-center mb-4">
             {language === 'bn' ? 'লগইন করুন' : 'Login'}
           </h2>
 
-          <form onSubmit={handleLogin} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">{t('auth.email')}</Label>
+          <form onSubmit={handleLogin} className="space-y-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="email" className="text-sm">{t('auth.email')}</Label>
               <Input
                 id="email"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="example@email.com"
-                className="rounded-xl"
+                className="rounded-xl h-9"
                 required
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">{t('auth.password')}</Label>
+            <div className="space-y-1.5">
+              <Label htmlFor="password" className="text-sm">{t('auth.password')}</Label>
               <div className="relative">
                 <Input
                   id="password"
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="rounded-xl pr-10"
+                  className="rounded-xl h-9 pr-9"
                   required
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                 >
-                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
             </div>
@@ -164,7 +156,7 @@ export default function Login() {
             </Button>
           </form>
 
-          <p className="text-center text-muted-foreground mt-6">
+          <p className="text-center text-muted-foreground text-sm mt-4">
             {t('auth.noAccount')}{' '}
             <Link to="/register" className="text-primary hover:underline">
               {t('auth.registerHere')}
