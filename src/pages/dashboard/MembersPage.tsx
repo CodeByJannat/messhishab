@@ -184,9 +184,29 @@ export default function MembersPage() {
         },
       });
 
-      if (error) throw error;
+      // Handle edge function errors (including 409 conflict)
+      if (error) {
+        // Try to parse the error context for localized messages
+        let errorMessage = error.message;
+        try {
+          const errorContext = error.context;
+          if (errorContext) {
+            const body = await errorContext.json();
+            errorMessage = language === 'bn' ? (body.errorBn || body.error || error.message) : (body.error || error.message);
+          }
+        } catch {
+          // Fallback to default error message
+        }
+        
+        toast({
+          title: language === 'bn' ? 'ত্রুটি' : 'Error',
+          description: errorMessage,
+          variant: 'destructive',
+        });
+        return;
+      }
 
-      // Check for conflict errors (member already exists in another mess)
+      // Check for errors in response data
       if (data?.error) {
         toast({
           title: language === 'bn' ? 'ত্রুটি' : 'Error',
@@ -208,7 +228,7 @@ export default function MembersPage() {
     } catch (error: any) {
       toast({
         title: language === 'bn' ? 'ত্রুটি' : 'Error',
-        description: error.message,
+        description: error.message || (language === 'bn' ? 'কিছু ভুল হয়েছে' : 'Something went wrong'),
         variant: 'destructive',
       });
     } finally {
