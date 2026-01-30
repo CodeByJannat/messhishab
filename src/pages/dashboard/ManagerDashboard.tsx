@@ -7,12 +7,21 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Copy, Users, Utensils, ShoppingCart, Wallet, TrendingUp, TrendingDown, Eye, EyeOff, Loader2, CheckCircle, XCircle } from 'lucide-react';
+import { useDateValidation } from '@/hooks/useDateValidation';
+import { Copy, Users, Utensils, ShoppingCart, Wallet, TrendingUp, TrendingDown, Eye, EyeOff, Loader2, CheckCircle, XCircle, Calendar } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
+import { format, parseISO, endOfMonth } from 'date-fns';
 
 interface DashboardStats {
   totalMembers: number;
@@ -22,10 +31,17 @@ interface DashboardStats {
   mealRate: number;
 }
 
+interface AvailableMonth {
+  value: string;
+  label: string;
+}
+
 export default function ManagerDashboard() {
   const { mess, subscription, refreshMess } = useAuth();
   const { language } = useLanguage();
   const { toast } = useToast();
+  const { filterValidMonths } = useDateValidation();
+  
   const [showPassword, setShowPassword] = useState(false);
   const [messPassword, setMessPassword] = useState('');
   const [messName, setMessName] = useState('');
@@ -38,6 +54,10 @@ export default function ManagerDashboard() {
     totalDeposits: 0,
     mealRate: 0,
   });
+  
+  // Monthly selection
+  const [availableMonths, setAvailableMonths] = useState<AvailableMonth[]>([]);
+  const [selectedMonth, setSelectedMonth] = useState(format(new Date(), 'yyyy-MM'));
 
   // Check if mess name is not set OR mess_id is still PENDING - show blocking modal
   const showMessNameModal = mess && (!mess.name || mess.mess_id === 'PENDING');
@@ -61,14 +81,56 @@ export default function ManagerDashboard() {
       setMessName(mess.name || '');
       setOriginalPassword(mess.mess_password);
       setOriginalName(mess.name || '');
-      fetchStats();
+      fetchAvailableMonths();
     }
   }, [mess]);
 
-  const fetchStats = async () => {
+  useEffect(() => {
+    if (mess && selectedMonth) {
+      fetchStats();
+    }
+  }, [mess, selectedMonth]);
+
+  const fetchAvailableMonths = async () => {
     if (!mess) return;
 
     try {
+      const [mealsRes, bazarsRes, depositsRes] = await Promise.all([
+        supabase.from('meals').select('date').eq('mess_id', mess.id),
+        supabase.from('bazars').select('date').eq('mess_id', mess.id),
+        supabase.from('deposits').select('date').eq('mess_id', mess.id),
+      ]);
+
+      const monthsSet = new Set<string>();
+      monthsSet.add(format(new Date(), 'yyyy-MM'));
+      
+      [...(mealsRes.data || []), ...(bazarsRes.data || []), ...(depositsRes.data || [])].forEach(item => {
+        monthsSet.add(item.date.substring(0, 7));
+      });
+
+      const months = Array.from(monthsSet).sort((a, b) => b.localeCompare(a)).map(month => ({
+        value: month,
+        label: format(parseISO(`${month}-01`), language === 'bn' ? 'MMMM yyyy' : 'MMMM yyyy'),
+      }));
+
+      const validMonths = filterValidMonths(months);
+      setAvailableMonths(validMonths);
+      
+      if (validMonths.length > 0 && !validMonths.find(m => m.value === selectedMonth)) {
+        setSelectedMonth(validMonths[0].value);
+      }
+    } catch (error) {
+      console.error('Error fetching months:', error);
+    }
+  };
+
+  const fetchStats = async () => {
+    if (!mess || !selectedMonth) return;
+
+    try {
+      const startDate = `${selectedMonth}-01`;
+      const endDate = format(endOfMonth(parseISO(startDate)), 'yyyy-MM-dd');
+
       // Fetch member count
       const { count: memberCount } = await supabase
         .from('members')
@@ -76,30 +138,36 @@ export default function ManagerDashboard() {
         .eq('mess_id', mess.id)
         .eq('is_active', true);
 
-      // Fetch total meals
+      // Fetch meals for selected month
       const { data: mealsData } = await supabase
         .from('meals')
         .select('breakfast, lunch, dinner')
-        .eq('mess_id', mess.id);
+        .eq('mess_id', mess.id)
+        .gte('date', startDate)
+        .lte('date', endDate);
 
       const totalMeals = mealsData?.reduce(
         (sum, meal) => sum + meal.breakfast + meal.lunch + meal.dinner,
         0
       ) || 0;
 
-      // Fetch total bazar
+      // Fetch bazar for selected month
       const { data: bazarData } = await supabase
         .from('bazars')
         .select('cost')
-        .eq('mess_id', mess.id);
+        .eq('mess_id', mess.id)
+        .gte('date', startDate)
+        .lte('date', endDate);
 
       const totalBazar = bazarData?.reduce((sum, b) => sum + Number(b.cost), 0) || 0;
 
-      // Fetch total deposits
+      // Fetch deposits for selected month
       const { data: depositData } = await supabase
         .from('deposits')
         .select('amount')
-        .eq('mess_id', mess.id);
+        .eq('mess_id', mess.id)
+        .gte('date', startDate)
+        .lte('date', endDate);
 
       const totalDeposits = depositData?.reduce((sum, d) => sum + Number(d.amount), 0) || 0;
 
@@ -245,13 +313,32 @@ export default function ManagerDashboard() {
 
       <div className="space-y-6">
         {/* Page Header */}
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-foreground">
-            {language === 'bn' ? 'ড্যাশবোর্ড' : 'Dashboard'}
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            {language === 'bn' ? 'আপনার মেসের সারসংক্ষেপ' : 'Overview of your mess'}
-          </p>
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold text-foreground">
+              {language === 'bn' ? 'ড্যাশবোর্ড' : 'Dashboard'}
+            </h1>
+            <p className="text-muted-foreground mt-1">
+              {language === 'bn' ? 'আপনার মেসের মাসিক সারসংক্ষেপ' : 'Monthly overview of your mess'}
+            </p>
+          </div>
+          
+          {/* Month Selector */}
+          <div className="flex items-center gap-2">
+            <Calendar className="w-5 h-5 text-muted-foreground" />
+            <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+              <SelectTrigger className="w-[180px] rounded-xl">
+                <SelectValue placeholder={language === 'bn' ? 'মাস সিলেক্ট করুন' : 'Select month'} />
+              </SelectTrigger>
+              <SelectContent>
+                {availableMonths.map((month) => (
+                  <SelectItem key={month.value} value={month.value}>
+                    {month.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         {/* Mess Info Card */}

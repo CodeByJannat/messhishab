@@ -21,10 +21,12 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Minus, Loader2, Calendar, BarChart3 } from 'lucide-react';
-import { format, startOfMonth, endOfMonth, parseISO } from 'date-fns';
+import { useDateValidation } from '@/hooks/useDateValidation';
+import { Plus, Minus, Loader2, Calendar, BarChart3, AlertCircle } from 'lucide-react';
+import { format, endOfMonth, parseISO } from 'date-fns';
 
 interface Member {
   id: string;
@@ -58,11 +60,14 @@ export default function MealsPage() {
   const { mess } = useAuth();
   const { language } = useLanguage();
   const { toast } = useToast();
+  const { validateDate, getMaxDate, getMinDate, filterValidMonths } = useDateValidation();
+  
   const [members, setMembers] = useState<Member[]>([]);
   const [meals, setMeals] = useState<Meal[]>([]);
   const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState<string | null>(null);
+  const [dateError, setDateError] = useState<string | null>(null);
   
   // Monthly report state
   const [availableMonths, setAvailableMonths] = useState<AvailableMonth[]>([]);
@@ -79,7 +84,13 @@ export default function MealsPage() {
 
   useEffect(() => {
     if (mess && members.length > 0) {
-      fetchMeals();
+      // Validate the selected date
+      const validation = validateDate(selectedDate);
+      setDateError(validation.error);
+      
+      if (validation.isValid) {
+        fetchMeals();
+      }
     }
   }, [mess, selectedDate, members]);
 
@@ -142,9 +153,12 @@ export default function MealsPage() {
         };
       });
 
-      setAvailableMonths(months);
-      if (months.length > 0 && !months.find(m => m.value === selectedMonth)) {
-        setSelectedMonth(months[0].value);
+      // Filter months based on subscription
+      const validMonths = filterValidMonths(months);
+      setAvailableMonths(validMonths);
+      
+      if (validMonths.length > 0 && !validMonths.find(m => m.value === selectedMonth)) {
+        setSelectedMonth(validMonths[0].value);
       }
     } catch (error: any) {
       console.error('Error fetching months:', error);
@@ -237,6 +251,18 @@ export default function MealsPage() {
     delta: number
   ) => {
     if (!mess) return;
+    
+    // Validate date before allowing any update
+    const validation = validateDate(selectedDate);
+    if (!validation.isValid) {
+      toast({
+        title: language === 'bn' ? 'ত্রুটি' : 'Error',
+        description: validation.error,
+        variant: 'destructive',
+      });
+      return;
+    }
+    
     setIsSaving(`${memberId}-${type}`);
 
     const existingMeal = getMealForMember(memberId);
@@ -277,6 +303,12 @@ export default function MealsPage() {
     }
   };
 
+  const handleDateChange = (newDate: string) => {
+    setSelectedDate(newDate);
+    const validation = validateDate(newDate);
+    setDateError(validation.error);
+  };
+
   const MealCounter = ({
     memberId,
     type,
@@ -285,35 +317,39 @@ export default function MealsPage() {
     memberId: string;
     type: 'breakfast' | 'lunch' | 'dinner';
     value: number;
-  }) => (
-    <div className="flex items-center justify-center gap-2">
-      <Button
-        variant="outline"
-        size="icon"
-        className="h-8 w-8 rounded-lg"
-        onClick={() => updateMeal(memberId, type, -1)}
-        disabled={value === 0 || isSaving === `${memberId}-${type}`}
-      >
-        <Minus className="w-3 h-3" />
-      </Button>
-      <span className="w-8 text-center font-medium">
-        {isSaving === `${memberId}-${type}` ? (
-          <Loader2 className="w-4 h-4 animate-spin mx-auto" />
-        ) : (
-          value
-        )}
-      </span>
-      <Button
-        variant="outline"
-        size="icon"
-        className="h-8 w-8 rounded-lg"
-        onClick={() => updateMeal(memberId, type, 1)}
-        disabled={isSaving === `${memberId}-${type}`}
-      >
-        <Plus className="w-3 h-3" />
-      </Button>
-    </div>
-  );
+  }) => {
+    const isDisabled = !!dateError;
+    
+    return (
+      <div className="flex items-center justify-center gap-2">
+        <Button
+          variant="outline"
+          size="icon"
+          className="h-8 w-8 rounded-lg"
+          onClick={() => updateMeal(memberId, type, -1)}
+          disabled={value === 0 || isSaving === `${memberId}-${type}` || isDisabled}
+        >
+          <Minus className="w-3 h-3" />
+        </Button>
+        <span className="w-8 text-center font-medium">
+          {isSaving === `${memberId}-${type}` ? (
+            <Loader2 className="w-4 h-4 animate-spin mx-auto" />
+          ) : (
+            value
+          )}
+        </span>
+        <Button
+          variant="outline"
+          size="icon"
+          className="h-8 w-8 rounded-lg"
+          onClick={() => updateMeal(memberId, type, 1)}
+          disabled={isSaving === `${memberId}-${type}` || isDisabled}
+        >
+          <Plus className="w-3 h-3" />
+        </Button>
+      </div>
+    );
+  };
 
   const totalMonthlyMeals = monthlySummary.reduce((sum, m) => sum + m.total, 0);
   const totalBreakfast = monthlySummary.reduce((sum, m) => sum + m.breakfast, 0);
@@ -347,14 +383,26 @@ export default function MealsPage() {
 
           {/* Daily Entry Tab */}
           <TabsContent value="daily" className="space-y-4">
-            <div className="flex items-center gap-2">
-              <Calendar className="w-5 h-5 text-muted-foreground" />
-              <Input
-                type="date"
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
-                className="rounded-xl w-auto"
-              />
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center gap-2">
+                <Calendar className="w-5 h-5 text-muted-foreground" />
+                <Input
+                  type="date"
+                  value={selectedDate}
+                  onChange={(e) => handleDateChange(e.target.value)}
+                  max={getMaxDate()}
+                  min={getMinDate() || undefined}
+                  className="rounded-xl w-auto"
+                />
+              </div>
+              
+              {/* Date validation error */}
+              {dateError && (
+                <Alert variant="destructive" className="py-2">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>{dateError}</AlertDescription>
+                </Alert>
+              )}
             </div>
 
             <Card className="glass-card">
@@ -367,6 +415,13 @@ export default function MealsPage() {
                   <div className="text-center py-12">
                     <p className="text-muted-foreground">
                       {language === 'bn' ? 'প্রথমে মেম্বার যোগ করুন' : 'Add members first'}
+                    </p>
+                  </div>
+                ) : dateError ? (
+                  <div className="text-center py-12">
+                    <AlertCircle className="w-12 h-12 text-destructive mx-auto mb-4" />
+                    <p className="text-muted-foreground">
+                      {language === 'bn' ? 'এই তারিখে এন্ট্রি করা যাবে না' : 'Cannot enter data for this date'}
                     </p>
                   </div>
                 ) : (
@@ -495,21 +550,22 @@ export default function MealsPage() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {monthlySummary.map((summary) => (
-                          <TableRow key={summary.memberId}>
-                            <TableCell className="font-medium">{summary.memberName}</TableCell>
-                            <TableCell className="text-center">{summary.breakfast}</TableCell>
-                            <TableCell className="text-center">{summary.lunch}</TableCell>
-                            <TableCell className="text-center">{summary.dinner}</TableCell>
-                            <TableCell className="text-center font-bold text-primary">{summary.total}</TableCell>
+                        {monthlySummary.map((member) => (
+                          <TableRow key={member.memberId}>
+                            <TableCell className="font-medium">{member.memberName}</TableCell>
+                            <TableCell className="text-center">{member.breakfast}</TableCell>
+                            <TableCell className="text-center">{member.lunch}</TableCell>
+                            <TableCell className="text-center">{member.dinner}</TableCell>
+                            <TableCell className="text-center font-bold text-primary">{member.total}</TableCell>
                           </TableRow>
                         ))}
+                        {/* Total Row */}
                         <TableRow className="bg-muted/50 font-bold">
                           <TableCell>{language === 'bn' ? 'মোট' : 'Total'}</TableCell>
                           <TableCell className="text-center">{totalBreakfast}</TableCell>
                           <TableCell className="text-center">{totalLunch}</TableCell>
                           <TableCell className="text-center">{totalDinner}</TableCell>
-                          <TableCell className="text-center text-success">{totalMonthlyMeals}</TableCell>
+                          <TableCell className="text-center text-primary">{totalMonthlyMeals}</TableCell>
                         </TableRow>
                       </TableBody>
                     </Table>

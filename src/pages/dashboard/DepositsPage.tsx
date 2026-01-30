@@ -6,6 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   Dialog,
   DialogContent,
@@ -31,7 +32,8 @@ import {
 } from '@/components/ui/table';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Trash2, Loader2 } from 'lucide-react';
+import { useDateValidation } from '@/hooks/useDateValidation';
+import { Plus, Trash2, Loader2, AlertCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { motion } from 'framer-motion';
 
@@ -53,11 +55,14 @@ export default function DepositsPage() {
   const { mess } = useAuth();
   const { language } = useLanguage();
   const { toast } = useToast();
+  const { validateDate, getMaxDate, getMinDate } = useDateValidation();
+  
   const [members, setMembers] = useState<Member[]>([]);
   const [deposits, setDeposits] = useState<Deposit[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [dateError, setDateError] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
     memberId: '',
@@ -119,9 +124,26 @@ export default function DepositsPage() {
     return members.find((m) => m.id === memberId)?.name || '-';
   };
 
+  const handleDateChange = (newDate: string) => {
+    setFormData({ ...formData, date: newDate });
+    const validation = validateDate(newDate);
+    setDateError(validation.error);
+  };
+
   const handleAddDeposit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!mess) return;
+
+    // Validate date
+    const validation = validateDate(formData.date);
+    if (!validation.isValid) {
+      toast({
+        title: language === 'bn' ? 'ত্রুটি' : 'Error',
+        description: validation.error,
+        variant: 'destructive',
+      });
+      return;
+    }
 
     const amount = parseFloat(formData.amount);
     if (isNaN(amount) || amount <= 0) {
@@ -158,6 +180,7 @@ export default function DepositsPage() {
         amount: '',
         note: '',
       });
+      setDateError(null);
       fetchDeposits();
     } catch (error: any) {
       toast({
@@ -210,7 +233,12 @@ export default function DepositsPage() {
             </p>
           </div>
 
-          <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
+          <Dialog open={isAddOpen} onOpenChange={(open) => {
+            setIsAddOpen(open);
+            if (!open) {
+              setDateError(null);
+            }
+          }}>
             <DialogTrigger asChild>
               <Button className="btn-primary-glow">
                 <Plus className="w-4 h-4 mr-2" />
@@ -247,10 +275,18 @@ export default function DepositsPage() {
                   <Input
                     type="date"
                     value={formData.date}
-                    onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                    onChange={(e) => handleDateChange(e.target.value)}
+                    max={getMaxDate()}
+                    min={getMinDate() || undefined}
                     required
                     className="rounded-xl"
                   />
+                  {dateError && (
+                    <Alert variant="destructive" className="py-2">
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertDescription className="text-sm">{dateError}</AlertDescription>
+                    </Alert>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label>{language === 'bn' ? 'পরিমাণ (৳) *' : 'Amount (৳) *'}</Label>
@@ -274,7 +310,7 @@ export default function DepositsPage() {
                   />
                 </div>
                 <DialogFooter>
-                  <Button type="submit" disabled={isSubmitting || !formData.memberId}>
+                  <Button type="submit" disabled={isSubmitting || !formData.memberId || !!dateError}>
                     {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
                     {language === 'bn' ? 'যোগ করুন' : 'Add'}
                   </Button>
