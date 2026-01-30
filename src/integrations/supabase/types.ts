@@ -14,6 +14,41 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_messages: {
+        Row: {
+          admin_id: string
+          created_at: string | null
+          id: string
+          message: string
+          target_mess_id: string | null
+          target_type: string
+        }
+        Insert: {
+          admin_id: string
+          created_at?: string | null
+          id?: string
+          message: string
+          target_mess_id?: string | null
+          target_type: string
+        }
+        Update: {
+          admin_id?: string
+          created_at?: string | null
+          id?: string
+          message?: string
+          target_mess_id?: string | null
+          target_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_messages_target_mess_id_fkey"
+            columns: ["target_mess_id"]
+            isOneToOne: false
+            referencedRelation: "messes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bazars: {
         Row: {
           cost: number
