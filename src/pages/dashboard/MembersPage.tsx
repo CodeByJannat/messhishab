@@ -140,9 +140,25 @@ export default function MembersPage() {
     setShowNewPassword(true);
   };
 
+  // Phone number validation helper
+  const isValidPhone = (phone: string): boolean => {
+    const digitsOnly = phone.replace(/\D/g, '');
+    return digitsOnly.length === 11 && /^\d{11}$/.test(digitsOnly);
+  };
+
   const handleAddMember = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!mess) return;
+
+    // Validate phone number (11 digits only)
+    if (!isValidPhone(formData.phone)) {
+      toast({
+        title: language === 'bn' ? 'ত্রুটি' : 'Error',
+        description: language === 'bn' ? 'ফোন নম্বর ১১ সংখ্যার হতে হবে' : 'Phone number must be exactly 11 digits',
+        variant: 'destructive',
+      });
+      return;
+    }
 
     if (formData.password.length < 4 || formData.password.length > 6) {
       toast({
@@ -169,6 +185,16 @@ export default function MembersPage() {
       });
 
       if (error) throw error;
+
+      // Check for conflict errors (member already exists in another mess)
+      if (data?.error) {
+        toast({
+          title: language === 'bn' ? 'ত্রুটি' : 'Error',
+          description: language === 'bn' ? (data.errorBn || data.error) : data.error,
+          variant: 'destructive',
+        });
+        return;
+      }
 
       toast({
         title: language === 'bn' ? 'সফল!' : 'Success!',
@@ -238,6 +264,16 @@ export default function MembersPage() {
   const handleEditMember = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!mess || !editingMember) return;
+
+    // Validate phone number (11 digits only)
+    if (!isValidPhone(editFormData.phone)) {
+      toast({
+        title: language === 'bn' ? 'ত্রুটি' : 'Error',
+        description: language === 'bn' ? 'ফোন নম্বর ১১ সংখ্যার হতে হবে' : 'Phone number must be exactly 11 digits',
+        variant: 'destructive',
+      });
+      return;
+    }
 
     setIsSubmitting(true);
 
@@ -389,14 +425,25 @@ export default function MembersPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>{language === 'bn' ? 'ফোন *' : 'Phone *'}</Label>
+                  <Label>{language === 'bn' ? 'ফোন * (১১ সংখ্যা)' : 'Phone * (11 digits)'}</Label>
                   <Input
                     value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    onChange={(e) => {
+                      // Only allow digits
+                      const value = e.target.value.replace(/\D/g, '').slice(0, 11);
+                      setFormData({ ...formData, phone: value });
+                    }}
                     placeholder="01XXXXXXXXX"
                     required
+                    maxLength={11}
+                    pattern="\d{11}"
                     className="rounded-xl"
                   />
+                  {formData.phone && formData.phone.length !== 11 && (
+                    <p className="text-xs text-destructive">
+                      {language === 'bn' ? `${formData.phone.length}/১১ সংখ্যা` : `${formData.phone.length}/11 digits`}
+                    </p>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label>{language === 'bn' ? 'রুম নম্বর' : 'Room Number'}</Label>
@@ -490,14 +537,25 @@ export default function MembersPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>{language === 'bn' ? 'ফোন *' : 'Phone *'}</Label>
+                  <Label>{language === 'bn' ? 'ফোন * (১১ সংখ্যা)' : 'Phone * (11 digits)'}</Label>
                   <Input
                     value={editFormData.phone}
-                    onChange={(e) => setEditFormData({ ...editFormData, phone: e.target.value })}
+                    onChange={(e) => {
+                      // Only allow digits
+                      const value = e.target.value.replace(/\D/g, '').slice(0, 11);
+                      setEditFormData({ ...editFormData, phone: value });
+                    }}
                     placeholder="01XXXXXXXXX"
                     required
+                    maxLength={11}
+                    pattern="\d{11}"
                     className="rounded-xl"
                   />
+                  {editFormData.phone && editFormData.phone.length !== 11 && (
+                    <p className="text-xs text-destructive">
+                      {language === 'bn' ? `${editFormData.phone.length}/১১ সংখ্যা` : `${editFormData.phone.length}/11 digits`}
+                    </p>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label>{language === 'bn' ? 'রুম নম্বর' : 'Room Number'}</Label>

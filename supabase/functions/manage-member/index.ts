@@ -28,6 +28,22 @@ async function encryptData(data: string): Promise<string> {
   return btoa(String.fromCharCode(...encrypted));
 }
 
+// Decrypt function for checking existing members
+function decryptData(encrypted: string): string {
+  if (!encrypted) return '';
+  const key = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')?.slice(0, 32) || '';
+  const encoder = new TextEncoder();
+  const keyData = encoder.encode(key);
+  
+  try {
+    const encryptedBytes = Uint8Array.from(atob(encrypted), c => c.charCodeAt(0));
+    const decrypted = encryptedBytes.map((byte, i) => byte ^ keyData[i % keyData.length]);
+    return new TextDecoder().decode(decrypted);
+  } catch {
+    return '';
+  }
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -79,17 +95,100 @@ serve(async (req) => {
 
     if (action === 'create') {
       // Validate required fields
-      if (!name || !pin) {
+      if (!name || !pin || !email || !phone) {
         return new Response(
-          JSON.stringify({ error: 'Name and PIN are required' }),
+          JSON.stringify({ error: 'Name, email, phone and password are required' }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
+      // Validate phone number (11 digits only)
+      const phoneDigits = phone.replace(/\D/g, '');
+      if (phoneDigits.length !== 11) {
+        return new Response(
+          JSON.stringify({ error: 'Phone number must be exactly 11 digits' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Check if member with same email or phone exists in ANY mess
+      const { data: allMembers, error: checkError } = await supabaseAdmin
+        .from('members')
+        .select('id, mess_id, email_encrypted, phone_encrypted')
+        .neq('mess_id', messId); // Check other messes
+
+      if (checkError) {
+        console.error('Check existing member error:', checkError);
+        return new Response(
+          JSON.stringify({ error: 'Failed to check existing members' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Decrypt and check each member's email and phone
+      const normalizedEmail = email.toLowerCase().trim();
+      const normalizedPhone = phoneDigits;
+
+      for (const existingMember of allMembers || []) {
+        const decryptedEmail = existingMember.email_encrypted ? decryptData(existingMember.email_encrypted) : '';
+        const decryptedPhone = existingMember.phone_encrypted ? decryptData(existingMember.phone_encrypted) : '';
+        
+        if (decryptedEmail && decryptedEmail.toLowerCase().trim() === normalizedEmail) {
+          return new Response(
+            JSON.stringify({ 
+              error: 'This email is already registered in another mess. One member can only be in one mess at a time.',
+              errorBn: 'এই ইমেইল অন্য একটি মেসে নিবন্ধিত। একজন মেম্বার একবারে শুধুমাত্র একটি মেসে থাকতে পারে।'
+            }),
+            { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+        
+        if (decryptedPhone && decryptedPhone.replace(/\D/g, '') === normalizedPhone) {
+          return new Response(
+            JSON.stringify({ 
+              error: 'This phone number is already registered in another mess. One member can only be in one mess at a time.',
+              errorBn: 'এই ফোন নম্বর অন্য একটি মেসে নিবন্ধিত। একজন মেম্বার একবারে শুধুমাত্র একটি মেসে থাকতে পারে।'
+            }),
+            { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+      }
+
+      // Also check within the same mess
+      const { data: sameMembersRaw } = await supabaseAdmin
+        .from('members')
+        .select('id, email_encrypted, phone_encrypted')
+        .eq('mess_id', messId);
+
+      for (const existingMember of sameMembersRaw || []) {
+        const decryptedEmail = existingMember.email_encrypted ? decryptData(existingMember.email_encrypted) : '';
+        const decryptedPhone = existingMember.phone_encrypted ? decryptData(existingMember.phone_encrypted) : '';
+        
+        if (decryptedEmail && decryptedEmail.toLowerCase().trim() === normalizedEmail) {
+          return new Response(
+            JSON.stringify({ 
+              error: 'This email is already registered in this mess.',
+              errorBn: 'এই ইমেইল ইতিমধ্যে এই মেসে নিবন্ধিত।'
+            }),
+            { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+        
+        if (decryptedPhone && decryptedPhone.replace(/\D/g, '') === normalizedPhone) {
+          return new Response(
+            JSON.stringify({ 
+              error: 'This phone number is already registered in this mess.',
+              errorBn: 'এই ফোন নম্বর ইতিমধ্যে এই মেসে নিবন্ধিত।'
+            }),
+            { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+      }
+
       // Hash PIN and encrypt PII
       const pinHash = await hashPin(pin);
-      const emailEncrypted = email ? await encryptData(email) : null;
-      const phoneEncrypted = phone ? await encryptData(phone) : null;
+      const emailEncrypted = await encryptData(email);
+      const phoneEncrypted = await encryptData(phone);
       const roomEncrypted = roomNumber ? await encryptData(roomNumber) : null;
 
       // Create member
