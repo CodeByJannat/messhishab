@@ -24,8 +24,16 @@ import {
 } from '@/components/ui/table';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Trash2, Loader2, Users } from 'lucide-react';
+import { Plus, Trash2, Loader2, Users, Pencil } from 'lucide-react';
 import { motion } from 'framer-motion';
+
+interface EditingMember {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  roomNumber: string;
+}
 
 interface DecryptedMember {
   id: string;
@@ -44,14 +52,24 @@ export default function MembersPage() {
   const [members, setMembers] = useState<DecryptedMember[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isAddOpen, setIsAddOpen] = useState(false);
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [editingMember, setEditingMember] = useState<EditingMember | null>(null);
 
-  // Form state
+  // Form state for adding
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     phone: '',
     roomNumber: '',
     pin: '',
+  });
+
+  // Form state for editing
+  const [editFormData, setEditFormData] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    roomNumber: '',
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -161,6 +179,63 @@ export default function MembersPage() {
     }
   };
 
+  const handleOpenEdit = (member: DecryptedMember) => {
+    setEditingMember({
+      id: member.id,
+      name: member.name,
+      email: member.email,
+      phone: member.phone,
+      roomNumber: member.roomNumber,
+    });
+    setEditFormData({
+      name: member.name,
+      email: member.email || '',
+      phone: member.phone || '',
+      roomNumber: member.roomNumber || '',
+    });
+    setIsEditOpen(true);
+  };
+
+  const handleEditMember = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!mess || !editingMember) return;
+
+    setIsSubmitting(true);
+
+    try {
+      const { error } = await supabase.functions.invoke('manage-member', {
+        body: {
+          action: 'update',
+          messId: mess.id,
+          memberId: editingMember.id,
+          name: editFormData.name,
+          email: editFormData.email,
+          phone: editFormData.phone,
+          roomNumber: editFormData.roomNumber,
+        },
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: language === 'bn' ? 'সফল!' : 'Success!',
+        description: language === 'bn' ? 'মেম্বার আপডেট হয়েছে' : 'Member updated',
+      });
+
+      setIsEditOpen(false);
+      setEditingMember(null);
+      fetchMembers();
+    } catch (error: any) {
+      toast({
+        title: language === 'bn' ? 'ত্রুটি' : 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -257,6 +332,65 @@ export default function MembersPage() {
               </form>
             </DialogContent>
           </Dialog>
+
+          {/* Edit Member Dialog */}
+          <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>
+                  {language === 'bn' ? 'মেম্বার সম্পাদনা করুন' : 'Edit Member'}
+                </DialogTitle>
+              </DialogHeader>
+              <form onSubmit={handleEditMember} className="space-y-4">
+                <div className="space-y-2">
+                  <Label>{language === 'bn' ? 'নাম *' : 'Name *'}</Label>
+                  <Input
+                    value={editFormData.name}
+                    onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
+                    placeholder={language === 'bn' ? 'মেম্বারের নাম' : 'Member name'}
+                    required
+                    className="rounded-xl"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>{language === 'bn' ? 'ইমেইল' : 'Email'}</Label>
+                  <Input
+                    type="email"
+                    value={editFormData.email}
+                    onChange={(e) => setEditFormData({ ...editFormData, email: e.target.value })}
+                    placeholder="example@email.com"
+                    className="rounded-xl"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>{language === 'bn' ? 'ফোন' : 'Phone'}</Label>
+                  <Input
+                    value={editFormData.phone}
+                    onChange={(e) => setEditFormData({ ...editFormData, phone: e.target.value })}
+                    placeholder="01XXXXXXXXX"
+                    className="rounded-xl"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>{language === 'bn' ? 'রুম নম্বর' : 'Room Number'}</Label>
+                  <Input
+                    value={editFormData.roomNumber}
+                    onChange={(e) => setEditFormData({ ...editFormData, roomNumber: e.target.value })}
+                    placeholder={language === 'bn' ? 'রুম নম্বর' : 'Room number'}
+                    className="rounded-xl"
+                  />
+                </div>
+                <DialogFooter>
+                  <Button type="submit" disabled={isSubmitting}>
+                    {isSubmitting ? (
+                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                    ) : null}
+                    {language === 'bn' ? 'আপডেট করুন' : 'Update'}
+                  </Button>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
         </div>
 
         {/* Members Table */}
@@ -287,7 +421,6 @@ export default function MembersPage() {
                       <TableHead>{language === 'bn' ? 'ইমেইল' : 'Email'}</TableHead>
                       <TableHead>{language === 'bn' ? 'ফোন' : 'Phone'}</TableHead>
                       <TableHead>{language === 'bn' ? 'রুম নম্বর' : 'Room Number'}</TableHead>
-                      <TableHead>{language === 'bn' ? 'স্ট্যাটাস' : 'Status'}</TableHead>
                       <TableHead>{language === 'bn' ? 'যোগ হয়েছে' : 'Added'}</TableHead>
                       <TableHead className="text-right">{language === 'bn' ? 'অ্যাকশন' : 'Actions'}</TableHead>
                     </TableRow>
@@ -311,21 +444,19 @@ export default function MembersPage() {
                         <TableCell className="text-muted-foreground">
                           {member.roomNumber || '-'}
                         </TableCell>
-                        <TableCell>
-                          <span className={`px-2 py-1 rounded-full text-xs ${
-                            member.is_active
-                              ? 'bg-success/10 text-success'
-                              : 'bg-muted text-muted-foreground'
-                          }`}>
-                            {member.is_active
-                              ? language === 'bn' ? 'সক্রিয়' : 'Active'
-                              : language === 'bn' ? 'নিষ্ক্রিয়' : 'Inactive'}
-                          </span>
-                        </TableCell>
                         <TableCell className="text-muted-foreground">
                           {new Date(member.created_at).toLocaleDateString(language === 'bn' ? 'bn-BD' : 'en-US')}
                         </TableCell>
-                        <TableCell className="text-right">
+                        <TableCell className="text-right space-x-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleOpenEdit(member)}
+                            className="rounded-xl text-primary hover:text-primary"
+                            title={language === 'bn' ? 'সম্পাদনা' : 'Edit'}
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </Button>
                           <Button
                             variant="ghost"
                             size="icon"
