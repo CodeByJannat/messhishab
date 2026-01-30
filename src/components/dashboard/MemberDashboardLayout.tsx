@@ -44,8 +44,8 @@ export function MemberDashboardLayout({ children }: { children: React.ReactNode 
         </Button>
 
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-secondary rounded-lg flex items-center justify-center">
-            <span className="text-secondary-foreground font-bold">M</span>
+          <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+            <span className="text-primary-foreground font-bold">M</span>
           </div>
           <span className="font-bold text-foreground">MessHishab</span>
         </div>
@@ -83,8 +83,8 @@ export function MemberDashboardLayout({ children }: { children: React.ReactNode 
           {/* Logo */}
           <div className="p-6 border-b border-border">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-secondary rounded-xl flex items-center justify-center">
-                <span className="text-secondary-foreground font-bold text-xl">M</span>
+              <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center">
+                <span className="text-primary-foreground font-bold text-xl">M</span>
               </div>
               <div>
                 <span className="font-bold text-lg text-foreground block">MessHishab</span>
@@ -105,7 +105,7 @@ export function MemberDashboardLayout({ children }: { children: React.ReactNode 
                       onClick={() => setIsSidebarOpen(false)}
                       className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
                         isActive
-                          ? "bg-secondary text-secondary-foreground"
+                          ? "bg-primary text-primary-foreground"
                           : "text-muted-foreground hover:text-foreground hover:bg-muted"
                       }`}
                     >
