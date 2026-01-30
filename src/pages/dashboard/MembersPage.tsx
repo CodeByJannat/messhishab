@@ -24,7 +24,7 @@ import {
 } from '@/components/ui/table';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Trash2, Loader2, Users, Pencil } from 'lucide-react';
+import { Plus, Trash2, Loader2, Users, Pencil, Search, ChevronLeft, ChevronRight } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 interface EditingMember {
@@ -54,6 +54,11 @@ export default function MembersPage() {
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [editingMember, setEditingMember] = useState<EditingMember | null>(null);
+
+  // Search and pagination state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   // Form state for adding
   const [formData, setFormData] = useState({
@@ -236,6 +241,27 @@ export default function MembersPage() {
     }
   };
 
+  // Filter members based on search query
+  const filteredMembers = members.filter((member) => {
+    const query = searchQuery.toLowerCase();
+    return (
+      member.name.toLowerCase().includes(query) ||
+      (member.email && member.email.toLowerCase().includes(query)) ||
+      (member.phone && member.phone.toLowerCase().includes(query)) ||
+      (member.roomNumber && member.roomNumber.toLowerCase().includes(query))
+    );
+  });
+
+  // Pagination calculations
+  const totalPages = Math.ceil(filteredMembers.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedMembers = filteredMembers.slice(startIndex, startIndex + itemsPerPage);
+
+  // Reset to page 1 when search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery]);
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -393,6 +419,17 @@ export default function MembersPage() {
           </Dialog>
         </div>
 
+        {/* Search Box */}
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder={language === 'bn' ? 'নাম, ইমেইল, ফোন বা রুম দিয়ে খুঁজুন...' : 'Search by name, email, phone or room...'}
+            className="pl-10 rounded-xl"
+          />
+        </div>
+
         {/* Members Table */}
         <Card className="glass-card">
           <CardContent className="p-0">
@@ -400,17 +437,21 @@ export default function MembersPage() {
               <div className="flex items-center justify-center py-12">
                 <Loader2 className="w-8 h-8 animate-spin text-primary" />
               </div>
-            ) : members.length === 0 ? (
+            ) : filteredMembers.length === 0 ? (
               <div className="text-center py-12">
                 <Users className="w-12 h-12 mx-auto text-muted-foreground/50 mb-4" />
                 <p className="text-muted-foreground">
-                  {language === 'bn' ? 'কোনো মেম্বার নেই' : 'No members yet'}
+                  {searchQuery 
+                    ? (language === 'bn' ? 'কোনো মেম্বার পাওয়া যায়নি' : 'No members found')
+                    : (language === 'bn' ? 'কোনো মেম্বার নেই' : 'No members yet')}
                 </p>
-                <p className="text-sm text-muted-foreground mt-1">
-                  {language === 'bn' 
-                    ? 'উপরের বাটনে ক্লিক করে মেম্বার যোগ করুন' 
-                    : 'Click the button above to add members'}
-                </p>
+                {!searchQuery && (
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {language === 'bn' 
+                      ? 'উপরের বাটনে ক্লিক করে মেম্বার যোগ করুন' 
+                      : 'Click the button above to add members'}
+                  </p>
+                )}
               </div>
             ) : (
               <div className="overflow-x-auto">
@@ -426,7 +467,7 @@ export default function MembersPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {members.map((member, index) => (
+                    {paginatedMembers.map((member, index) => (
                       <motion.tr
                         key={member.id}
                         initial={{ opacity: 0, y: 10 }}
@@ -471,6 +512,42 @@ export default function MembersPage() {
                     ))}
                   </TableBody>
                 </Table>
+
+                {/* Pagination Controls */}
+                {totalPages > 1 && (
+                  <div className="flex items-center justify-between px-4 py-3 border-t border-border">
+                    <p className="text-sm text-muted-foreground">
+                      {language === 'bn' 
+                        ? `${filteredMembers.length} জনের মধ্যে ${startIndex + 1}-${Math.min(startIndex + itemsPerPage, filteredMembers.length)} দেখাচ্ছে`
+                        : `Showing ${startIndex + 1}-${Math.min(startIndex + itemsPerPage, filteredMembers.length)} of ${filteredMembers.length}`}
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                        disabled={currentPage === 1}
+                        className="rounded-xl"
+                      >
+                        <ChevronLeft className="w-4 h-4" />
+                      </Button>
+                      <span className="text-sm text-muted-foreground px-2">
+                        {language === 'bn' 
+                          ? `${currentPage} / ${totalPages}`
+                          : `${currentPage} / ${totalPages}`}
+                      </span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                        disabled={currentPage === totalPages}
+                        className="rounded-xl"
+                      >
+                        <ChevronRight className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </CardContent>
