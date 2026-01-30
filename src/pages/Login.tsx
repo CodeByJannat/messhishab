@@ -46,10 +46,15 @@ export default function Login() {
         .from('user_roles')
         .select('role')
         .eq('user_id', data.user.id)
-        .single();
+        .maybeSingle();
       
       if (roleError) {
         console.error('Role fetch error:', roleError);
+        await supabase.auth.signOut();
+        throw new Error(language === 'bn' ? 'ব্যবহারকারী রোল পাওয়া যায়নি' : 'User role not found');
+      }
+      
+      if (!roleData) {
         await supabase.auth.signOut();
         throw new Error(language === 'bn' ? 'ব্যবহারকারী রোল পাওয়া যায়নি' : 'User role not found');
       }
@@ -104,7 +109,7 @@ export default function Login() {
         .from('user_roles')
         .select('role')
         .eq('user_id', data.user.id)
-        .single();
+        .maybeSingle();
       
       if (roleError) {
         console.error('Role fetch error:', roleError);
@@ -112,7 +117,12 @@ export default function Login() {
         throw new Error(language === 'bn' ? 'ব্যবহারকারী রোল পাওয়া যায়নি' : 'User role not found');
       }
       
-      const role = roleData?.role;
+      if (!roleData) {
+        await supabase.auth.signOut();
+        throw new Error(language === 'bn' ? 'ব্যবহারকারী রোল পাওয়া যায়নি' : 'User role not found');
+      }
+      
+      const role = roleData.role;
       
       // Only allow member role through member tab
       if (role !== 'member') {
@@ -126,7 +136,7 @@ export default function Login() {
         .select('id, is_active')
         .eq('user_id', data.user.id)
         .eq('is_active', true)
-        .single();
+        .maybeSingle();
       
       if (memberError || !memberData) {
         await supabase.auth.signOut();
