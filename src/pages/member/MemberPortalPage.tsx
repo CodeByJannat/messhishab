@@ -282,7 +282,7 @@ export default function MemberPortalPage() {
                 variant="ghost" 
                 size="sm" 
                 onClick={() => navigate('/member/deposits')}
-                className="text-primary hover:text-primary"
+                className="text-primary hover:text-primary hover:bg-primary/10"
               >
                 {language === 'bn' ? 'সব দেখুন' : 'Show All'}
                 <ArrowRight className="w-4 h-4 ml-1" />
@@ -324,7 +324,7 @@ export default function MemberPortalPage() {
                 variant="ghost" 
                 size="sm" 
                 onClick={() => navigate('/member/notifications')}
-                className="text-primary hover:text-primary"
+                className="text-primary hover:text-primary hover:bg-primary/10"
               >
                 {language === 'bn' ? 'সব দেখুন' : 'Show All'}
                 <ArrowRight className="w-4 h-4 ml-1" />
