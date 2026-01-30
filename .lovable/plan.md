@@ -1,293 +1,298 @@
 
-# Comprehensive Feature Implementation and Bug Fix Plan
+
+# Complete Mess Member System Implementation Plan
 
 ## Overview
-This plan addresses 7 major items: Manager Payment History tab, subscription expiry date fix, member creation bug, manual bKash validation, admin pending payments display, coupon visibility, and member login fix.
+This plan addresses the complete member login system, member dashboard with personal portal, manager controls (PIN records, meal reports), and admin messaging capabilities. All changes follow the existing site theme, UI/UX patterns, and security requirements.
 
 ---
 
-## Issue 1: Manager Payment History Tab
+## Current State Analysis
 
-### Problem
-No dedicated page exists for managers to view their complete payment history.
+### What Exists:
+- Member login flow using MessID + MessPassword + PIN verification (3-step process)
+- Basic member dashboard showing stats (total meals, deposits, balance)
+- Member notification page (reads from `notifications` table)
+- PIN Records page for managers (shows masked PINs only)
+- Meals page for managers (daily entry, no monthly/yearly reports)
+- Admin mess suspension functionality
 
-### Solution
-Create a new `PaymentHistoryPage.tsx` in the manager dashboard with full payment records.
-
-### Files to Create/Modify
-| Action | File |
-|--------|------|
-| Create | `src/pages/dashboard/PaymentHistoryPage.tsx` |
-| Modify | `src/App.tsx` (add route) |
-| Modify | `src/components/dashboard/DashboardLayout.tsx` (add nav item) |
-
-### Implementation Details
-
-**New Page Features:**
-- Table showing all payments for the manager's mess
-- Columns: Date, Payment Method, bKash Number, Transaction ID, Coupon Code, Amount, Status (with color-coded badges)
-- Pagination (10 records per page)
-- Sorted by latest first
-- Status badges: Approved (green), Pending (yellow), Rejected (red)
-
-**Navigation:**
-Add new nav item after "Subscription":
-```text
-{ href: '/dashboard/payment-history', icon: History, labelBn: 'পেমেন্ট হিস্ট্রি', labelEn: 'Payment History' }
-```
-
-**Database Query:**
-```text
-SELECT * FROM payments 
-WHERE mess_id = {user's mess id}
-ORDER BY created_at DESC
-```
+### What's Missing/Needs Fixing:
+1. Member login stores session in localStorage but ProtectedRoute expects Supabase auth
+2. Member dashboard needs member list view with search and personal portal access
+3. PIN Records needs edit/reset PIN and suspend/unsuspend member functionality
+4. Meals page needs monthly summary with dropdown for previous months
+5. Admin messaging to messes (global and individual) doesn't exist
+6. Members cannot access their detailed personal portal (breakdown of meals, deposits, etc.)
 
 ---
 
-## Issue 2: Subscription Expiry Date Extension Bug
+## Implementation Details
 
-### Problem
-When a manager with an active subscription purchases a new plan, the new duration overwrites instead of extending the existing expiry date.
+### Part 1: Fix Member Authentication and Routing
 
-### Current Code (in `admin-review-payment/index.ts` lines 71-78):
-```typescript
-const startDate = new Date();
-const endDate = new Date();
-if (payment.plan_type === "yearly") {
-  endDate.setFullYear(endDate.getFullYear() + 1);
-} else {
-  endDate.setMonth(endDate.getMonth() + 1);
-}
-```
+**Problem**: Member login uses localStorage-based session, but `ProtectedRoute` and `MemberDashboard` expect Supabase authentication with `user` from AuthContext.
 
-### Solution
-Modify the subscription activation logic to check for existing active subscription and extend from current end_date if it hasn't expired yet.
+**Solution**: Create a separate member authentication context that handles localStorage-based member sessions.
 
-### Files to Modify
-| File | Changes |
-|------|---------|
-| `supabase/functions/admin-review-payment/index.ts` | Update subscription date calculation logic |
-
-### New Logic:
-```text
-1. Fetch existing subscription for the mess
-2. If exists AND status is 'active' AND end_date > today:
-   - Calculate new_end_date = current_end_date + plan_duration
-3. Else:
-   - Calculate new_end_date = today + plan_duration
-4. Update subscription with new dates
-```
-
----
-
-## Issue 3: Add New Member Error
-
-### Problem
-The `manage-member` edge function uses `getClaims()` method which doesn't exist in the Supabase JS library, causing authentication failures.
-
-### Current Code (line 58):
-```typescript
-const { data: claimsData, error: claimsError } = await supabaseClient.auth.getClaims(token);
-```
-
-### Solution
-Replace `getClaims()` with proper `getUser()` method from the Supabase Admin client.
-
-### Files to Modify
-| File | Changes |
-|------|---------|
-| `supabase/functions/manage-member/index.ts` | Fix authentication, update CORS headers |
-| `supabase/functions/verify-pin/index.ts` | Fix authentication, update CORS headers |
-
-### Key Changes:
-1. Replace `getClaims()` with `supabaseAdmin.auth.getUser(token)`
-2. Update CORS headers to include all required Supabase client headers
-3. Return proper error messages for debugging
-
----
-
-## Issue 4: Manual bKash Input Validation
-
-### Problem
-No strict validation on bKash number (must be 11 digits) and Transaction ID (must be 10 alphanumeric characters).
-
-### Solution
-Add real-time validation with error messages and disable submit button until valid.
-
-### Files to Modify
-| File | Changes |
-|------|---------|
-| `src/components/payment/ManualBkashContent.tsx` | Add validation logic, error display |
-| `src/pages/dashboard/PaymentPage.tsx` | Add validation state, disable button logic |
-
-### Validation Rules:
-- **bKash Number**: Exactly 11 digits, numeric only, starts with "01"
-- **Transaction ID**: Exactly 10 characters, alphanumeric only (A-Z, 0-9)
-
-### UI Changes:
-1. Show validation error messages below each input field
-2. Red border on invalid inputs
-3. Export validation state to parent component
-4. Disable "Complete Payment" button until both fields are valid
-
----
-
-## Issue 5: Admin Pending Payments - Missing Details
-
-### Problem
-Admin pending payments table doesn't show bKash number, Transaction ID, or coupon information.
-
-### Current Table Columns:
-Mess ID, Amount, Plan, Payment Method, Date, Actions
-
-### Solution
-Expand the payment table to show all verification details.
-
-### Files to Modify
-| File | Changes |
-|------|---------|
-| `src/pages/admin/AdminSubscriptionPage.tsx` | Update PaymentTable component |
-| `supabase/functions/submit-payment/index.ts` | Ensure coupon_code is saved |
-
-### New Table Structure:
-| Column | Description |
-|--------|-------------|
-| Mess ID | With mess name below |
-| Amount | Final paid amount |
-| Plan | Monthly/Yearly badge |
-| Payment Method | bKash/manual-bkash/sslcommerz |
-| bKash Number | For manual payments |
-| Transaction ID | For verification |
-| Coupon Code | If applied |
-| Discount | Amount saved |
-| Date | Submission date |
-| Actions | Approve/Reject buttons |
-
-### Database Fix:
-The `submit-payment` function currently doesn't save `coupon_code` to the payments table. We need to add this field to the insert.
-
----
-
-## Issue 6: Coupon Visibility Across Payment History
-
-### Problem
-Coupon code is not visible in approved/rejected payment lists, only pending.
-
-### Solution
-Update the PaymentTable component to show coupon code for all payment statuses.
-
-### Files to Modify
-| File | Changes |
-|------|---------|
-| `src/pages/admin/AdminSubscriptionPage.tsx` | Add coupon column to all tabs |
-| Database migration | Add `discount_amount` column to payments table if not exists |
-| `supabase/functions/submit-payment/index.ts` | Save discount_amount with payment |
-
-### Changes:
-1. Add coupon_code and discount_amount columns to all payment status tabs
-2. Save coupon_code and calculated discount in submit-payment function
-3. Display coupon info consistently across manager and admin views
-
----
-
-## Issue 7: Member Login Error
-
-### Problem
-The `member-verify-pin` edge function uses incorrect hashing - it doesn't include the service role key salt like `manage-member` does, causing PIN verification to always fail.
-
-### Current Code in `member-verify-pin/index.ts` (lines 8-14):
-```typescript
-async function hashPin(pin: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(pin); // Missing salt!
-  ...
-}
-```
-
-### Code in `manage-member/index.ts` (lines 10-16):
-```typescript
-async function hashPin(pin: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(pin + Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')?.slice(0, 16)); // Has salt!
-  ...
-}
-```
-
-### Solution
-1. Fix the hashing function to match the one in manage-member
-2. Update CORS headers in member-login and member-verify-pin
-3. Ensure proper member session handling in frontend
-
-### Files to Modify
-| File | Changes |
-|------|---------|
-| `supabase/functions/member-verify-pin/index.ts` | Fix hash function, update CORS |
-| `supabase/functions/member-login/index.ts` | Update CORS headers |
-| `src/contexts/AuthContext.tsx` | Add member session support |
-| `src/components/auth/ProtectedRoute.tsx` | Handle member auth from localStorage |
-
-### Member Authentication Flow Fix:
-1. Update both edge functions with correct CORS headers
-2. Fix PIN hashing to include salt
-3. Update AuthContext to check localStorage for member_session
-4. Update ProtectedRoute to properly handle member role from localStorage
-
----
-
-## Summary of All File Changes
-
-### New Files
+**Files to Create:**
 | File | Purpose |
 |------|---------|
-| `src/pages/dashboard/PaymentHistoryPage.tsx` | Manager payment history page |
+| `src/contexts/MemberAuthContext.tsx` | Dedicated context for member localStorage-based authentication |
+| `src/components/auth/MemberProtectedRoute.tsx` | Route guard that checks localStorage member session |
 
-### Modified Edge Functions (5 files)
+**Files to Modify:**
 | File | Changes |
 |------|---------|
-| `supabase/functions/manage-member/index.ts` | Fix auth, update CORS |
-| `supabase/functions/verify-pin/index.ts` | Fix auth, update CORS |
-| `supabase/functions/member-login/index.ts` | Update CORS headers |
-| `supabase/functions/member-verify-pin/index.ts` | Fix hash function, update CORS |
-| `supabase/functions/admin-review-payment/index.ts` | Fix subscription extension logic |
-| `supabase/functions/submit-payment/index.ts` | Save coupon_code and discount_amount |
+| `src/App.tsx` | Wrap member routes with `MemberAuthProvider`, use `MemberProtectedRoute` |
+| `src/pages/Login.tsx` | Clear any existing member session on load |
+| `src/components/dashboard/MemberDashboardLayout.tsx` | Use MemberAuthContext instead of AuthContext |
 
-### Modified Frontend Files (6 files)
+**Key Logic:**
+```text
+MemberAuthContext:
+- memberSession: { member_id, member_name, mess_id, mess_name, subscription, session_token }
+- isAuthenticated: boolean (checks localStorage validity)
+- logout: clears localStorage and redirects to /login
+- On mount: verify session_token validity via edge function call
+```
+
+---
+
+### Part 2: Redesign Member Dashboard
+
+**Current**: Shows stats cards (Total Meals, Deposits, Balance)
+**Required**: Show member list with search, click own profile to access portal via PIN
+
+**New Member Dashboard Flow:**
+```text
+1. Dashboard shows list of all members in the mess (names only)
+2. Search box filters member list by name
+3. Member clicks their own name -> PIN entry modal
+4. Correct PIN -> Navigate to /member/portal
+5. Wrong PIN -> Show error (3 attempts, then temporary lock)
+6. Cannot access other members' portals (backend validates member_id matches session)
+```
+
+**Files to Create:**
+| File | Purpose |
+|------|---------|
+| `src/pages/member/MemberPortalPage.tsx` | Personal portal with detailed stats |
+
+**Files to Modify:**
 | File | Changes |
 |------|---------|
-| `src/App.tsx` | Add PaymentHistoryPage route |
-| `src/components/dashboard/DashboardLayout.tsx` | Add Payment History nav item |
-| `src/components/payment/ManualBkashContent.tsx` | Add validation with error messages |
-| `src/pages/dashboard/PaymentPage.tsx` | Add validation state, disable button |
-| `src/pages/admin/AdminSubscriptionPage.tsx` | Add bKash/TrxID/coupon columns |
-| `src/contexts/AuthContext.tsx` | Add member session support |
-| `src/components/auth/ProtectedRoute.tsx` | Handle member localStorage auth |
+| `src/pages/member/MemberDashboard.tsx` | Complete redesign - show member list with search and PIN verification |
+| `src/App.tsx` | Add route `/member/portal` |
 
-### Database Migration (optional)
-- Add `discount_amount` column to `payments` table if not present
+**Member Portal Page Content:**
+- Total meals breakdown (Breakfast, Lunch, Dinner counts)
+- Bazar contribution (total from bazars where member_id matches)
+- Deposit history (list with dates and amounts)
+- Current balance (deposit - meal cost)
+- Notifications (global + individual)
+
+**Security Enforcement:**
+```text
+MemberPortalPage:
+1. Get member_id from MemberAuthContext
+2. Fetch data only for that member_id
+3. Cannot pass different member_id via URL or request
+```
+
+---
+
+### Part 3: Manager PIN Records Page Enhancement
+
+**Current**: Shows members with masked PIN (••••), no actions
+**Required**: Show members, edit/reset PIN, suspend/unsuspend member
+
+**Files to Modify:**
+| File | Changes |
+|------|---------|
+| `src/pages/dashboard/PinRecordsPage.tsx` | Add edit PIN, reset PIN, suspend/unsuspend actions |
+
+**Files to Create:**
+| File | Purpose |
+|------|---------|
+| `supabase/functions/update-member-pin/index.ts` | Edge function to update member PIN hash |
+| `supabase/functions/toggle-member-status/index.ts` | Edge function to suspend/unsuspend member |
+
+**New UI Elements:**
+- Table columns: Name, PIN (masked), Status, Added, Actions
+- Actions dropdown per row:
+  - "Edit PIN" -> Opens modal with new 4-6 digit PIN input
+  - "Reset PIN" -> Generates random PIN and shows it once
+  - "Suspend" / "Unsuspend" -> Toggle member's is_active status
+
+**Suspend Logic:**
+- When suspended: `is_active = false`
+- Suspended members don't appear in member selection during login
+- Suspended members cannot verify PIN (edge function checks is_active)
+
+---
+
+### Part 4: Manager Meals Page with Monthly Reports
+
+**Current**: Shows daily meal entry with date picker
+**Required**: Monthly/yearly view with month dropdown
+
+**Files to Modify:**
+| File | Changes |
+|------|---------|
+| `src/pages/dashboard/MealsPage.tsx` | Add view toggle (Daily/Monthly), month dropdown, summary table |
+
+**New UI Components:**
+1. View toggle: "Daily Entry" | "Monthly Report"
+2. Monthly Report view:
+   - Dropdown with month names (only months with data)
+   - Default: current month
+   - Summary table: Member | Breakfast | Lunch | Dinner | Total
+3. Daily Entry view: (existing functionality)
+
+**Data Logic:**
+```text
+1. Fetch distinct months from meals table for this mess
+2. Group meals by member_id for selected month
+3. Calculate totals per member
+4. Show "No data" if month has no meals
+```
+
+---
+
+### Part 5: Admin Messaging System
+
+**Current**: No admin-to-mess messaging exists
+**Required**: Admin can send global messages (all messes) or individual messages (specific mess)
+
+**Database Schema Addition:**
+```sql
+CREATE TABLE admin_messages (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  admin_id UUID REFERENCES auth.users(id) NOT NULL,
+  target_type TEXT NOT NULL CHECK (target_type IN ('global', 'mess')),
+  target_mess_id UUID REFERENCES messes(id),
+  message TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- RLS Policies
+-- Admins can insert/select all
+-- Managers can select where target_type='global' OR target_mess_id=their_mess_id
+```
+
+**Files to Create:**
+| File | Purpose |
+|------|---------|
+| `src/pages/admin/AdminMessagesPage.tsx` | Admin page to compose and send messages |
+
+**Files to Modify:**
+| File | Changes |
+|------|---------|
+| `src/components/admin/AdminDashboardLayout.tsx` | Add "Messages" nav item |
+| `src/App.tsx` | Add route `/admin/messages` |
+| `src/pages/dashboard/NotificationsPage.tsx` | Show admin messages alongside member notifications |
+| `src/pages/member/MemberNotificationsPage.tsx` | Show admin messages for member's mess |
+
+**Admin Message Page Features:**
+- Compose message form
+- Target selector: "All Messes" or dropdown to select specific mess
+- Message list showing sent messages with target info
+- Cannot edit/delete after sending
+
+**Manager/Member Notification Integration:**
+- Fetch both `notifications` and `admin_messages` tables
+- Display admin messages with "Admin" badge
+- Sort by created_at descending
+
+---
+
+### Part 6: Mess Suspension Enforcement for Members
+
+**Current**: Only manager sees suspension modal
+**Required**: Members of suspended mess cannot login
+
+**Files to Modify:**
+| File | Changes |
+|------|---------|
+| `supabase/functions/member-login/index.ts` | Check mess status, return error if suspended |
+
+**Logic:**
+```text
+In member-login edge function:
+1. After finding mess, check mess.status
+2. If status === 'suspended':
+   - Return error: "This mess has been suspended. Contact admin."
+   - Include suspend_reason in response
+3. Reject login before member selection step
+```
+
+---
+
+## File Change Summary
+
+### New Files to Create (8 files)
+| File | Purpose |
+|------|---------|
+| `src/contexts/MemberAuthContext.tsx` | Member localStorage-based auth context |
+| `src/components/auth/MemberProtectedRoute.tsx` | Protected route for member pages |
+| `src/pages/member/MemberPortalPage.tsx` | Member personal portal with detailed stats |
+| `src/pages/admin/AdminMessagesPage.tsx` | Admin messaging interface |
+| `supabase/functions/update-member-pin/index.ts` | Update member PIN |
+| `supabase/functions/toggle-member-status/index.ts` | Suspend/unsuspend member |
+| Database migration for `admin_messages` table | Admin messaging table |
+
+### Existing Files to Modify (10 files)
+| File | Changes |
+|------|---------|
+| `src/App.tsx` | Add MemberAuthProvider, MemberProtectedRoute, new routes |
+| `src/pages/Login.tsx` | Clear member session on load |
+| `src/pages/member/MemberDashboard.tsx` | Redesign with member list and PIN portal access |
+| `src/pages/member/MemberNotificationsPage.tsx` | Include admin messages |
+| `src/components/dashboard/MemberDashboardLayout.tsx` | Use MemberAuthContext |
+| `src/pages/dashboard/PinRecordsPage.tsx` | Add PIN edit/reset and suspend actions |
+| `src/pages/dashboard/MealsPage.tsx` | Add monthly report view with dropdown |
+| `src/pages/dashboard/NotificationsPage.tsx` | Include admin messages for managers |
+| `src/components/admin/AdminDashboardLayout.tsx` | Add Messages nav item |
+| `supabase/functions/member-login/index.ts` | Check mess suspension status |
 
 ---
 
 ## Implementation Order
 
-1. **Fix Member Login** (Critical - blocks member access)
-2. **Fix Add Member** (Critical - blocks mess operations)
-3. **Fix Subscription Extension** (Critical - billing logic)
-4. **Add bKash Validation** (Payment integrity)
-5. **Update Admin Pending Payments** (Admin workflow)
-6. **Add Manager Payment History** (New feature)
-7. **Ensure Coupon Visibility** (Data consistency)
+1. **Member Auth Context and Protected Route** - Foundation for member access
+2. **Member Dashboard Redesign** - Member list with search and PIN access
+3. **Member Portal Page** - Personal stats and details
+4. **PIN Records Enhancement** - Edit/reset PIN, suspend members
+5. **Meals Monthly Report** - Month dropdown and summary table
+6. **Admin Messages Database** - Create table and RLS
+7. **Admin Messages Page** - Compose and send messages
+8. **Notification Integration** - Show admin messages to managers/members
+9. **Mess Suspension for Members** - Block suspended mess member login
+
+---
+
+## Security Considerations
+
+1. **Member Session Validation**: Add edge function to verify session_token is still valid
+2. **PIN Access Scoping**: Backend validates member can only access their own portal
+3. **Admin Message RLS**: Strict policies ensure managers only see their mess's messages
+4. **Suspend Cascade**: Suspended mess blocks both manager and member access
+5. **No Cross-Role Access**: Member routes only accept member context, not manager auth
 
 ---
 
 ## Testing Requirements
 
 After implementation, verify:
-1. Manager can add new members successfully
-2. Meals, Bazar, Deposits, Balance pages work with members
-3. Member can log in with MessID + MessPassword, select name, enter PIN
-4. Member lands on /member dashboard (not subscription page)
-5. Manual bKash validates 11-digit number and 10-char TrxID
-6. Admin sees full payment details in pending tab
-7. Subscription extends correctly when purchasing during active period
-8. Manager sees full payment history with coupon info
+1. Member login with MessID/Password shows member list
+2. Member can only access their own portal via correct PIN
+3. Wrong PIN shows error, 3 failures trigger temporary lock
+4. Manager can edit/reset member PIN from PIN Records
+5. Manager can suspend/unsuspend members
+6. Suspended members cannot login
+7. Meals page shows monthly summary with working month dropdown
+8. Admin can send global and individual messages
+9. Managers and members see admin messages in notifications
+10. Members of suspended mess cannot login (see suspension message)
+
