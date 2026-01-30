@@ -38,14 +38,17 @@ export default function Login() {
       
       if (error) throw error;
       
-      // Wait a moment for session to be fully set
-      await new Promise(resolve => setTimeout(resolve, 100));
+      if (!data.user) {
+        throw new Error(language === 'bn' ? 'লগইন ব্যর্থ হয়েছে' : 'Login failed');
+      }
+
+      const userId = data.user.id;
       
       // Check user role to determine redirect
       const { data: roleData, error: roleError } = await supabase
         .from('user_roles')
         .select('role')
-        .eq('user_id', data.user.id)
+        .eq('user_id', userId)
         .maybeSingle();
       
       if (roleError) {
@@ -59,7 +62,7 @@ export default function Login() {
         throw new Error(language === 'bn' ? 'ব্যবহারকারী রোল পাওয়া যায়নি' : 'User role not found');
       }
       
-      const role = roleData?.role;
+      const role = roleData.role;
       
       // Only allow manager or admin roles through manager tab
       if (role !== 'manager' && role !== 'admin') {
@@ -101,14 +104,17 @@ export default function Login() {
       
       if (error) throw error;
       
-      // Wait a moment for session to be fully set
-      await new Promise(resolve => setTimeout(resolve, 100));
+      if (!data.user) {
+        throw new Error(language === 'bn' ? 'লগইন ব্যর্থ হয়েছে' : 'Login failed');
+      }
+
+      const userId = data.user.id;
       
       // Check user role - must be member
       const { data: roleData, error: roleError } = await supabase
         .from('user_roles')
         .select('role')
-        .eq('user_id', data.user.id)
+        .eq('user_id', userId)
         .maybeSingle();
       
       if (roleError) {
@@ -134,7 +140,7 @@ export default function Login() {
       const { data: memberData, error: memberError } = await supabase
         .from('members')
         .select('id, is_active')
-        .eq('user_id', data.user.id)
+        .eq('user_id', userId)
         .eq('is_active', true)
         .maybeSingle();
       
