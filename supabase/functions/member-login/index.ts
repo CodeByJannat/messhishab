@@ -27,7 +27,7 @@ Deno.serve(async (req) => {
     // Find the mess by mess_id
     const { data: mess, error: messError } = await supabase
       .from('messes')
-      .select('id, mess_id, mess_password, name, current_month, manager_id')
+      .select('id, mess_id, mess_password, name, current_month, manager_id, status, suspend_reason')
       .eq('mess_id', mess_id.toUpperCase())
       .single();
 
@@ -35,6 +35,17 @@ Deno.serve(async (req) => {
       return new Response(
         JSON.stringify({ error: 'Invalid MessID or MessPassword' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Check if mess is suspended
+    if (mess.status === 'suspended') {
+      return new Response(
+        JSON.stringify({ 
+          error: 'This mess has been suspended. Contact admin.',
+          suspend_reason: mess.suspend_reason
+        }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 

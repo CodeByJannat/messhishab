@@ -61,9 +61,8 @@ serve(async (req) => {
     // Get all members with their PINs (we'll show placeholder for security)
     const { data: members, error: membersError } = await supabaseAdmin
       .from('members')
-      .select('id, name, pin_hash, created_at')
+      .select('id, name, pin_hash, is_active, created_at')
       .eq('mess_id', messId)
-      .eq('is_active', true)
       .order('name');
 
     if (membersError) {
@@ -78,6 +77,7 @@ serve(async (req) => {
       id: member.id,
       name: member.name,
       pin_display: '••••', // PIN is hashed, so we can't show it
+      is_active: member.is_active,
       created_at: member.created_at,
     }));
 

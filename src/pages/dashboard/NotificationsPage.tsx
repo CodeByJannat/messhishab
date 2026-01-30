@@ -6,6 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
 import {
   Dialog,
   DialogContent,
@@ -23,7 +24,7 @@ import {
 } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Loader2, Bell, BellRing } from 'lucide-react';
+import { Plus, Loader2, Bell, BellRing, Shield } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 interface Member {
@@ -41,12 +42,19 @@ interface Notification {
   from_user_id: string | null;
 }
 
+interface AdminMessage {
+  id: string;
+  message: string;
+  target_type: string;
+  created_at: string;
+}
+
 export default function NotificationsPage() {
   const { user, mess } = useAuth();
   const { language } = useLanguage();
   const { toast } = useToast();
   const [members, setMembers] = useState<Member[]>([]);
-  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [notifications, setNotifications] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -60,7 +68,6 @@ export default function NotificationsPage() {
     if (mess) {
       fetchMembers();
       fetchNotifications();
-      subscribeToNotifications();
     }
   }, [mess]);
 
@@ -87,14 +94,31 @@ export default function NotificationsPage() {
     setIsLoading(true);
 
     try {
-      const { data, error } = await supabase
+      // Fetch manager notifications
+      const { data: notifData, error: notifError } = await supabase
         .from('notifications')
         .select('*')
         .eq('mess_id', mess.id)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
-      setNotifications(data || []);
+      if (notifError) throw notifError;
+
+      // Fetch admin messages for this mess
+      const { data: adminMsgData, error: adminError } = await supabase
+        .from('admin_messages')
+        .select('id, message, target_type, created_at')
+        .or(`target_type.eq.global,target_mess_id.eq.${mess.id}`)
+        .order('created_at', { ascending: false });
+
+      if (adminError) throw adminError;
+
+      // Combine and sort
+      const combined = [
+        ...(notifData || []).map(n => ({ ...n, isAdmin: false, source: 'manager' })),
+        ...(adminMsgData || []).map(a => ({ ...a, isAdmin: true, source: 'admin', to_all: a.target_type === 'global' }))
+      ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+      setNotifications(combined);
     } catch (error: any) {
       toast({
         title: language === 'bn' ? 'ত্রুটি' : 'Error',
@@ -104,30 +128,6 @@ export default function NotificationsPage() {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const subscribeToNotifications = () => {
-    if (!mess) return;
-
-    const channel = supabase
-      .channel('notifications')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'notifications',
-          filter: `mess_id=eq.${mess.id}`,
-        },
-        (payload) => {
-          setNotifications((prev) => [payload.new as Notification, ...prev]);
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
   };
 
   const getMemberName = (memberId: string | null) => {
@@ -159,6 +159,7 @@ export default function NotificationsPage() {
 
       setIsAddOpen(false);
       setFormData({ toMemberId: 'all', message: '' });
+      fetchNotifications();
     } catch (error: any) {
       toast({
         title: language === 'bn' ? 'ত্রুটি' : 'Error',
@@ -258,24 +259,36 @@ export default function NotificationsPage() {
           ) : (
             notifications.map((notification, index) => (
               <motion.div
-                key={notification.id}
+                key={`${notification.source}-${notification.id}`}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.05 }}
               >
-                <Card className="glass-card">
+                <Card className={`glass-card ${notification.isAdmin ? 'border-primary/30 bg-primary/5' : ''}`}>
                   <CardContent className="p-4">
                     <div className="flex items-start gap-4">
-                      <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
-                        <BellRing className="w-5 h-5 text-primary" />
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                        notification.isAdmin ? 'bg-primary/10' : 'bg-primary/10'
+                      }`}>
+                        {notification.isAdmin ? (
+                          <Shield className="w-5 h-5 text-primary" />
+                        ) : (
+                          <BellRing className="w-5 h-5 text-primary" />
+                        )}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="text-xs text-muted-foreground">
-                            {notification.to_all
-                              ? language === 'bn' ? 'সকলের জন্য' : 'To All'
-                              : `${language === 'bn' ? 'প্রাপক:' : 'To:'} ${getMemberName(notification.to_member_id) || '-'}`}
-                          </span>
+                        <div className="flex items-center gap-2 mb-1 flex-wrap">
+                          {notification.isAdmin ? (
+                            <Badge variant="default">
+                              {language === 'bn' ? 'এডমিন' : 'Admin'}
+                            </Badge>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">
+                              {notification.to_all
+                                ? language === 'bn' ? 'সকলের জন্য' : 'To All'
+                                : `${language === 'bn' ? 'প্রাপক:' : 'To:'} ${getMemberName(notification.to_member_id) || '-'}`}
+                            </span>
+                          )}
                           <span className="text-xs text-muted-foreground">•</span>
                           <span className="text-xs text-muted-foreground">
                             {new Date(notification.created_at).toLocaleString(

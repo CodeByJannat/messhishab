@@ -1,5 +1,5 @@
-import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
+import { Link, useLocation } from 'react-router-dom';
+import { useMemberAuth } from '@/contexts/MemberAuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Button } from '@/components/ui/button';
@@ -7,13 +7,11 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
   Home,
   ShoppingCart,
-  Wallet,
   Bell,
   LogOut,
   Menu,
@@ -21,28 +19,28 @@ import {
   Moon,
   Globe,
   Send,
+  User,
 } from 'lucide-react';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const memberNavItems = [
   { href: '/member', icon: Home, labelBn: 'ড্যাশবোর্ড', labelEn: 'Dashboard' },
+  { href: '/member/portal', icon: User, labelBn: 'আমার পোর্টাল', labelEn: 'My Portal' },
   { href: '/member/bazar', icon: ShoppingCart, labelBn: 'বাজার', labelEn: 'Bazar' },
   { href: '/member/notifications', icon: Bell, labelBn: 'নোটিফিকেশন', labelEn: 'Notifications' },
   { href: '/member/contact', icon: Send, labelBn: 'ম্যানেজারকে মেসেজ', labelEn: 'Message Manager' },
 ];
 
 export function MemberDashboardLayout({ children }: { children: React.ReactNode }) {
-  const { user, signOut } = useAuth();
+  const { memberSession, logout } = useMemberAuth();
   const { language, setLanguage } = useLanguage();
   const { theme, toggleTheme } = useTheme();
   const location = useLocation();
-  const navigate = useNavigate();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-  const handleSignOut = async () => {
-    await signOut();
-    navigate('/login');
+  const handleSignOut = () => {
+    logout();
   };
 
   const toggleLanguage = () => {
@@ -154,12 +152,14 @@ export function MemberDashboardLayout({ children }: { children: React.ReactNode 
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="w-full justify-start rounded-xl">
                   <div className="w-8 h-8 bg-muted rounded-lg flex items-center justify-center mr-3">
-                    <span className="text-sm font-medium">{user?.email?.[0].toUpperCase()}</span>
+                    <span className="text-sm font-medium">
+                      {memberSession?.member.name?.[0]?.toUpperCase() || 'M'}
+                    </span>
                   </div>
                   <div className="text-left flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{user?.email}</p>
+                    <p className="text-sm font-medium truncate">{memberSession?.member.name}</p>
                     <p className="text-xs text-muted-foreground">
-                      {language === 'bn' ? 'মেম্বার' : 'Member'}
+                      {memberSession?.mess.mess_id}
                     </p>
                   </div>
                 </Button>

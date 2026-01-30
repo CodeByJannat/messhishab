@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
+import { useMemberAuth } from '@/contexts/MemberAuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { MemberDashboardLayout } from '@/components/dashboard/MemberDashboardLayout';
 import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Bell, BellRing } from 'lucide-react';
@@ -16,48 +17,63 @@ interface Notification {
   created_at: string;
 }
 
+interface AdminMessage {
+  id: string;
+  message: string;
+  target_type: string;
+  created_at: string;
+}
+
 export default function MemberNotificationsPage() {
-  const { user } = useAuth();
+  const { memberSession } = useMemberAuth();
   const { language } = useLanguage();
   const { toast } = useToast();
-  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [notifications, setNotifications] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (user) {
+    if (memberSession) {
       fetchNotifications();
-      subscribeToNotifications();
     }
-  }, [user]);
+  }, [memberSession]);
 
   const fetchNotifications = async () => {
-    if (!user) return;
+    if (!memberSession) return;
     setIsLoading(true);
 
     try {
-      // Get member info first
-      const { data: memberData, error: memberError } = await supabase
-        .from('members')
-        .select('id, mess_id')
-        .eq('user_id', user.id)
-        .eq('is_active', true)
-        .single();
+      const memberId = memberSession.member.id;
+      const messId = memberSession.mess.id;
 
-      if (memberError) throw memberError;
-
-      // Fetch notifications for this member
-      const { data, error } = await supabase
+      // Fetch notifications for this member (manager messages)
+      const { data: notifData, error: notifError } = await supabase
         .from('notifications')
         .select('*')
-        .eq('mess_id', memberData.mess_id)
-        .or(`to_all.eq.true,to_member_id.eq.${memberData.id}`)
+        .eq('mess_id', messId)
+        .or(`to_all.eq.true,to_member_id.eq.${memberId}`)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
-      setNotifications(data || []);
+      if (notifError) throw notifError;
 
-      // Mark unread as read
-      const unreadIds = (data || []).filter((n) => !n.is_read).map((n) => n.id);
+      // Fetch admin messages
+      const { data: adminMsgData, error: adminError } = await supabase
+        .from('admin_messages')
+        .select('id, message, target_type, created_at')
+        .or(`target_type.eq.global,target_mess_id.eq.${messId}`)
+        .order('created_at', { ascending: false });
+
+      if (adminError) throw adminError;
+
+      // Combine and sort
+      const combined = [
+        ...(notifData || []).map(n => ({ ...n, isAdmin: false, source: 'manager' })),
+        ...(adminMsgData || []).map(a => ({ ...a, isAdmin: true, source: 'admin', to_all: a.target_type === 'global' }))
+      ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+      setNotifications(combined);
+
+      // Mark unread notifications as read
+      const unreadIds = (notifData || []).filter((n) => !n.is_read).map((n) => n.id);
       if (unreadIds.length > 0) {
         await supabase
           .from('notifications')
@@ -75,46 +91,6 @@ export default function MemberNotificationsPage() {
     }
   };
 
-  const subscribeToNotifications = async () => {
-    if (!user) return;
-
-    try {
-      const { data: memberData } = await supabase
-        .from('members')
-        .select('mess_id')
-        .eq('user_id', user.id)
-        .eq('is_active', true)
-        .single();
-
-      if (!memberData) return;
-
-      const channel = supabase
-        .channel('member-notifications')
-        .on(
-          'postgres_changes',
-          {
-            event: 'INSERT',
-            schema: 'public',
-            table: 'notifications',
-            filter: `mess_id=eq.${memberData.mess_id}`,
-          },
-          (payload) => {
-            const newNotification = payload.new as Notification;
-            if (newNotification.to_all) {
-              setNotifications((prev) => [newNotification, ...prev]);
-            }
-          }
-        )
-        .subscribe();
-
-      return () => {
-        supabase.removeChannel(channel);
-      };
-    } catch (error) {
-      console.error('Error subscribing:', error);
-    }
-  };
-
   return (
     <MemberDashboardLayout>
       <div className="space-y-6">
@@ -124,7 +100,7 @@ export default function MemberNotificationsPage() {
             {language === 'bn' ? 'নোটিফিকেশন' : 'Notifications'}
           </h1>
           <p className="text-muted-foreground mt-1">
-            {language === 'bn' ? 'ম্যানেজারের বার্তা' : 'Messages from manager'}
+            {language === 'bn' ? 'ম্যানেজার ও এডমিনের বার্তা' : 'Messages from manager and admin'}
           </p>
         </div>
 
@@ -146,7 +122,7 @@ export default function MemberNotificationsPage() {
           ) : (
             notifications.map((notification, index) => (
               <motion.div
-                key={notification.id}
+                key={`${notification.source}-${notification.id}`}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.05 }}
@@ -154,15 +130,23 @@ export default function MemberNotificationsPage() {
                 <Card className="glass-card">
                   <CardContent className="p-4">
                     <div className="flex items-start gap-4">
-                      <div className="w-10 h-10 rounded-xl bg-secondary/10 flex items-center justify-center flex-shrink-0">
-                        <BellRing className="w-5 h-5 text-secondary" />
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                        notification.isAdmin ? 'bg-primary/10' : 'bg-secondary/10'
+                      }`}>
+                        <BellRing className={`w-5 h-5 ${notification.isAdmin ? 'text-primary' : 'text-secondary'}`} />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="text-xs text-muted-foreground">
-                            {language === 'bn' ? 'ম্যানেজার থেকে' : 'From Manager'}
-                          </span>
-                          <span className="text-xs text-muted-foreground">•</span>
+                        <div className="flex items-center gap-2 mb-1 flex-wrap">
+                          <Badge variant={notification.isAdmin ? 'default' : 'secondary'}>
+                            {notification.isAdmin 
+                              ? (language === 'bn' ? 'এডমিন' : 'Admin')
+                              : (language === 'bn' ? 'ম্যানেজার' : 'Manager')}
+                          </Badge>
+                          {notification.to_all && (
+                            <Badge variant="outline" className="text-xs">
+                              {language === 'bn' ? 'সবার জন্য' : 'To All'}
+                            </Badge>
+                          )}
                           <span className="text-xs text-muted-foreground">
                             {new Date(notification.created_at).toLocaleString(
                               language === 'bn' ? 'bn-BD' : 'en-US'
