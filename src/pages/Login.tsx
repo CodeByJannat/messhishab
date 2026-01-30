@@ -136,7 +136,8 @@ export default function Login() {
           description: language === 'bn' ? 'লগইন সফল হয়েছে' : 'Login successful',
         });
         
-        navigate('/member');
+        // Use window.location for full page reload to ensure MemberAuthContext picks up session
+        window.location.href = '/member/portal';
       }
     } catch (error: any) {
       toast({
