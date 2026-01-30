@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Button } from '@/components/ui/button';
@@ -15,6 +15,7 @@ export default function Login() {
   const { t, language, setLanguage } = useLanguage();
   const { theme, toggleTheme } = useTheme();
   const { toast } = useToast();
+  const navigate = useNavigate();
   
   const [activeTab, setActiveTab] = useState<'manager' | 'member'>('manager');
   const [isLoading, setIsLoading] = useState(false);
@@ -82,14 +83,9 @@ export default function Login() {
         description: language === 'bn' ? 'লগইন সফল হয়েছে' : 'Login successful',
       });
       
-      // Use setTimeout to ensure toast is shown before redirect
-      setTimeout(() => {
-        if (role === 'admin') {
-          window.location.href = '/admin/dashboard';
-        } else {
-          window.location.href = '/manager/dashboard';
-        }
-      }, 100);
+      // Use navigate instead of window.location.href to prevent full page reload
+      const targetPath = role === 'admin' ? '/admin/dashboard' : '/manager/dashboard';
+      navigate(targetPath, { replace: true });
     } catch (error: any) {
       // Ignore abort errors
       if (error?.message?.includes('abort') || error?.name === 'AbortError') {
@@ -176,10 +172,8 @@ export default function Login() {
         description: language === 'bn' ? 'লগইন সফল হয়েছে' : 'Login successful',
       });
       
-      // Use setTimeout to ensure toast is shown before redirect
-      setTimeout(() => {
-        window.location.href = '/member/dashboard';
-      }, 100);
+      // Use navigate instead of window.location.href to prevent full page reload
+      navigate('/member/dashboard', { replace: true });
     } catch (error: any) {
       // Ignore abort errors
       if (error?.message?.includes('abort') || error?.name === 'AbortError') {

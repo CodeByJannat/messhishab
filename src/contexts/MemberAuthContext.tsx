@@ -46,50 +46,64 @@ export function MemberAuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [memberSession, setMemberSession] = useState<MemberSession | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isDataLoaded, setIsDataLoaded] = useState(false);
 
-  const fetchMemberData = async (userId: string, accessToken: string) => {
+  const fetchMemberData = async (userId: string, accessToken: string): Promise<boolean> => {
     try {
-      // Fetch member data
+      // Fetch member data - use maybeSingle to avoid errors
       const { data: memberData, error: memberError } = await supabase
         .from('members')
         .select('id, name, mess_id, is_active')
         .eq('user_id', userId)
         .eq('is_active', true)
-        .single();
+        .maybeSingle();
 
-      if (memberError || !memberData) {
-        console.log('No active member found for user');
-        return;
+      if (memberError) {
+        console.error('Error fetching member:', memberError);
+        return false;
       }
 
-      // Fetch mess data
+      if (!memberData) {
+        console.log('No active member found for user');
+        return false;
+      }
+
+      // Fetch mess data - use maybeSingle to avoid errors
       const { data: messData, error: messError } = await supabase
         .from('messes')
         .select('id, mess_id, name, current_month, status, suspend_reason')
         .eq('id', memberData.mess_id)
-        .single();
+        .maybeSingle();
 
-      if (messError || !messData) {
+      if (messError) {
         console.error('Error fetching mess data:', messError);
-        return;
+        return false;
       }
 
-      // Fetch subscription data
+      if (!messData) {
+        console.log('No mess found for member');
+        return false;
+      }
+
+      // Fetch subscription data - use maybeSingle to avoid errors
       const { data: subData } = await supabase
         .from('subscriptions')
         .select('type, status, end_date')
         .eq('mess_id', memberData.mess_id)
         .eq('status', 'active')
-        .single();
+        .maybeSingle();
 
       setMemberSession({
         member: memberData,
         mess: messData as MessData,
         subscription: subData || null,
-        session_token: accessToken, // Use access token for edge function calls
+        session_token: accessToken,
       });
+      
+      return true;
     } catch (error) {
       console.error('Error fetching member data:', error);
+      return false;
     }
   };
 
@@ -105,29 +119,72 @@ export function MemberAuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let mounted = true;
 
+    // Set up auth listener FIRST
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (!mounted) return;
+        
+        if (session?.user) {
+          setUser(session.user);
+          setIsDataLoaded(false);
+          
+          // Check if user has member role - use maybeSingle
+          const { data: roleData } = await supabase
+            .from('user_roles')
+            .select('role')
+            .eq('user_id', session.user.id)
+            .maybeSingle();
+
+          if (roleData?.role === 'member') {
+            await fetchMemberData(session.user.id, session.access_token);
+          }
+          
+          if (mounted) {
+            setIsDataLoaded(true);
+            setIsLoading(false);
+          }
+        } else {
+          setUser(null);
+          setMemberSession(null);
+          setIsDataLoaded(false);
+          if (mounted) {
+            setIsLoading(false);
+          }
+        }
+      }
+    );
+
+    // THEN check for existing session
     const initializeAuth = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         
         if (!mounted) return;
         
-        if (session?.user) {
-          setUser(session.user);
-          
-          // Check if user has member role
-          const { data: roleData } = await supabase
-            .from('user_roles')
-            .select('role')
-            .eq('user_id', session.user.id)
-            .single();
+        if (!session) {
+          setIsLoading(false);
+          return;
+        }
+        
+        setUser(session.user);
+        
+        // Check if user has member role - use maybeSingle
+        const { data: roleData } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', session.user.id)
+          .maybeSingle();
 
-          if (roleData?.role === 'member') {
-            await fetchMemberData(session.user.id, session.access_token);
-          }
+        if (roleData?.role === 'member') {
+          await fetchMemberData(session.user.id, session.access_token);
+        }
+        
+        if (mounted) {
+          setIsDataLoaded(true);
+          setIsLoading(false);
         }
       } catch (error) {
         console.error('Error initializing member auth:', error);
-      } finally {
         if (mounted) {
           setIsLoading(false);
         }
@@ -135,31 +192,6 @@ export function MemberAuthProvider({ children }: { children: ReactNode }) {
     };
 
     initializeAuth();
-
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (!mounted) return;
-        
-        if (session?.user) {
-          setUser(session.user);
-          
-          // Check role and fetch member data
-          const { data: roleData } = await supabase
-            .from('user_roles')
-            .select('role')
-            .eq('user_id', session.user.id)
-            .single();
-
-          if (roleData?.role === 'member') {
-            await fetchMemberData(session.user.id, session.access_token);
-          }
-        } else {
-          setUser(null);
-          setMemberSession(null);
-        }
-      }
-    );
 
     return () => {
       mounted = false;
@@ -171,8 +203,12 @@ export function MemberAuthProvider({ children }: { children: ReactNode }) {
     await supabase.auth.signOut();
     setUser(null);
     setMemberSession(null);
+    setIsDataLoaded(false);
     window.location.href = '/login';
   };
+
+  // Consider loading if initial load OR (user exists but data not yet loaded)
+  const effectiveIsLoading = isLoading || (user !== null && !isDataLoaded);
 
   return (
     <MemberAuthContext.Provider
@@ -180,7 +216,7 @@ export function MemberAuthProvider({ children }: { children: ReactNode }) {
         user,
         memberSession,
         isAuthenticated: !!memberSession,
-        isLoading,
+        isLoading: effectiveIsLoading,
         logout,
         refreshMemberData,
       }}
