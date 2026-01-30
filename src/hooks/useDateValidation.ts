@@ -1,6 +1,6 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { format, parseISO, isBefore, startOfDay, isAfter } from 'date-fns';
+import { format, parseISO, isBefore, startOfDay, isAfter, startOfMonth } from 'date-fns';
 
 interface DateValidationResult {
   isValid: boolean;
@@ -14,9 +14,15 @@ export function useDateValidation() {
   const today = startOfDay(new Date());
   const todayStr = format(today, 'yyyy-MM-dd');
 
-  // Get subscription start date (or default to a very old date if no subscription)
+  // Get subscription start date (or default to null if no subscription)
   const subscriptionStartDate = subscription?.start_date 
     ? startOfDay(parseISO(subscription.start_date))
+    : null;
+
+  // Get the FIRST DAY of the subscription month - this is the actual minimum date
+  // Users can enter data for the entire month they subscribed in
+  const subscriptionMonthStart = subscriptionStartDate 
+    ? startOfMonth(subscriptionStartDate)
     : null;
 
   const subscriptionStartMonth = subscriptionStartDate 
@@ -27,8 +33,7 @@ export function useDateValidation() {
    * Validates if a date is allowed for entry
    * Rules:
    * 1. Cannot be in the future
-   * 2. Cannot be before subscription start date
-   * 3. Cannot be in a month before subscription start month
+   * 2. Cannot be before the first day of subscription start month
    */
   const validateDate = (dateStr: string): DateValidationResult => {
     // Handle empty or invalid date strings
@@ -65,17 +70,7 @@ export function useDateValidation() {
       };
     }
 
-    // Rule 2: Check subscription start date
-    if (subscriptionStartDate && isBefore(entryDate, subscriptionStartDate)) {
-      return {
-        isValid: false,
-        error: language === 'bn'
-          ? `সাবস্ক্রিপশন শুরুর তারিখ (${format(subscriptionStartDate, 'dd/MM/yyyy')}) এর আগে এন্ট্রি করা যাবে না`
-          : `Cannot enter data before subscription start date (${format(subscriptionStartDate, 'dd/MM/yyyy')})`,
-      };
-    }
-
-    // Rule 3: Check subscription start month
+    // Rule 2: Check subscription start month (allow full month)
     if (subscriptionStartMonth && entryMonth < subscriptionStartMonth) {
       return {
         isValid: false,
@@ -96,11 +91,11 @@ export function useDateValidation() {
   };
 
   /**
-   * Get minimum allowed date (subscription start date or null)
+   * Get minimum allowed date (first day of subscription month)
    */
   const getMinDate = (): string | null => {
-    if (!subscriptionStartDate) return null;
-    return format(subscriptionStartDate, 'yyyy-MM-dd');
+    if (!subscriptionMonthStart) return null;
+    return format(subscriptionMonthStart, 'yyyy-MM-dd');
   };
 
   /**
