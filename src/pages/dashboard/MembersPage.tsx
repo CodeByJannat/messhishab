@@ -24,7 +24,7 @@ import {
 } from '@/components/ui/table';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Trash2, Loader2, Users, Pencil, Search, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, Trash2, Loader2, Users, Pencil, Search, ChevronLeft, ChevronRight, RefreshCw, Eye, EyeOff } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 interface EditingMember {
@@ -44,6 +44,16 @@ interface DecryptedMember {
   is_active: boolean;
   created_at: string;
 }
+
+// Generate random 6-character alphanumeric password
+const generateRandomPassword = (): string => {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+  let password = '';
+  for (let i = 0; i < 6; i++) {
+    password += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return password;
+};
 
 export default function MembersPage() {
   const { mess } = useAuth();
@@ -66,8 +76,9 @@ export default function MembersPage() {
     email: '',
     phone: '',
     roomNumber: '',
-    pin: '',
+    password: '',
   });
+  const [showPassword, setShowPassword] = useState(false);
 
   // Form state for editing
   const [editFormData, setEditFormData] = useState({
@@ -76,6 +87,14 @@ export default function MembersPage() {
     phone: '',
     roomNumber: '',
   });
+
+  // Reset password state
+  const [newPassword, setNewPassword] = useState('');
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [isResettingPassword, setIsResettingPassword] = useState(false);
+  const [resetPasswordResult, setResetPasswordResult] = useState<string | null>(null);
+  const [isResetResultOpen, setIsResetResultOpen] = useState(false);
+
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
@@ -109,14 +128,26 @@ export default function MembersPage() {
     }
   };
 
+  const handleGeneratePassword = () => {
+    const newPass = generateRandomPassword();
+    setFormData({ ...formData, password: newPass });
+    setShowPassword(true);
+  };
+
+  const handleGenerateNewPassword = () => {
+    const newPass = generateRandomPassword();
+    setNewPassword(newPass);
+    setShowNewPassword(true);
+  };
+
   const handleAddMember = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!mess) return;
 
-    if (formData.pin.length < 4 || formData.pin.length > 6) {
+    if (formData.password.length < 4 || formData.password.length > 6) {
       toast({
         title: language === 'bn' ? 'ত্রুটি' : 'Error',
-        description: language === 'bn' ? 'পিন ৪-৬ সংখ্যার হতে হবে' : 'PIN must be 4-6 digits',
+        description: language === 'bn' ? 'পাসওয়ার্ড ৪-৬ অক্ষরের হতে হবে' : 'Password must be 4-6 characters',
         variant: 'destructive',
       });
       return;
@@ -133,7 +164,7 @@ export default function MembersPage() {
           email: formData.email,
           phone: formData.phone,
           roomNumber: formData.roomNumber,
-          pin: formData.pin,
+          pin: formData.password,
         },
       });
 
@@ -145,7 +176,8 @@ export default function MembersPage() {
       });
 
       setIsAddOpen(false);
-      setFormData({ name: '', email: '', phone: '', roomNumber: '', pin: '' });
+      setFormData({ name: '', email: '', phone: '', roomNumber: '', password: '' });
+      setShowPassword(false);
       fetchMembers();
     } catch (error: any) {
       toast({
@@ -198,6 +230,8 @@ export default function MembersPage() {
       phone: member.phone || '',
       roomNumber: member.roomNumber || '',
     });
+    setNewPassword('');
+    setShowNewPassword(false);
     setIsEditOpen(true);
   };
 
@@ -238,6 +272,47 @@ export default function MembersPage() {
       });
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleResetPassword = async () => {
+    if (!editingMember) return;
+
+    if (newPassword.length < 4 || newPassword.length > 6) {
+      toast({
+        title: language === 'bn' ? 'ত্রুটি' : 'Error',
+        description: language === 'bn' ? 'পাসওয়ার্ড ৪-৬ অক্ষরের হতে হবে' : 'Password must be 4-6 characters',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsResettingPassword(true);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('update-member-pin', {
+        body: { action: 'edit', memberId: editingMember.id, newPin: newPassword },
+      });
+
+      if (error) throw error;
+
+      setResetPasswordResult(newPassword);
+      setIsResetResultOpen(true);
+      setNewPassword('');
+      setShowNewPassword(false);
+
+      toast({
+        title: language === 'bn' ? 'সফল!' : 'Success!',
+        description: language === 'bn' ? 'পাসওয়ার্ড আপডেট হয়েছে' : 'Password updated successfully',
+      });
+    } catch (error: any) {
+      toast({
+        title: language === 'bn' ? 'ত্রুটি' : 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsResettingPassword(false);
     }
   };
 
@@ -303,21 +378,23 @@ export default function MembersPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>{language === 'bn' ? 'ইমেইল' : 'Email'}</Label>
+                  <Label>{language === 'bn' ? 'ইমেইল *' : 'Email *'}</Label>
                   <Input
                     type="email"
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                     placeholder="example@email.com"
+                    required
                     className="rounded-xl"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>{language === 'bn' ? 'ফোন' : 'Phone'}</Label>
+                  <Label>{language === 'bn' ? 'ফোন *' : 'Phone *'}</Label>
                   <Input
                     value={formData.phone}
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                     placeholder="01XXXXXXXXX"
+                    required
                     className="rounded-xl"
                   />
                 </div>
@@ -331,20 +408,43 @@ export default function MembersPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>{language === 'bn' ? 'পিন (৪-৬ সংখ্যা) *' : 'PIN (4-6 digits) *'}</Label>
-                  <Input
-                    type="password"
-                    value={formData.pin}
-                    onChange={(e) => setFormData({ ...formData, pin: e.target.value.replace(/\D/g, '').slice(0, 6) })}
-                    placeholder="••••"
-                    required
-                    maxLength={6}
-                    className="rounded-xl"
-                  />
+                  <Label>{language === 'bn' ? 'পাসওয়ার্ড (৪-৬ অক্ষর) *' : 'Password (4-6 chars) *'}</Label>
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <Input
+                        type={showPassword ? 'text' : 'password'}
+                        value={formData.password}
+                        onChange={(e) => setFormData({ ...formData, password: e.target.value.slice(0, 6) })}
+                        placeholder="••••••"
+                        required
+                        maxLength={6}
+                        className="rounded-xl pr-10"
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                        onClick={() => setShowPassword(!showPassword)}
+                      >
+                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </Button>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={handleGeneratePassword}
+                      title={language === 'bn' ? 'র‍্যান্ডম পাসওয়ার্ড' : 'Generate Random'}
+                      className="rounded-xl"
+                    >
+                      <RefreshCw className="w-4 h-4" />
+                    </Button>
+                  </div>
                   <p className="text-xs text-muted-foreground">
                     {language === 'bn'
-                      ? 'এই পিন মেম্বার লগইনের জন্য ব্যবহৃত হবে'
-                      : 'This PIN will be used for member login'}
+                      ? 'এই পাসওয়ার্ড মেম্বার লগইনের জন্য ব্যবহৃত হবে'
+                      : 'This password will be used for member login'}
                   </p>
                 </div>
                 <DialogFooter>
@@ -379,21 +479,23 @@ export default function MembersPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>{language === 'bn' ? 'ইমেইল' : 'Email'}</Label>
+                  <Label>{language === 'bn' ? 'ইমেইল *' : 'Email *'}</Label>
                   <Input
                     type="email"
                     value={editFormData.email}
                     onChange={(e) => setEditFormData({ ...editFormData, email: e.target.value })}
                     placeholder="example@email.com"
+                    required
                     className="rounded-xl"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>{language === 'bn' ? 'ফোন' : 'Phone'}</Label>
+                  <Label>{language === 'bn' ? 'ফোন *' : 'Phone *'}</Label>
                   <Input
                     value={editFormData.phone}
                     onChange={(e) => setEditFormData({ ...editFormData, phone: e.target.value })}
                     placeholder="01XXXXXXXXX"
+                    required
                     className="rounded-xl"
                   />
                 </div>
@@ -406,6 +508,63 @@ export default function MembersPage() {
                     className="rounded-xl"
                   />
                 </div>
+
+                {/* Reset Password Section */}
+                <div className="border-t border-border pt-4 mt-4">
+                  <Label className="text-base font-medium">
+                    {language === 'bn' ? 'পাসওয়ার্ড রিসেট' : 'Reset Password'}
+                  </Label>
+                  <p className="text-xs text-muted-foreground mb-3">
+                    {language === 'bn'
+                      ? 'মেম্বারের নতুন পাসওয়ার্ড সেট করুন (ঐচ্ছিক)'
+                      : 'Set a new password for the member (optional)'}
+                  </p>
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <Input
+                        type={showNewPassword ? 'text' : 'password'}
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value.slice(0, 6))}
+                        placeholder={language === 'bn' ? 'নতুন পাসওয়ার্ড (৪-৬ অক্ষর)' : 'New password (4-6 chars)'}
+                        maxLength={6}
+                        className="rounded-xl pr-10"
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                        onClick={() => setShowNewPassword(!showNewPassword)}
+                      >
+                        {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </Button>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={handleGenerateNewPassword}
+                      title={language === 'bn' ? 'র‍্যান্ডম পাসওয়ার্ড' : 'Generate Random'}
+                      className="rounded-xl"
+                    >
+                      <RefreshCw className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={handleResetPassword}
+                      disabled={isResettingPassword || newPassword.length < 4}
+                      className="rounded-xl"
+                    >
+                      {isResettingPassword ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        language === 'bn' ? 'রিসেট' : 'Reset'
+                      )}
+                    </Button>
+                  </div>
+                </div>
+
                 <DialogFooter>
                   <Button type="submit" disabled={isSubmitting}>
                     {isSubmitting ? (
@@ -415,6 +574,35 @@ export default function MembersPage() {
                   </Button>
                 </DialogFooter>
               </form>
+            </DialogContent>
+          </Dialog>
+
+          {/* Password Reset Result Dialog */}
+          <Dialog open={isResetResultOpen} onOpenChange={setIsResetResultOpen}>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle className="text-center">
+                  {language === 'bn' ? 'পাসওয়ার্ড আপডেট হয়েছে' : 'Password Updated'}
+                </DialogTitle>
+              </DialogHeader>
+              <div className="text-center space-y-4">
+                <p className="text-muted-foreground">
+                  {editingMember?.name} {language === 'bn' ? 'এর নতুন পাসওয়ার্ড:' : "'s new password:"}
+                </p>
+                <code className="block bg-primary/10 text-primary text-3xl font-mono py-4 px-6 rounded-xl">
+                  {resetPasswordResult}
+                </code>
+                <p className="text-sm text-warning">
+                  {language === 'bn' 
+                    ? '⚠️ এই পাসওয়ার্ডটি সেভ করুন।'
+                    : '⚠️ Save this password.'}
+                </p>
+              </div>
+              <DialogFooter>
+                <Button onClick={() => setIsResetResultOpen(false)} className="w-full">
+                  {language === 'bn' ? 'বুঝেছি' : 'Got it'}
+                </Button>
+              </DialogFooter>
             </DialogContent>
           </Dialog>
         </div>
