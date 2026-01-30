@@ -10,6 +10,7 @@ import { Sun, Moon, Globe, ArrowLeft, Eye, EyeOff } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { isValidEmailDomain, getEmailDomainError, isValidBangladeshPhone, getPhoneError } from '@/lib/validation';
 
 export default function Register() {
   const { t, language, setLanguage } = useLanguage();
@@ -22,6 +23,7 @@ export default function Register() {
   const [agreeTerms, setAgreeTerms] = useState(false);
   
   const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
 
@@ -31,6 +33,26 @@ export default function Register() {
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate email domain
+    if (!isValidEmailDomain(email)) {
+      toast({
+        title: language === 'bn' ? 'ত্রুটি' : 'Error',
+        description: getEmailDomainError(language),
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Validate phone number
+    if (!isValidBangladeshPhone(phone)) {
+      toast({
+        title: language === 'bn' ? 'ত্রুটি' : 'Error',
+        description: getPhoneError(language),
+        variant: 'destructive',
+      });
+      return;
+    }
     
     if (password !== confirmPassword) {
       toast({
@@ -159,10 +181,35 @@ export default function Register() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="example@email.com"
+                placeholder="example@gmail.com"
                 className="rounded-xl"
                 required
               />
+              <p className="text-xs text-muted-foreground">
+                {language === 'bn' ? 'Gmail, Outlook, Yahoo, Proton, iCloud' : 'Gmail, Outlook, Yahoo, Proton, iCloud'}
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="phone">{language === 'bn' ? 'ফোন নম্বর' : 'Phone Number'}</Label>
+              <Input
+                id="phone"
+                type="tel"
+                value={phone}
+                onChange={(e) => {
+                  const value = e.target.value.replace(/\D/g, '').slice(0, 11);
+                  setPhone(value);
+                }}
+                placeholder="01XXXXXXXXX"
+                className="rounded-xl"
+                maxLength={11}
+                required
+              />
+              {phone && phone.length !== 11 && (
+                <p className="text-xs text-destructive">
+                  {language === 'bn' ? `${phone.length}/১১ সংখ্যা` : `${phone.length}/11 digits`}
+                </p>
+              )}
             </div>
             
             <div className="space-y-2">

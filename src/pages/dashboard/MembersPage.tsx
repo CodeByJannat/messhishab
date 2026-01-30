@@ -26,6 +26,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Plus, Trash2, Loader2, Users, Pencil, Search, ChevronLeft, ChevronRight, RefreshCw, Eye, EyeOff } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { isValidEmailDomain, getEmailDomainError, isValidBangladeshPhone, getPhoneError } from '@/lib/validation';
 
 interface EditingMember {
   id: string;
@@ -140,21 +141,25 @@ export default function MembersPage() {
     setShowNewPassword(true);
   };
 
-  // Phone number validation helper
-  const isValidPhone = (phone: string): boolean => {
-    const digitsOnly = phone.replace(/\D/g, '');
-    return digitsOnly.length === 11 && /^\d{11}$/.test(digitsOnly);
-  };
-
   const handleAddMember = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!mess) return;
 
-    // Validate phone number (11 digits only)
-    if (!isValidPhone(formData.phone)) {
+    // Validate email domain
+    if (!isValidEmailDomain(formData.email)) {
       toast({
         title: language === 'bn' ? 'ত্রুটি' : 'Error',
-        description: language === 'bn' ? 'ফোন নম্বর ১১ সংখ্যার হতে হবে' : 'Phone number must be exactly 11 digits',
+        description: getEmailDomainError(language),
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Validate phone number (11 digits starting with 01)
+    if (!isValidBangladeshPhone(formData.phone)) {
+      toast({
+        title: language === 'bn' ? 'ত্রুটি' : 'Error',
+        description: getPhoneError(language),
         variant: 'destructive',
       });
       return;
@@ -285,11 +290,21 @@ export default function MembersPage() {
     e.preventDefault();
     if (!mess || !editingMember) return;
 
-    // Validate phone number (11 digits only)
-    if (!isValidPhone(editFormData.phone)) {
+    // Validate email domain
+    if (!isValidEmailDomain(editFormData.email)) {
       toast({
         title: language === 'bn' ? 'ত্রুটি' : 'Error',
-        description: language === 'bn' ? 'ফোন নম্বর ১১ সংখ্যার হতে হবে' : 'Phone number must be exactly 11 digits',
+        description: getEmailDomainError(language),
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Validate phone number (11 digits starting with 01)
+    if (!isValidBangladeshPhone(editFormData.phone)) {
+      toast({
+        title: language === 'bn' ? 'ত্রুটি' : 'Error',
+        description: getPhoneError(language),
         variant: 'destructive',
       });
       return;
@@ -445,7 +460,21 @@ export default function MembersPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>{language === 'bn' ? 'ফোন * (১১ সংখ্যা)' : 'Phone * (11 digits)'}</Label>
+                  <Label>{language === 'bn' ? 'ইমেইল *' : 'Email *'}</Label>
+                  <Input
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    placeholder="example@gmail.com"
+                    required
+                    className="rounded-xl"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    {language === 'bn' ? 'Gmail, Outlook, Yahoo, Proton, iCloud' : 'Gmail, Outlook, Yahoo, Proton, iCloud'}
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <Label>{language === 'bn' ? 'ফোন * (০১ দিয়ে শুরু, ১১ সংখ্যা)' : 'Phone * (starts with 01, 11 digits)'}</Label>
                   <Input
                     value={formData.phone}
                     onChange={(e) => {
@@ -456,12 +485,14 @@ export default function MembersPage() {
                     placeholder="01XXXXXXXXX"
                     required
                     maxLength={11}
-                    pattern="\d{11}"
+                    pattern="01\d{9}"
                     className="rounded-xl"
                   />
-                  {formData.phone && formData.phone.length !== 11 && (
+                  {formData.phone && (formData.phone.length !== 11 || !formData.phone.startsWith('01')) && (
                     <p className="text-xs text-destructive">
-                      {language === 'bn' ? `${formData.phone.length}/১১ সংখ্যা` : `${formData.phone.length}/11 digits`}
+                      {language === 'bn' 
+                        ? `০১ দিয়ে শুরু হতে হবে, ${formData.phone.length}/১১ সংখ্যা` 
+                        : `Must start with 01, ${formData.phone.length}/11 digits`}
                     </p>
                   )}
                 </div>
