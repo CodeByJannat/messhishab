@@ -31,7 +31,28 @@ export function useDateValidation() {
    * 3. Cannot be in a month before subscription start month
    */
   const validateDate = (dateStr: string): DateValidationResult => {
+    // Handle empty or invalid date strings
+    if (!dateStr || dateStr.trim() === '') {
+      return {
+        isValid: false,
+        error: language === 'bn' 
+          ? 'তারিখ নির্বাচন করুন'
+          : 'Please select a date',
+      };
+    }
+
     const entryDate = startOfDay(parseISO(dateStr));
+    
+    // Check if parsed date is valid
+    if (isNaN(entryDate.getTime())) {
+      return {
+        isValid: false,
+        error: language === 'bn' 
+          ? 'অবৈধ তারিখ'
+          : 'Invalid date',
+      };
+    }
+
     const entryMonth = format(entryDate, 'yyyy-MM');
 
     // Rule 1: No future dates
