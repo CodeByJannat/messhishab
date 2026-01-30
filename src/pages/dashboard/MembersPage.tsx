@@ -431,82 +431,70 @@ export default function MembersPage() {
                 {language === 'bn' ? 'মেম্বার যোগ করুন' : 'Add Member'}
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-md">
+            <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>
                   {language === 'bn' ? 'নতুন মেম্বার যোগ করুন' : 'Add New Member'}
                 </DialogTitle>
               </DialogHeader>
-              <form onSubmit={handleAddMember} className="space-y-4">
-                <div className="space-y-2">
-                  <Label>{language === 'bn' ? 'নাম *' : 'Name *'}</Label>
-                  <Input
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    placeholder={language === 'bn' ? 'মেম্বারের নাম' : 'Member name'}
-                    required
-                    className="rounded-xl"
-                  />
+              <form onSubmit={handleAddMember} className="space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-sm">{language === 'bn' ? 'নাম *' : 'Name *'}</Label>
+                    <Input
+                      value={formData.name}
+                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      placeholder={language === 'bn' ? 'মেম্বারের নাম' : 'Member name'}
+                      required
+                      className="rounded-xl h-9"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-sm">{language === 'bn' ? 'রুম নম্বর' : 'Room'}</Label>
+                    <Input
+                      value={formData.roomNumber}
+                      onChange={(e) => setFormData({ ...formData, roomNumber: e.target.value })}
+                      placeholder={language === 'bn' ? 'রুম নম্বর' : 'Room number'}
+                      className="rounded-xl h-9"
+                    />
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label>{language === 'bn' ? 'ইমেইল *' : 'Email *'}</Label>
-                  <Input
-                    type="email"
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    placeholder="example@email.com"
-                    required
-                    className="rounded-xl"
-                  />
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-sm">{language === 'bn' ? 'ইমেইল *' : 'Email *'}</Label>
+                    <Input
+                      type="email"
+                      value={formData.email}
+                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                      placeholder="example@gmail.com"
+                      required
+                      className="rounded-xl h-9"
+                    />
+                    <p className="text-[10px] text-muted-foreground">Gmail, Outlook, Yahoo, Proton, iCloud</p>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-sm">{language === 'bn' ? 'ফোন * (০১...)' : 'Phone * (01...)'}</Label>
+                    <Input
+                      value={formData.phone}
+                      onChange={(e) => {
+                        const value = e.target.value.replace(/\D/g, '').slice(0, 11);
+                        setFormData({ ...formData, phone: value });
+                      }}
+                      placeholder="01XXXXXXXXX"
+                      required
+                      maxLength={11}
+                      className="rounded-xl h-9"
+                    />
+                    {formData.phone && (formData.phone.length !== 11 || !formData.phone.startsWith('01')) && (
+                      <p className="text-[10px] text-destructive">
+                        {language === 'bn' ? `০১ দিয়ে শুরু, ${formData.phone.length}/১১` : `Start with 01, ${formData.phone.length}/11`}
+                      </p>
+                    )}
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label>{language === 'bn' ? 'ইমেইল *' : 'Email *'}</Label>
-                  <Input
-                    type="email"
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    placeholder="example@gmail.com"
-                    required
-                    className="rounded-xl"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    {language === 'bn' ? 'Gmail, Outlook, Yahoo, Proton, iCloud' : 'Gmail, Outlook, Yahoo, Proton, iCloud'}
-                  </p>
-                </div>
-                <div className="space-y-2">
-                  <Label>{language === 'bn' ? 'ফোন * (০১ দিয়ে শুরু, ১১ সংখ্যা)' : 'Phone * (starts with 01, 11 digits)'}</Label>
-                  <Input
-                    value={formData.phone}
-                    onChange={(e) => {
-                      // Only allow digits
-                      const value = e.target.value.replace(/\D/g, '').slice(0, 11);
-                      setFormData({ ...formData, phone: value });
-                    }}
-                    placeholder="01XXXXXXXXX"
-                    required
-                    maxLength={11}
-                    pattern="01\d{9}"
-                    className="rounded-xl"
-                  />
-                  {formData.phone && (formData.phone.length !== 11 || !formData.phone.startsWith('01')) && (
-                    <p className="text-xs text-destructive">
-                      {language === 'bn' 
-                        ? `০১ দিয়ে শুরু হতে হবে, ${formData.phone.length}/১১ সংখ্যা` 
-                        : `Must start with 01, ${formData.phone.length}/11 digits`}
-                    </p>
-                  )}
-                </div>
-                <div className="space-y-2">
-                  <Label>{language === 'bn' ? 'রুম নম্বর' : 'Room Number'}</Label>
-                  <Input
-                    value={formData.roomNumber}
-                    onChange={(e) => setFormData({ ...formData, roomNumber: e.target.value })}
-                    placeholder={language === 'bn' ? 'রুম নম্বর' : 'Room number'}
-                    className="rounded-xl"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>{language === 'bn' ? 'পাসওয়ার্ড (৪-৬ অক্ষর) *' : 'Password (4-6 chars) *'}</Label>
+                <div className="space-y-1.5">
+                  <Label className="text-sm">{language === 'bn' ? 'পাসওয়ার্ড (৪-৬ অক্ষর) *' : 'Password (4-6 chars) *'}</Label>
                   <div className="flex gap-2">
                     <div className="relative flex-1">
                       <Input
@@ -516,7 +504,7 @@ export default function MembersPage() {
                         placeholder="••••••"
                         required
                         maxLength={6}
-                        className="rounded-xl pr-10"
+                        className="rounded-xl h-9 pr-10"
                       />
                       <Button
                         type="button"
@@ -534,22 +522,18 @@ export default function MembersPage() {
                       size="icon"
                       onClick={handleGeneratePassword}
                       title={language === 'bn' ? 'র‍্যান্ডম পাসওয়ার্ড' : 'Generate Random'}
-                      className="rounded-xl"
+                      className="rounded-xl h-9 w-9"
                     >
                       <RefreshCw className="w-4 h-4" />
                     </Button>
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    {language === 'bn'
-                      ? 'এই পাসওয়ার্ড মেম্বার লগইনের জন্য ব্যবহৃত হবে'
-                      : 'This password will be used for member login'}
+                  <p className="text-[10px] text-muted-foreground">
+                    {language === 'bn' ? 'মেম্বার লগইনের জন্য' : 'For member login'}
                   </p>
                 </div>
-                <DialogFooter>
-                  <Button type="submit" disabled={isSubmitting}>
-                    {isSubmitting ? (
-                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                    ) : null}
+                <DialogFooter className="pt-2">
+                  <Button type="submit" disabled={isSubmitting} className="h-9">
+                    {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
                     {language === 'bn' ? 'যোগ করুন' : 'Add'}
                   </Button>
                 </DialogFooter>
