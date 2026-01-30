@@ -122,9 +122,19 @@ export default function MemberDashboard() {
       if (error) throw error;
 
       if (data.success) {
+        // Save the verified session to localStorage
+        const verifiedSession = {
+          member: data.member,
+          mess: data.mess,
+          subscription: data.subscription,
+          session_token: data.session_token,
+        };
+        localStorage.setItem('member_session', JSON.stringify(verifiedSession));
+        
         setIsPinModalOpen(false);
         setAttemptCount(0);
-        navigate('/member/portal');
+        // Use window.location for full page reload to pick up the new session
+        window.location.href = '/member/portal';
       }
     } catch (error: any) {
       const newAttemptCount = attemptCount + 1;
