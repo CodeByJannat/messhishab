@@ -51,12 +51,12 @@ export default function Login() {
       // CRITICAL: Use window.location.href for immediate redirect
       // This ensures auth state is fully synchronized before navigation
       if (roleData?.role === 'admin') {
-        window.location.href = '/admin';
+        window.location.href = '/admin/dashboard';
       } else if (roleData?.role === 'member') {
-        window.location.href = '/member/portal';
+        window.location.href = '/member/dashboard';
       } else {
         // Default to manager dashboard
-        window.location.href = '/dashboard';
+        window.location.href = '/manager/dashboard';
       }
     } catch (error: any) {
       toast({

@@ -65,7 +65,7 @@ export default function SubscriptionPage() {
     }
 
     // Navigate to payment page with plan info
-    navigate("/dashboard/payment", {
+    navigate("/manager/payment", {
       state: {
         plan: selectedPlan,
         coupon: appliedCoupon,

@@ -9,21 +9,21 @@ interface ProtectedRouteProps {
 
 // Routes that are always accessible even without active subscription
 const ALWAYS_ACCESSIBLE_ROUTES = [
-  '/dashboard',
-  '/dashboard/subscription',
-  '/dashboard/payment',
-  '/dashboard/helpdesk', // Must be accessible for support communication
+  '/manager/dashboard',
+  '/manager/subscription',
+  '/manager/payment',
+  '/manager/helpdesk', // Must be accessible for support communication
 ];
 
 // Routes that require active subscription for managers
 const SUBSCRIPTION_REQUIRED_ROUTES = [
-  '/dashboard/members',
-  '/dashboard/meals',
-  '/dashboard/bazar',
-  '/dashboard/deposits',
-  '/dashboard/balance',
-  '/dashboard/pins',
-  '/dashboard/notifications',
+  '/manager/members',
+  '/manager/meals',
+  '/manager/bazar',
+  '/manager/deposits',
+  '/manager/balance',
+  '/manager/pins',
+  '/manager/notifications',
 ];
 
 export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) {
@@ -54,14 +54,14 @@ export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) 
     
     // If on a route that requires subscription and no active subscription, redirect to subscription page
     if (requiresSubscription && !hasActiveSubscription) {
-      return <Navigate to="/dashboard/subscription" replace />;
+      return <Navigate to="/manager/subscription" replace />;
     }
   }
 
   if (requiredRole && userRole !== requiredRole) {
-    if (userRole === 'admin') return <Navigate to="/admin" replace />;
-    if (userRole === 'manager') return <Navigate to="/dashboard" replace />;
-    return <Navigate to="/member" replace />;
+    if (userRole === 'admin') return <Navigate to="/admin/dashboard" replace />;
+    if (userRole === 'manager') return <Navigate to="/manager/dashboard" replace />;
+    return <Navigate to="/member/dashboard" replace />;
   }
 
   return <>{children}</>;

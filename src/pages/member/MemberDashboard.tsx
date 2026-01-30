@@ -4,7 +4,7 @@ import { useMemberAuth } from '@/contexts/MemberAuthContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { Loader2 } from 'lucide-react';
 
-// This page now redirects authenticated members to their portal
+// This page now redirects authenticated members to their dashboard
 // Since login is now email/password based, no need for member selection
 export default function MemberDashboard() {
   const { isAuthenticated, isLoading: memberLoading } = useMemberAuth();
@@ -14,18 +14,18 @@ export default function MemberDashboard() {
   useEffect(() => {
     if (authLoading || memberLoading) return;
 
-    // If authenticated as member, redirect to portal
+    // If authenticated as member, redirect to dashboard
     if (isAuthenticated && userRole === 'member') {
-      navigate('/member/portal', { replace: true });
+      navigate('/member/dashboard', { replace: true });
       return;
     }
 
     // If authenticated as other role, redirect accordingly
     if (user && userRole) {
       if (userRole === 'admin') {
-        navigate('/admin', { replace: true });
+        navigate('/admin/dashboard', { replace: true });
       } else if (userRole === 'manager') {
-        navigate('/dashboard', { replace: true });
+        navigate('/manager/dashboard', { replace: true });
       }
       return;
     }
