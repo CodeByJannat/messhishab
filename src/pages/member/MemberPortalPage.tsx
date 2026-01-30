@@ -77,7 +77,13 @@ export default function MemberPortalPage() {
     setIsLoading(true);
 
     try {
+      // Use Authorization header for the new auth flow
+      const { data: { session } } = await supabase.auth.getSession();
+      
       const { data, error } = await supabase.functions.invoke('get-member-portal-data', {
+        headers: session?.access_token ? {
+          Authorization: `Bearer ${session.access_token}`
+        } : undefined,
         body: {
           member_id: memberSession.member.id,
           mess_id: memberSession.mess.id,

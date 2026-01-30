@@ -1,12 +1,11 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Sun, Moon, Globe, ArrowLeft, Eye, EyeOff, User, ChevronLeft } from 'lucide-react';
+import { Sun, Moon, Globe, ArrowLeft, Eye, EyeOff } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -15,31 +14,24 @@ export default function Login() {
   const { t, language, setLanguage } = useLanguage();
   const { theme, toggleTheme } = useTheme();
   const { toast } = useToast();
-  const navigate = useNavigate();
   
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  
-  // Manager login state
-  const [managerEmail, setManagerEmail] = useState('');
-  const [managerPassword, setManagerPassword] = useState('');
-  
-  // Member login state
-  const [messId, setMessId] = useState('');
-  const [messPassword, setMessPassword] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
 
   const toggleLanguage = () => {
     setLanguage(language === 'bn' ? 'en' : 'bn');
   };
 
-  const handleManagerLogin = async (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
-        email: managerEmail,
-        password: managerPassword,
+        email,
+        password,
       });
       
       if (error) throw error;
@@ -60,7 +52,10 @@ export default function Login() {
       // This ensures auth state is fully synchronized before navigation
       if (roleData?.role === 'admin') {
         window.location.href = '/admin';
+      } else if (roleData?.role === 'member') {
+        window.location.href = '/member/portal';
       } else {
+        // Default to manager dashboard
         window.location.href = '/dashboard';
       }
     } catch (error: any) {
@@ -69,44 +64,6 @@ export default function Login() {
         description: error.message,
         variant: 'destructive',
       });
-      setIsLoading(false);
-    }
-  };
-
-  const handleMemberLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-    
-    try {
-      const { data, error } = await supabase.functions.invoke('member-login', {
-        body: { mess_id: messId, mess_password: messPassword },
-      });
-
-      if (error) throw error;
-      
-      if (data.success) {
-        // Store mess info and members for the member dashboard
-        localStorage.setItem('member_mess_session', JSON.stringify({
-          mess: data.mess,
-          members: data.members,
-          subscription: data.subscription,
-        }));
-        
-        toast({
-          title: language === 'bn' ? 'সফল!' : 'Success!',
-          description: language === 'bn' ? 'মেস ভেরিফাইড হয়েছে' : 'Mess verified successfully',
-        });
-        
-        // Redirect to member dashboard where they select their profile
-        window.location.href = '/member';
-      }
-    } catch (error: any) {
-      toast({
-        title: language === 'bn' ? 'ত্রুটি' : 'Error',
-        description: error.message || 'Invalid MessID or MessPassword',
-        variant: 'destructive',
-      });
-    } finally {
       setIsLoading(false);
     }
   };
@@ -153,104 +110,59 @@ export default function Login() {
       >
         <div className="glass-card p-8">
           {/* Logo */}
-          <div className="flex items-center justify-center gap-2 mb-8">
-            <div className="w-12 h-12 bg-primary rounded-xl flex items-center justify-center">
-              <span className="text-primary-foreground font-bold text-2xl">M</span>
+          <div className="flex items-center justify-center gap-2 mb-6">
+            <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center">
+              <span className="text-primary-foreground font-bold text-xl">M</span>
             </div>
-            <span className="font-bold text-2xl text-foreground">MessHishab</span>
+            <span className="font-bold text-xl text-foreground">MessHishab</span>
           </div>
 
-          <Tabs defaultValue="manager" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 mb-6">
-              <TabsTrigger value="manager">{t('auth.managerLogin')}</TabsTrigger>
-              <TabsTrigger value="member">{t('auth.memberLogin')}</TabsTrigger>
-            </TabsList>
+          <h2 className="text-xl font-semibold text-center mb-6">
+            {language === 'bn' ? 'লগইন করুন' : 'Login'}
+          </h2>
 
-            <TabsContent value="manager">
-              <form onSubmit={handleManagerLogin} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="manager-email">{t('auth.email')}</Label>
-                  <Input
-                    id="manager-email"
-                    type="email"
-                    value={managerEmail}
-                    onChange={(e) => setManagerEmail(e.target.value)}
-                    placeholder="example@email.com"
-                    className="rounded-xl"
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="manager-password">{t('auth.password')}</Label>
-                  <div className="relative">
-                    <Input
-                      id="manager-password"
-                      type={showPassword ? 'text' : 'password'}
-                      value={managerPassword}
-                      onChange={(e) => setManagerPassword(e.target.value)}
-                      className="rounded-xl pr-10"
-                      required
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                    >
-                      {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                    </button>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <Link to="/forgot-password" className="text-sm text-primary hover:underline">
-                    {t('auth.forgotPassword')}
-                  </Link>
-                </div>
-                <Button type="submit" className="w-full btn-primary-glow" disabled={isLoading}>
-                  {isLoading ? t('common.loading') : t('auth.login')}
-                </Button>
-              </form>
-            </TabsContent>
-
-            <TabsContent value="member">
-              <form onSubmit={handleMemberLogin} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="mess-id">{t('auth.messId')}</Label>
-                  <Input
-                    id="mess-id"
-                    type="text"
-                    value={messId}
-                    onChange={(e) => setMessId(e.target.value)}
-                    placeholder="MESS-XXXXXX"
-                    className="rounded-xl"
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="mess-password">{t('auth.messPassword')}</Label>
-                  <div className="relative">
-                    <Input
-                      id="mess-password"
-                      type={showPassword ? 'text' : 'password'}
-                      value={messPassword}
-                      onChange={(e) => setMessPassword(e.target.value)}
-                      className="rounded-xl pr-10"
-                      required
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                    >
-                      {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                    </button>
-                  </div>
-                </div>
-                <Button type="submit" className="w-full btn-primary-glow" disabled={isLoading}>
-                  {isLoading ? t('common.loading') : t('auth.login')}
-                </Button>
-              </form>
-            </TabsContent>
-          </Tabs>
+          <form onSubmit={handleLogin} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="email">{t('auth.email')}</Label>
+              <Input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="example@email.com"
+                className="rounded-xl"
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="password">{t('auth.password')}</Label>
+              <div className="relative">
+                <Input
+                  id="password"
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="rounded-xl pr-10"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
+              </div>
+            </div>
+            <div className="text-right">
+              <Link to="/forgot-password" className="text-sm text-primary hover:underline">
+                {t('auth.forgotPassword')}
+              </Link>
+            </div>
+            <Button type="submit" className="w-full btn-primary-glow" disabled={isLoading}>
+              {isLoading ? t('common.loading') : t('auth.login')}
+            </Button>
+          </form>
 
           <p className="text-center text-muted-foreground mt-6">
             {t('auth.noAccount')}{' '}
