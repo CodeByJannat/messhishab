@@ -32,16 +32,8 @@ export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) 
   const location = useLocation();
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="text-center">
-          <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-muted-foreground">
-            {language === 'bn' ? 'লোড হচ্ছে...' : 'Loading...'}
-          </p>
-        </div>
-      </div>
-    );
+    // Return minimal loading state - individual pages handle their own skeleton loading
+    return <div className="min-h-screen bg-background" />;
   }
 
   if (!user) {
