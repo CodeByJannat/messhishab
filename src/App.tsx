@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -74,6 +75,20 @@ const PageLoader = () => (
 );
 
 function App() {
+  // Global error handler for unhandled promise rejections
+  useEffect(() => {
+    const handleRejection = (event: PromiseRejectionEvent) => {
+      console.error("Unhandled promise rejection:", event.reason);
+      event.preventDefault();
+    };
+
+    window.addEventListener("unhandledrejection", handleRejection);
+
+    return () => {
+      window.removeEventListener("unhandledrejection", handleRejection);
+    };
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
