@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { DashboardLayout } from '@/components/dashboard/DashboardLayout';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -24,38 +24,26 @@ import {
 } from '@/components/ui/table';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Eye, Edit, Trash2, Loader2 } from 'lucide-react';
+import { Plus, Trash2, Loader2, Users } from 'lucide-react';
 import { motion } from 'framer-motion';
 
-interface Member {
+interface DecryptedMember {
   id: string;
   name: string;
-  email_encrypted: string | null;
-  phone_encrypted: string | null;
-  room_number_encrypted: string | null;
-  is_active: boolean;
-  created_at: string;
-}
-
-interface MemberDetails {
   email: string;
   phone: string;
   roomNumber: string;
+  is_active: boolean;
+  created_at: string;
 }
 
 export default function MembersPage() {
   const { mess } = useAuth();
   const { language } = useLanguage();
   const { toast } = useToast();
-  const [members, setMembers] = useState<Member[]>([]);
+  const [members, setMembers] = useState<DecryptedMember[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isAddOpen, setIsAddOpen] = useState(false);
-  const [isPinOpen, setIsPinOpen] = useState(false);
-  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
-  const [selectedMember, setSelectedMember] = useState<Member | null>(null);
-  const [memberDetails, setMemberDetails] = useState<MemberDetails | null>(null);
-  const [pinInput, setPinInput] = useState('');
-  const [isPinVerifying, setIsPinVerifying] = useState(false);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -78,14 +66,15 @@ export default function MembersPage() {
     setIsLoading(true);
 
     try {
-      const { data, error } = await supabase
-        .from('members')
-        .select('*')
-        .eq('mess_id', mess.id)
-        .order('created_at', { ascending: false });
+      const { data, error } = await supabase.functions.invoke('get-all-members', {
+        body: { messId: mess.id },
+      });
 
       if (error) throw error;
-      setMembers(data || []);
+      
+      if (data?.members) {
+        setMembers(data.members);
+      }
     } catch (error: any) {
       toast({
         title: language === 'bn' ? 'ত্রুটি' : 'Error',
@@ -113,7 +102,6 @@ export default function MembersPage() {
     setIsSubmitting(true);
 
     try {
-      // Call edge function to hash PIN and encrypt data
       const { data, error } = await supabase.functions.invoke('manage-member', {
         body: {
           action: 'create',
@@ -147,47 +135,6 @@ export default function MembersPage() {
     }
   };
 
-  const handleVerifyPin = async () => {
-    if (!selectedMember) return;
-    setIsPinVerifying(true);
-
-    try {
-      const { data, error } = await supabase.functions.invoke('verify-pin', {
-        body: {
-          memberId: selectedMember.id,
-          pin: pinInput,
-        },
-      });
-
-      if (error) throw error;
-
-      if (data.success) {
-        setMemberDetails({
-          email: data.email || '',
-          phone: data.phone || '',
-          roomNumber: data.roomNumber || '',
-        });
-        setIsPinOpen(false);
-        setIsDetailsOpen(true);
-        setPinInput('');
-      } else {
-        toast({
-          title: language === 'bn' ? 'ভুল পিন' : 'Wrong PIN',
-          description: language === 'bn' ? 'সঠিক পিন দিন' : 'Please enter correct PIN',
-          variant: 'destructive',
-        });
-      }
-    } catch (error: any) {
-      toast({
-        title: language === 'bn' ? 'ত্রুটি' : 'Error',
-        description: error.message,
-        variant: 'destructive',
-      });
-    } finally {
-      setIsPinVerifying(false);
-    }
-  };
-
   const handleDeleteMember = async (memberId: string) => {
     if (!confirm(language === 'bn' ? 'আপনি কি নিশ্চিত?' : 'Are you sure?')) return;
 
@@ -214,12 +161,6 @@ export default function MembersPage() {
     }
   };
 
-  const openPinDialog = (member: Member) => {
-    setSelectedMember(member);
-    setPinInput('');
-    setIsPinOpen(true);
-  };
-
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -230,7 +171,9 @@ export default function MembersPage() {
               {language === 'bn' ? 'মেম্বার ম্যানেজমেন্ট' : 'Member Management'}
             </h1>
             <p className="text-muted-foreground mt-1">
-              {language === 'bn' ? 'আপনার মেসের সকল মেম্বার' : 'All members of your mess'}
+              {language === 'bn' 
+                ? `মোট ${members.length} জন মেম্বার` 
+                : `Total ${members.length} members`}
             </p>
           </div>
 
@@ -299,8 +242,8 @@ export default function MembersPage() {
                   />
                   <p className="text-xs text-muted-foreground">
                     {language === 'bn'
-                      ? 'এই পিন দিয়ে মেম্বারের ব্যক্তিগত তথ্য দেখা যাবে'
-                      : 'This PIN will be used to view member personal details'}
+                      ? 'এই পিন মেম্বার লগইনের জন্য ব্যবহৃত হবে'
+                      : 'This PIN will be used for member login'}
                   </p>
                 </div>
                 <DialogFooter>
@@ -325,8 +268,14 @@ export default function MembersPage() {
               </div>
             ) : members.length === 0 ? (
               <div className="text-center py-12">
+                <Users className="w-12 h-12 mx-auto text-muted-foreground/50 mb-4" />
                 <p className="text-muted-foreground">
                   {language === 'bn' ? 'কোনো মেম্বার নেই' : 'No members yet'}
+                </p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {language === 'bn' 
+                    ? 'উপরের বাটনে ক্লিক করে মেম্বার যোগ করুন' 
+                    : 'Click the button above to add members'}
                 </p>
               </div>
             ) : (
@@ -335,6 +284,9 @@ export default function MembersPage() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>{language === 'bn' ? 'নাম' : 'Name'}</TableHead>
+                      <TableHead>{language === 'bn' ? 'ইমেইল' : 'Email'}</TableHead>
+                      <TableHead>{language === 'bn' ? 'ফোন' : 'Phone'}</TableHead>
+                      <TableHead>{language === 'bn' ? 'রুম নম্বর' : 'Room Number'}</TableHead>
                       <TableHead>{language === 'bn' ? 'স্ট্যাটাস' : 'Status'}</TableHead>
                       <TableHead>{language === 'bn' ? 'যোগ হয়েছে' : 'Added'}</TableHead>
                       <TableHead className="text-right">{language === 'bn' ? 'অ্যাকশন' : 'Actions'}</TableHead>
@@ -350,6 +302,15 @@ export default function MembersPage() {
                         className="border-b border-border"
                       >
                         <TableCell className="font-medium">{member.name}</TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {member.email || '-'}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {member.phone || '-'}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {member.roomNumber || '-'}
+                        </TableCell>
                         <TableCell>
                           <span className={`px-2 py-1 rounded-full text-xs ${
                             member.is_active
@@ -361,30 +322,19 @@ export default function MembersPage() {
                               : language === 'bn' ? 'নিষ্ক্রিয়' : 'Inactive'}
                           </span>
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="text-muted-foreground">
                           {new Date(member.created_at).toLocaleDateString(language === 'bn' ? 'bn-BD' : 'en-US')}
                         </TableCell>
                         <TableCell className="text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => openPinDialog(member)}
-                              className="rounded-xl"
-                              title={language === 'bn' ? 'বিস্তারিত দেখুন' : 'View details'}
-                            >
-                              <Eye className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleDeleteMember(member.id)}
-                              className="rounded-xl text-destructive hover:text-destructive"
-                              title={language === 'bn' ? 'মুছুন' : 'Delete'}
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </div>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDeleteMember(member.id)}
+                            className="rounded-xl text-destructive hover:text-destructive"
+                            title={language === 'bn' ? 'মুছুন' : 'Delete'}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
                         </TableCell>
                       </motion.tr>
                     ))}
@@ -394,68 +344,6 @@ export default function MembersPage() {
             )}
           </CardContent>
         </Card>
-
-        {/* PIN Verification Dialog */}
-        <Dialog open={isPinOpen} onOpenChange={setIsPinOpen}>
-          <DialogContent className="sm:max-w-sm">
-            <DialogHeader>
-              <DialogTitle>
-                {language === 'bn' ? 'পিন যাচাই করুন' : 'Verify PIN'}
-              </DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              <p className="text-muted-foreground text-sm">
-                {language === 'bn'
-                  ? `${selectedMember?.name} এর তথ্য দেখতে পিন দিন`
-                  : `Enter PIN to view ${selectedMember?.name}'s details`}
-              </p>
-              <Input
-                type="password"
-                value={pinInput}
-                onChange={(e) => setPinInput(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                placeholder="••••"
-                maxLength={6}
-                className="rounded-xl text-center text-2xl tracking-widest"
-                autoFocus
-              />
-              <Button
-                onClick={handleVerifyPin}
-                disabled={isPinVerifying || pinInput.length < 4}
-                className="w-full"
-              >
-                {isPinVerifying ? (
-                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                ) : null}
-                {language === 'bn' ? 'যাচাই করুন' : 'Verify'}
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
-
-        {/* Member Details Dialog */}
-        <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle>
-                {selectedMember?.name} - {language === 'bn' ? 'বিস্তারিত' : 'Details'}
-              </DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label>{language === 'bn' ? 'ইমেইল' : 'Email'}</Label>
-                <Input value={memberDetails?.email || '-'} readOnly className="rounded-xl" />
-              </div>
-              <div className="space-y-2">
-                <Label>{language === 'bn' ? 'ফোন' : 'Phone'}</Label>
-                <Input value={memberDetails?.phone || '-'} readOnly className="rounded-xl" />
-              </div>
-              <div className="space-y-2">
-                <Label>{language === 'bn' ? 'রুম নম্বর' : 'Room Number'}</Label>
-                <Input value={memberDetails?.roomNumber || '-'} readOnly className="rounded-xl" />
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
       </div>
     </DashboardLayout>
   );
