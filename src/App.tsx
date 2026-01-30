@@ -38,7 +38,9 @@ import ManagerHelpDeskPage from "./pages/dashboard/ManagerHelpDeskPage";
 // Member Dashboard
 import MemberDashboard from "./pages/member/MemberDashboard";
 import MemberPortalPage from "./pages/member/MemberPortalPage";
+import MemberMealsPage from "./pages/member/MemberMealsPage";
 import MemberBazarPage from "./pages/member/MemberBazarPage";
+import MemberDepositsPage from "./pages/member/MemberDepositsPage";
 import MemberNotificationsPage from "./pages/member/MemberNotificationsPage";
 import MemberContactPage from "./pages/member/MemberContactPage";
 // Admin Dashboard
@@ -90,7 +92,9 @@ function App() {
                     {/* Member Dashboard Routes */}
                     <Route path="/member" element={<MemberDashboard />} />
                     <Route path="/member/portal" element={<MemberProtectedRoute><MemberPortalPage /></MemberProtectedRoute>} />
+                    <Route path="/member/meals" element={<MemberProtectedRoute><MemberMealsPage /></MemberProtectedRoute>} />
                     <Route path="/member/bazar" element={<MemberProtectedRoute><MemberBazarPage /></MemberProtectedRoute>} />
+                    <Route path="/member/deposits" element={<MemberProtectedRoute><MemberDepositsPage /></MemberProtectedRoute>} />
                     <Route path="/member/notifications" element={<MemberProtectedRoute><MemberNotificationsPage /></MemberProtectedRoute>} />
                     <Route path="/member/contact" element={<MemberProtectedRoute><MemberContactPage /></MemberProtectedRoute>} />
                     {/* Admin Dashboard Routes */}
