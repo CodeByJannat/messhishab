@@ -31,7 +31,6 @@ export function MessNameSetupModal({ isOpen, messId }: MessNameSetupModalProps) 
   const [generatedMessId, setGeneratedMessId] = useState<string | null>(null);
 
   const isValid = messName.trim().length >= 2;
-  const isTempMessId = messId && (messId.startsWith('T') || messId.startsWith('PENDING'));
 
   const handleSave = async () => {
     if (!isValid) return;
