@@ -36,25 +36,26 @@ serve(async (req) => {
       );
     }
 
-    // Create user-context client to validate the token
+    // Create client with user's auth header for token validation
     const supabaseUser = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_ANON_KEY')!,
       { global: { headers: { Authorization: authHeader } } }
     );
 
-    // Validate user token
-    const { data: { user }, error: userError } = await supabaseUser.auth.getUser();
+    // Validate token using getClaims
+    const token = authHeader.replace('Bearer ', '');
+    const { data: claimsData, error: claimsError } = await supabaseUser.auth.getClaims(token);
     
-    if (userError || !user) {
-      console.error('Auth error:', userError?.message);
+    if (claimsError || !claimsData?.claims) {
+      console.error('Auth error:', claimsError?.message || 'No claims found');
       return new Response(
         JSON.stringify({ error: 'Unauthorized' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    const userId = user.id;
+    const userId = claimsData.claims.sub as string;
 
     // Create admin client for database operations
     const supabaseAdmin = createClient(
