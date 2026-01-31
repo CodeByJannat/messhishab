@@ -36,23 +36,31 @@ serve(async (req) => {
       );
     }
 
-    const supabaseAdmin = createClient(
+    // Create user-context client to validate the token
+    const supabaseUser = createClient(
       Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+      Deno.env.get('SUPABASE_ANON_KEY')!,
+      { global: { headers: { Authorization: authHeader } } }
     );
 
-    // Verify user using getClaims for better reliability
-    const token = authHeader.replace('Bearer ', '');
-    const { data: claimsData, error: claimsError } = await supabaseAdmin.auth.getClaims(token);
+    // Validate user token
+    const { data: { user }, error: userError } = await supabaseUser.auth.getUser();
     
-    if (claimsError || !claimsData?.claims) {
+    if (userError || !user) {
+      console.error('Auth error:', userError?.message);
       return new Response(
         JSON.stringify({ error: 'Unauthorized' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    const userId = claimsData.claims.sub as string;
+    const userId = user.id;
+
+    // Create admin client for database operations
+    const supabaseAdmin = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    );
     const { messId } = await req.json();
 
     // Verify user is manager of this mess
