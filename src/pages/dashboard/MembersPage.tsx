@@ -185,7 +185,7 @@ export default function MembersPage() {
           email: formData.email,
           phone: formData.phone,
           roomNumber: formData.roomNumber,
-          pin: formData.password,
+          password: formData.password,
         },
       });
 
@@ -362,7 +362,7 @@ export default function MembersPage() {
 
     try {
       const { data, error } = await supabase.functions.invoke('update-member-pin', {
-        body: { action: 'edit', memberId: editingMember.id, newPin: newPassword },
+        body: { action: 'edit', memberId: editingMember.id, newPassword: newPassword },
       });
 
       if (error) throw error;
