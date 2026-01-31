@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -6,11 +6,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Sun, Moon, Globe, ArrowLeft, Eye, EyeOff } from 'lucide-react';
+import { ValidationTooltip } from '@/components/ui/validation-tooltip';
+import { Sun, Moon, Globe, ArrowLeft, Eye, EyeOff, Loader2, CheckCircle2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { isValidEmailDomain, getEmailDomainError, isValidBangladeshPhone, getPhoneError } from '@/lib/validation';
+import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 
 export default function Register() {
   const { t, language, setLanguage } = useLanguage();
@@ -26,19 +28,178 @@ export default function Register() {
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  
+  // OTP states
+  const [otpSent, setOtpSent] = useState(false);
+  const [otpVerified, setOtpVerified] = useState(false);
+  const [otp, setOtp] = useState('');
+  const [sendingOtp, setSendingOtp] = useState(false);
+  const [verifyingOtp, setVerifyingOtp] = useState(false);
+  const [otpCountdown, setOtpCountdown] = useState(0);
+  
+  // Turnstile states
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [turnstileSiteKey, setTurnstileSiteKey] = useState<string | null>(null);
+
+  // Fetch Turnstile site key
+  useEffect(() => {
+    const fetchTurnstileKey = async () => {
+      try {
+        const { data } = await supabase.functions.invoke('get-turnstile-key');
+        if (data?.siteKey) {
+          setTurnstileSiteKey(data.siteKey);
+        }
+      } catch (error) {
+        console.error('Failed to fetch Turnstile key:', error);
+      }
+    };
+    fetchTurnstileKey();
+  }, []);
+
+  // Load Turnstile script
+  useEffect(() => {
+    if (!turnstileSiteKey) return;
+    
+    const script = document.createElement('script');
+    script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js';
+    script.async = true;
+    document.body.appendChild(script);
+    
+    return () => {
+      document.body.removeChild(script);
+    };
+  }, [turnstileSiteKey]);
+
+  // OTP countdown timer
+  useEffect(() => {
+    if (otpCountdown > 0) {
+      const timer = setTimeout(() => setOtpCountdown(otpCountdown - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [otpCountdown]);
+
+  // Handle Turnstile callback
+  useEffect(() => {
+    (window as any).onTurnstileCallback = (token: string) => {
+      setTurnstileToken(token);
+    };
+    return () => {
+      delete (window as any).onTurnstileCallback;
+    };
+  }, []);
 
   const toggleLanguage = () => {
     setLanguage(language === 'bn' ? 'en' : 'bn');
   };
 
-  const handleRegister = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    // Validate email domain
+  // Validation messages
+  const emailValidationMessage = language === 'bn' 
+    ? 'Gmail, Outlook, Hotmail, Yahoo, Proton Mail, iCloud ইমেইল গ্রহণযোগ্য' 
+    : 'Gmail, Outlook, Hotmail, Yahoo, Proton Mail, iCloud emails accepted';
+  
+  const phoneValidationMessage = language === 'bn'
+    ? 'বাংলাদেশী নম্বর, ০১ দিয়ে শুরু, ১১ সংখ্যা'
+    : 'Bangladesh number, starts with 01, 11 digits';
+
+  const passwordValidationMessage = language === 'bn'
+    ? 'কমপক্ষে ৬ অক্ষর'
+    : 'Minimum 6 characters';
+
+  // Email validation error
+  const getEmailError = () => {
+    if (!email) return null;
+    if (!email.includes('@')) return null;
     if (!isValidEmailDomain(email)) {
+      return language === 'bn' ? 'অগ্রহণযোগ্য ইমেইল ডোমেইন' : 'Invalid email domain';
+    }
+    return null;
+  };
+
+  // Phone validation error
+  const getPhoneValidationError = () => {
+    if (!phone) return null;
+    if (phone.length > 0 && !phone.startsWith('01')) {
+      return language === 'bn' ? '০১ দিয়ে শুরু করুন' : 'Must start with 01';
+    }
+    if (phone.length > 0 && phone.length < 11) {
+      return language === 'bn' ? `${phone.length}/১১ সংখ্যা` : `${phone.length}/11 digits`;
+    }
+    return null;
+  };
+
+  const handleSendOtp = async () => {
+    if (!email || !isValidEmailDomain(email)) {
       toast({
         title: language === 'bn' ? 'ত্রুটি' : 'Error',
         description: getEmailDomainError(language),
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setSendingOtp(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('send-email-otp', {
+        body: { email, language },
+      });
+
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
+
+      setOtpSent(true);
+      setOtpCountdown(300); // 5 minutes
+      toast({
+        title: language === 'bn' ? 'সফল!' : 'Success!',
+        description: language === 'bn' ? 'OTP পাঠানো হয়েছে' : 'OTP sent to your email',
+      });
+    } catch (error: any) {
+      toast({
+        title: language === 'bn' ? 'ত্রুটি' : 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    } finally {
+      setSendingOtp(false);
+    }
+  };
+
+  const handleVerifyOtp = async (value: string) => {
+    if (value.length !== 6) return;
+    
+    setVerifyingOtp(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('verify-email-otp', {
+        body: { email, otp: value },
+      });
+
+      if (error) throw error;
+      if (!data.valid) throw new Error(data.error || 'Invalid OTP');
+
+      setOtpVerified(true);
+      toast({
+        title: language === 'bn' ? 'সফল!' : 'Success!',
+        description: language === 'bn' ? 'ইমেইল ভেরিফাই হয়েছে' : 'Email verified successfully',
+      });
+    } catch (error: any) {
+      toast({
+        title: language === 'bn' ? 'ত্রুটি' : 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+      setOtp('');
+    } finally {
+      setVerifyingOtp(false);
+    }
+  };
+
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // Check OTP verification
+    if (!otpVerified) {
+      toast({
+        title: language === 'bn' ? 'ত্রুটি' : 'Error',
+        description: language === 'bn' ? 'ইমেইল ভেরিফাই করুন' : 'Please verify your email first',
         variant: 'destructive',
       });
       return;
@@ -80,6 +241,16 @@ export default function Register() {
       });
       return;
     }
+
+    // Check Turnstile
+    if (!turnstileToken) {
+      toast({
+        title: language === 'bn' ? 'ত্রুটি' : 'Error',
+        description: language === 'bn' ? 'রোবট ভেরিফিকেশন সম্পন্ন করুন' : 'Please complete the verification',
+        variant: 'destructive',
+      });
+      return;
+    }
     
     setIsLoading(true);
     
@@ -94,11 +265,11 @@ export default function Register() {
       
       if (error) throw error;
       
-      // Send branded welcome email (fire and forget - don't block registration)
+      // Send branded welcome email
       supabase.functions.invoke('send-welcome-email', {
         body: { 
           email, 
-          messId: '', // Will show "Check your dashboard" in email
+          messId: '',
           language 
         },
       }).catch(err => console.error('Welcome email error:', err));
@@ -120,6 +291,12 @@ export default function Register() {
     }
   };
 
+  const formatCountdown = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center p-4 relative">
       {/* Background */}
@@ -135,20 +312,10 @@ export default function Register() {
           <span>{language === 'bn' ? 'হোম' : 'Home'}</span>
         </Link>
         <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={toggleLanguage}
-            className="rounded-xl"
-          >
+          <Button variant="ghost" size="icon" onClick={toggleLanguage} className="rounded-xl">
             <Globe className="h-5 w-5" />
           </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={toggleTheme}
-            className="rounded-xl"
-          >
+          <Button variant="ghost" size="icon" onClick={toggleTheme} className="rounded-xl">
             {theme === 'light' ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
           </Button>
         </div>
@@ -158,40 +325,100 @@ export default function Register() {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-md relative z-10"
+        className="w-full max-w-sm relative z-10"
       >
-        <div className="glass-card p-6">
-          {/* Logo */}
-          <div className="flex items-center justify-center gap-2 mb-4">
-            <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center">
-              <span className="text-primary-foreground font-bold text-xl">M</span>
-            </div>
-            <span className="font-bold text-xl text-foreground">MessHishab</span>
-          </div>
-
-          <h1 className="text-xl font-bold text-center text-foreground mb-4">
+        <div className="glass-card p-5">
+          <h1 className="text-lg font-bold text-center text-foreground mb-4">
             {t('auth.register')}
           </h1>
 
           <form onSubmit={handleRegister} className="space-y-3">
-            <div className="space-y-1.5">
-              <Label htmlFor="email" className="text-sm">{t('auth.email')}</Label>
-              <Input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="example@gmail.com"
-                className="rounded-xl h-9"
-                required
-              />
-              <p className="text-xs text-muted-foreground">
-                Gmail, Outlook, Yahoo, Proton, iCloud
-              </p>
+            {/* Email with Send OTP */}
+            <div className="space-y-1">
+              <div className="flex items-center gap-1">
+                <Label htmlFor="email" className="text-sm">{t('auth.email')}</Label>
+                <ValidationTooltip message={emailValidationMessage} />
+              </div>
+              <div className="flex gap-2">
+                <Input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    setOtpSent(false);
+                    setOtpVerified(false);
+                    setOtp('');
+                  }}
+                  placeholder="example@gmail.com"
+                  className="rounded-xl h-9 flex-1"
+                  disabled={otpVerified}
+                  required
+                />
+                <Button
+                  type="button"
+                  variant={otpVerified ? "outline" : "secondary"}
+                  size="sm"
+                  onClick={handleSendOtp}
+                  disabled={sendingOtp || otpVerified || !email || !isValidEmailDomain(email) || otpCountdown > 0}
+                  className="rounded-xl h-9 px-3 whitespace-nowrap"
+                >
+                  {sendingOtp ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : otpVerified ? (
+                    <CheckCircle2 className="w-4 h-4 text-green-500" />
+                  ) : otpCountdown > 0 ? (
+                    formatCountdown(otpCountdown)
+                  ) : (
+                    language === 'bn' ? 'OTP' : 'Send OTP'
+                  )}
+                </Button>
+              </div>
+              {getEmailError() && (
+                <p className="text-xs text-destructive">{getEmailError()}</p>
+              )}
             </div>
 
-            <div className="space-y-1.5">
-              <Label htmlFor="phone" className="text-sm">{language === 'bn' ? 'ফোন নম্বর' : 'Phone'}</Label>
+            {/* OTP Input */}
+            {otpSent && !otpVerified && (
+              <div className="space-y-1">
+                <Label className="text-sm">{language === 'bn' ? 'OTP কোড' : 'OTP Code'}</Label>
+                <div className="flex justify-center">
+                  <InputOTP 
+                    maxLength={6} 
+                    value={otp} 
+                    onChange={(value) => {
+                      setOtp(value);
+                      if (value.length === 6) {
+                        handleVerifyOtp(value);
+                      }
+                    }}
+                    disabled={verifyingOtp}
+                  >
+                    <InputOTPGroup>
+                      <InputOTPSlot index={0} />
+                      <InputOTPSlot index={1} />
+                      <InputOTPSlot index={2} />
+                      <InputOTPSlot index={3} />
+                      <InputOTPSlot index={4} />
+                      <InputOTPSlot index={5} />
+                    </InputOTPGroup>
+                  </InputOTP>
+                </div>
+                {verifyingOtp && (
+                  <div className="flex justify-center">
+                    <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Phone */}
+            <div className="space-y-1">
+              <div className="flex items-center gap-1">
+                <Label htmlFor="phone" className="text-sm">{language === 'bn' ? 'ফোন নম্বর' : 'Phone'}</Label>
+                <ValidationTooltip message={phoneValidationMessage} />
+              </div>
               <Input
                 id="phone"
                 type="tel"
@@ -205,20 +432,17 @@ export default function Register() {
                 maxLength={11}
                 required
               />
-              {phone && phone.length !== 11 && (
-                <p className="text-xs text-destructive">
-                  {language === 'bn' ? `${phone.length}/১১ সংখ্যা` : `${phone.length}/11 digits`}
-                </p>
-              )}
-              {phone && phone.length > 0 && !phone.startsWith('01') && (
-                <p className="text-xs text-destructive">
-                  {language === 'bn' ? '০১ দিয়ে শুরু করুন' : 'Must start with 01'}
-                </p>
+              {getPhoneValidationError() && (
+                <p className="text-xs text-destructive">{getPhoneValidationError()}</p>
               )}
             </div>
             
-            <div className="space-y-1.5">
-              <Label htmlFor="password" className="text-sm">{t('auth.password')}</Label>
+            {/* Password */}
+            <div className="space-y-1">
+              <div className="flex items-center gap-1">
+                <Label htmlFor="password" className="text-sm">{t('auth.password')}</Label>
+                <ValidationTooltip message={passwordValidationMessage} />
+              </div>
               <div className="relative">
                 <Input
                   id="password"
@@ -238,7 +462,8 @@ export default function Register() {
               </div>
             </div>
             
-            <div className="space-y-1.5">
+            {/* Confirm Password */}
+            <div className="space-y-1">
               <Label htmlFor="confirm-password" className="text-sm">{t('auth.confirmPassword')}</Label>
               <Input
                 id="confirm-password"
@@ -248,51 +473,63 @@ export default function Register() {
                 className="rounded-xl h-9"
                 required
               />
+              {confirmPassword && password !== confirmPassword && (
+                <p className="text-xs text-destructive">
+                  {language === 'bn' ? 'পাসওয়ার্ড মিলছে না' : 'Passwords do not match'}
+                </p>
+              )}
             </div>
 
-            <div className="flex items-center space-x-2">
+            {/* Terms */}
+            <div className="flex items-start space-x-2">
               <Checkbox 
                 id="terms" 
                 checked={agreeTerms}
                 onCheckedChange={(checked) => setAgreeTerms(checked as boolean)}
+                className="mt-0.5"
               />
-              <label
-                htmlFor="terms"
-                className="text-sm text-muted-foreground leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-              >
+              <label htmlFor="terms" className="text-xs text-muted-foreground leading-tight">
                 {language === 'bn' ? (
                   <>
                     আমি{' '}
-                    <Link to="/terms" className="text-primary hover:underline">
-                      শর্তাবলী
-                    </Link>
+                    <Link to="/terms" className="text-primary hover:underline">শর্তাবলী</Link>
                     {' '}ও{' '}
-                    <Link to="/privacy" className="text-primary hover:underline">
-                      প্রাইভেসি পলিসি
-                    </Link>
+                    <Link to="/privacy" className="text-primary hover:underline">প্রাইভেসি পলিসি</Link>
                     {' '}মানতে সম্মত
                   </>
                 ) : (
                   <>
                     I agree to the{' '}
-                    <Link to="/terms" className="text-primary hover:underline">
-                      Terms
-                    </Link>
+                    <Link to="/terms" className="text-primary hover:underline">Terms</Link>
                     {' '}and{' '}
-                    <Link to="/privacy" className="text-primary hover:underline">
-                      Privacy Policy
-                    </Link>
+                    <Link to="/privacy" className="text-primary hover:underline">Privacy Policy</Link>
                   </>
                 )}
               </label>
             </div>
 
-            <Button type="submit" className="w-full btn-primary-glow" disabled={isLoading}>
+            {/* Turnstile */}
+            {turnstileSiteKey && (
+              <div className="flex justify-center">
+                <div
+                  className="cf-turnstile"
+                  data-sitekey={turnstileSiteKey}
+                  data-callback="onTurnstileCallback"
+                  data-theme={theme}
+                />
+              </div>
+            )}
+
+            <Button 
+              type="submit" 
+              className="w-full btn-primary-glow" 
+              disabled={isLoading || !otpVerified || !turnstileToken}
+            >
               {isLoading ? t('common.loading') : t('auth.register')}
             </Button>
           </form>
 
-          <p className="text-center text-muted-foreground mt-6">
+          <p className="text-center text-sm text-muted-foreground mt-4">
             {t('auth.hasAccount')}{' '}
             <Link to="/login" className="text-primary hover:underline">
               {t('auth.loginHere')}
