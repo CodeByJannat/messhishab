@@ -121,6 +121,25 @@ Deno.serve(async (req) => {
       .order('created_at', { ascending: false })
       .limit(10);
 
+    // Fetch sent messages by this member (messages with member_id reference)
+    const { data: sentMsgData } = await supabase
+      .from('notifications')
+      .select('id, message, created_at')
+      .eq('mess_id', mess_id)
+      .eq('to_member_id', member_id)
+      .eq('to_all', false)
+      .order('created_at', { ascending: false })
+      .limit(10);
+
+    // Fetch additional costs for the mess
+    const { data: additionalCostsData } = await supabase
+      .from('additional_costs')
+      .select('id, date, description, amount')
+      .eq('mess_id', mess_id)
+      .order('date', { ascending: false });
+
+    const totalAdditionalCosts = additionalCostsData?.reduce((sum, c) => sum + Number(c.amount), 0) || 0;
+
     return new Response(
       JSON.stringify({
         success: true,
@@ -142,6 +161,9 @@ Deno.serve(async (req) => {
           totalBazar,
           notifications: notifData || [],
           adminMessages: adminMsgData || [],
+          sentMessages: sentMsgData || [],
+          additionalCosts: additionalCostsData || [],
+          totalAdditionalCosts,
         },
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
