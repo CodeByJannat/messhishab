@@ -50,7 +50,7 @@ export function MemberAuthProvider({ children }: { children: ReactNode }) {
   const logout = () => {
     localStorage.removeItem('member_session');
     setMemberSession(null);
-    window.location.href = '/login';
+    window.location.href = '/member/dashboard';
   };
 
   return (

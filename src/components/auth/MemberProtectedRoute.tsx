@@ -14,7 +14,7 @@ export function MemberProtectedRoute({ children }: MemberProtectedRouteProps) {
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/member/dashboard" replace />;
   }
 
   return <>{children}</>;
