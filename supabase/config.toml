@@ -23,3 +23,48 @@ verify_jwt = false
 
 [functions.submit-payment]
 verify_jwt = false
+
+[functions.submit-member-message]
+verify_jwt = false
+
+[functions.get-member-portal-data]
+verify_jwt = false
+
+[functions.member-login]
+verify_jwt = false
+
+[functions.get-all-members]
+verify_jwt = false
+
+[functions.manage-member]
+verify_jwt = false
+
+[functions.toggle-member-status]
+verify_jwt = false
+
+[functions.update-member-pin]
+verify_jwt = false
+
+[functions.member-verify-pin]
+verify_jwt = false
+
+[functions.apply-coupon]
+verify_jwt = false
+
+[functions.send-email-otp]
+verify_jwt = false
+
+[functions.verify-email-otp]
+verify_jwt = false
+
+[functions.send-password-reset]
+verify_jwt = false
+
+[functions.send-welcome-email]
+verify_jwt = false
+
+[functions.monthly-reset]
+verify_jwt = false
+
+[functions.verify-pin]
+verify_jwt = false
