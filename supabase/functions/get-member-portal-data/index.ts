@@ -11,41 +11,78 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { member_id, mess_id, session_token } = await req.json();
-
-    if (!member_id || !mess_id || !session_token) {
-      return new Response(
-        JSON.stringify({ error: 'Missing required parameters' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Verify session token exists and is a valid UUID format
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    if (!uuidRegex.test(session_token)) {
-      return new Response(
-        JSON.stringify({ error: 'Invalid session' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+    // Get the auth token from header
+    const authHeader = req.headers.get('Authorization');
+    let member_id: string;
+    let mess_id: string;
 
-    // Verify member exists and is active
-    const { data: member, error: memberError } = await supabase
-      .from('members')
-      .select('id, name, mess_id, is_active')
-      .eq('id', member_id)
-      .eq('mess_id', mess_id)
-      .single();
+    if (authHeader?.startsWith('Bearer ')) {
+      // Authenticated via Supabase Auth
+      const token = authHeader.replace('Bearer ', '');
+      const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+      
+      if (userError || !user) {
+        return new Response(
+          JSON.stringify({ error: 'Unauthorized' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
 
-    if (memberError || !member || !member.is_active) {
-      return new Response(
-        JSON.stringify({ error: 'Member not found or inactive' }),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      // Get member by user_id
+      const { data: member, error: memberError } = await supabase
+        .from('members')
+        .select('id, name, mess_id, is_active')
+        .eq('user_id', user.id)
+        .single();
+
+      if (memberError || !member) {
+        return new Response(
+          JSON.stringify({ error: 'Member not found' }),
+          { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      if (!member.is_active) {
+        return new Response(
+          JSON.stringify({ error: 'Member is not active' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      member_id = member.id;
+      mess_id = member.mess_id;
+    } else {
+      // Fallback to body params (for backward compatibility)
+      const body = await req.json();
+      
+      if (!body.member_id || !body.mess_id) {
+        return new Response(
+          JSON.stringify({ error: 'Missing required parameters' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Verify member exists and is active
+      const { data: member, error: memberError } = await supabase
+        .from('members')
+        .select('id, name, mess_id, is_active')
+        .eq('id', body.member_id)
+        .eq('mess_id', body.mess_id)
+        .single();
+
+      if (memberError || !member || !member.is_active) {
+        return new Response(
+          JSON.stringify({ error: 'Member not found or inactive' }),
+          { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      member_id = body.member_id;
+      mess_id = body.mess_id;
     }
 
     // Fetch member's meals

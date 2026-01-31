@@ -6,15 +6,6 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
-// Simple hash function for PIN (in production, use bcrypt via a proper library)
-async function hashPin(pin: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(pin + Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')?.slice(0, 16));
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-}
-
 // Simple encryption for PII
 async function encryptData(data: string): Promise<string> {
   if (!data) return '';
@@ -23,7 +14,6 @@ async function encryptData(data: string): Promise<string> {
   const keyData = encoder.encode(key);
   const dataBytes = encoder.encode(data);
   
-  // XOR encryption (simplified - in production use proper encryption)
   const encrypted = dataBytes.map((byte, i) => byte ^ keyData[i % keyData.length]);
   return btoa(String.fromCharCode(...encrypted));
 }
@@ -76,12 +66,12 @@ serve(async (req) => {
     }
 
     const userId = user.id;
-    const { action, messId, memberId, name, email, phone, roomNumber, pin } = await req.json();
+    const { action, messId, memberId, name, email, phone, roomNumber, password } = await req.json();
 
     // Verify user is manager of this mess
     const { data: mess, error: messError } = await supabaseAdmin
       .from('messes')
-      .select('id')
+      .select('id, mess_id')
       .eq('id', messId)
       .eq('manager_id', userId)
       .single();
@@ -95,7 +85,7 @@ serve(async (req) => {
 
     if (action === 'create') {
       // Validate required fields
-      if (!name || !pin || !email || !phone) {
+      if (!name || !password || !email || !phone) {
         return new Response(
           JSON.stringify({ error: 'Name, email, phone and password are required' }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -111,11 +101,35 @@ serve(async (req) => {
         );
       }
 
-      // Check if member with same email or phone exists in ANY mess
+      // Validate password length
+      if (password.length < 6) {
+        return new Response(
+          JSON.stringify({ error: 'Password must be at least 6 characters' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const normalizedEmail = email.toLowerCase().trim();
+      const normalizedPhone = phoneDigits;
+
+      // Check if email already exists in Supabase Auth
+      const { data: existingAuthUsers } = await supabaseAdmin.auth.admin.listUsers();
+      const emailExists = existingAuthUsers?.users?.some(u => u.email?.toLowerCase() === normalizedEmail);
+      
+      if (emailExists) {
+        return new Response(
+          JSON.stringify({
+            error: 'This email is already registered. Please use a different email.',
+            errorBn: 'এই ইমেইল ইতিমধ্যে নিবন্ধিত। অনুগ্রহ করে অন্য ইমেইল ব্যবহার করুন।'
+          }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Check if member with same phone exists in ANY mess
       const { data: allMembers, error: checkError } = await supabaseAdmin
         .from('members')
-        .select('id, mess_id, email_encrypted, phone_encrypted')
-        .neq('mess_id', messId); // Check other messes
+        .select('id, mess_id, phone_encrypted');
 
       if (checkError) {
         console.error('Check existing member error:', checkError);
@@ -125,92 +139,89 @@ serve(async (req) => {
         );
       }
 
-      // Decrypt and check each member's email and phone
-      const normalizedEmail = email.toLowerCase().trim();
-      const normalizedPhone = phoneDigits;
-
+      // Decrypt and check each member's phone
       for (const existingMember of allMembers || []) {
-        const decryptedEmail = existingMember.email_encrypted ? decryptData(existingMember.email_encrypted) : '';
         const decryptedPhone = existingMember.phone_encrypted ? decryptData(existingMember.phone_encrypted) : '';
         
-        if (decryptedEmail && decryptedEmail.toLowerCase().trim() === normalizedEmail) {
-          return new Response(
-            JSON.stringify({
-              error: 'This email is already registered in another mess. One member can only be in one mess at a time.',
-              errorBn: 'এই ইমেইল অন্য একটি মেসে নিবন্ধিত। একজন মেম্বার একবারে শুধুমাত্র একটি মেসে থাকতে পারে।'
-            }),
-            { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
-        }
-        
         if (decryptedPhone && decryptedPhone.replace(/\D/g, '') === normalizedPhone) {
+          const isSameMess = existingMember.mess_id === messId;
           return new Response(
             JSON.stringify({
-              error: 'This phone number is already registered in another mess. One member can only be in one mess at a time.',
-              errorBn: 'এই ফোন নম্বর অন্য একটি মেসে নিবন্ধিত। একজন মেম্বার একবারে শুধুমাত্র একটি মেসে থাকতে পারে।'
+              error: isSameMess 
+                ? 'This phone number is already registered in this mess.'
+                : 'This phone number is already registered in another mess. One member can only be in one mess at a time.',
+              errorBn: isSameMess
+                ? 'এই ফোন নম্বর ইতিমধ্যে এই মেসে নিবন্ধিত।'
+                : 'এই ফোন নম্বর অন্য একটি মেসে নিবন্ধিত। একজন মেম্বার একবারে শুধুমাত্র একটি মেসে থাকতে পারে।'
             }),
             { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
       }
 
-      // Also check within the same mess
-      const { data: sameMembersRaw } = await supabaseAdmin
-        .from('members')
-        .select('id, email_encrypted, phone_encrypted')
-        .eq('mess_id', messId);
+      // Create Supabase Auth user for member
+      const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
+        email: normalizedEmail,
+        password: password,
+        email_confirm: true, // Auto-confirm since manager is creating
+        user_metadata: {
+          name: name,
+          role: 'member',
+          mess_id: mess.mess_id,
+        }
+      });
 
-      for (const existingMember of sameMembersRaw || []) {
-        const decryptedEmail = existingMember.email_encrypted ? decryptData(existingMember.email_encrypted) : '';
-        const decryptedPhone = existingMember.phone_encrypted ? decryptData(existingMember.phone_encrypted) : '';
-        
-        if (decryptedEmail && decryptedEmail.toLowerCase().trim() === normalizedEmail) {
-          return new Response(
-            JSON.stringify({
-              error: 'This email is already registered in this mess.',
-              errorBn: 'এই ইমেইল ইতিমধ্যে এই মেসে নিবন্ধিত।'
-            }),
-            { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
-        }
-        
-        if (decryptedPhone && decryptedPhone.replace(/\D/g, '') === normalizedPhone) {
-          return new Response(
-            JSON.stringify({
-              error: 'This phone number is already registered in this mess.',
-              errorBn: 'এই ফোন নম্বর ইতিমধ্যে এই মেসে নিবন্ধিত।'
-            }),
-            { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
-        }
+      if (authError) {
+        console.error('Auth user creation error:', authError);
+        return new Response(
+          JSON.stringify({ 
+            error: authError.message,
+            errorBn: 'মেম্বার অ্যাকাউন্ট তৈরিতে সমস্যা হয়েছে।'
+          }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
       }
 
-      // Hash PIN and encrypt PII
-      const pinHash = await hashPin(pin);
+      // Encrypt PII
       const emailEncrypted = await encryptData(email);
       const phoneEncrypted = await encryptData(phone);
       const roomEncrypted = roomNumber ? await encryptData(roomNumber) : null;
 
-      // Create member
+      // Create member with user_id linked to auth user
       const { data: member, error: memberError } = await supabaseAdmin
         .from('members')
         .insert({
           mess_id: messId,
+          user_id: authUser.user.id,
           name,
           email_encrypted: emailEncrypted,
           phone_encrypted: phoneEncrypted,
           room_number_encrypted: roomEncrypted,
-          pin_hash: pinHash,
+          pin_hash: '', // No longer using PIN, using Supabase Auth
         })
         .select()
         .single();
 
       if (memberError) {
         console.error('Member creation error:', memberError);
+        // Clean up auth user if member creation fails
+        await supabaseAdmin.auth.admin.deleteUser(authUser.user.id);
         return new Response(
           JSON.stringify({ error: memberError.message }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
+      }
+
+      // Add member role
+      const { error: roleError } = await supabaseAdmin
+        .from('user_roles')
+        .insert({
+          user_id: authUser.user.id,
+          role: 'member',
+        });
+
+      if (roleError) {
+        console.error('Role assignment error:', roleError);
       }
 
       return new Response(
@@ -226,6 +237,13 @@ serve(async (req) => {
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
+
+      // Get existing member to find user_id
+      const { data: existingMember } = await supabaseAdmin
+        .from('members')
+        .select('user_id')
+        .eq('id', memberId)
+        .single();
 
       // Encrypt PII
       const emailEncrypted = email ? await encryptData(email) : null;
@@ -247,6 +265,104 @@ serve(async (req) => {
 
       if (updateError) {
         console.error('Member update error:', updateError);
+        return new Response(
+          JSON.stringify({ error: updateError.message }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Update auth user email if changed and user_id exists
+      if (existingMember?.user_id && email) {
+        await supabaseAdmin.auth.admin.updateUserById(existingMember.user_id, {
+          email: email.toLowerCase().trim(),
+          user_metadata: { name: name }
+        });
+      }
+
+      return new Response(
+        JSON.stringify({ success: true }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (action === 'delete') {
+      if (!memberId) {
+        return new Response(
+          JSON.stringify({ error: 'Member ID is required' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Get member to find user_id
+      const { data: member } = await supabaseAdmin
+        .from('members')
+        .select('user_id')
+        .eq('id', memberId)
+        .eq('mess_id', messId)
+        .single();
+
+      // Delete member record
+      const { error: deleteError } = await supabaseAdmin
+        .from('members')
+        .delete()
+        .eq('id', memberId)
+        .eq('mess_id', messId);
+
+      if (deleteError) {
+        return new Response(
+          JSON.stringify({ error: deleteError.message }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Delete auth user if exists
+      if (member?.user_id) {
+        await supabaseAdmin.auth.admin.deleteUser(member.user_id);
+      }
+
+      return new Response(
+        JSON.stringify({ success: true }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (action === 'reset-password') {
+      if (!memberId || !password) {
+        return new Response(
+          JSON.stringify({ error: 'Member ID and password are required' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      if (password.length < 6) {
+        return new Response(
+          JSON.stringify({ error: 'Password must be at least 6 characters' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Get member to find user_id
+      const { data: member } = await supabaseAdmin
+        .from('members')
+        .select('user_id')
+        .eq('id', memberId)
+        .eq('mess_id', messId)
+        .single();
+
+      if (!member?.user_id) {
+        return new Response(
+          JSON.stringify({ error: 'Member does not have an associated account' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Update auth user password
+      const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
+        member.user_id,
+        { password: password }
+      );
+
+      if (updateError) {
         return new Response(
           JSON.stringify({ error: updateError.message }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

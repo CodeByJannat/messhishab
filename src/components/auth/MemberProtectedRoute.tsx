@@ -1,5 +1,6 @@
 import { Navigate } from 'react-router-dom';
 import { useMemberAuth } from '@/contexts/MemberAuthContext';
+import { Loader2 } from 'lucide-react';
 
 interface MemberProtectedRouteProps {
   children: React.ReactNode;
@@ -8,13 +9,16 @@ interface MemberProtectedRouteProps {
 export function MemberProtectedRoute({ children }: MemberProtectedRouteProps) {
   const { isAuthenticated, isLoading } = useMemberAuth();
 
-  // Let the child component handle loading state with its own skeleton
   if (isLoading) {
-    return <div className="min-h-screen bg-background" />;
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/member/dashboard" replace />;
+    return <Navigate to="/login" replace />;
   }
 
   return <>{children}</>;

@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Sun, Moon, Globe, ArrowLeft, Eye, EyeOff, User, ChevronLeft } from 'lucide-react';
+import { Sun, Moon, Globe, ArrowLeft, Eye, EyeOff } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -25,8 +25,8 @@ export default function Login() {
   const [managerPassword, setManagerPassword] = useState('');
   
   // Member login state
-  const [messId, setMessId] = useState('');
-  const [messPassword, setMessPassword] = useState('');
+  const [memberEmail, setMemberEmail] = useState('');
+  const [memberPassword, setMemberPassword] = useState('');
 
   const toggleLanguage = () => {
     setLanguage(language === 'bn' ? 'en' : 'bn');
@@ -57,9 +57,10 @@ export default function Login() {
       });
       
       // CRITICAL: Use window.location.href for immediate redirect
-      // This ensures auth state is fully synchronized before navigation
       if (roleData?.role === 'admin') {
         window.location.href = '/admin/dashboard';
+      } else if (roleData?.role === 'member') {
+        window.location.href = '/member/portal';
       } else {
         window.location.href = '/manager/dashboard';
       }
@@ -78,32 +79,105 @@ export default function Login() {
     setIsLoading(true);
     
     try {
-      const { data, error } = await supabase.functions.invoke('member-login', {
-        body: { mess_id: messId, mess_password: messPassword },
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: memberEmail,
+        password: memberPassword,
       });
 
       if (error) throw error;
       
-      if (data.success) {
-        // Store mess info and members for the member dashboard
-        localStorage.setItem('member_mess_session', JSON.stringify({
-          mess: data.mess,
-          members: data.members,
-          subscription: data.subscription,
-        }));
-        
+      // Check if user is a member
+      const { data: roleData } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', data.user.id)
+        .single();
+      
+      if (roleData?.role !== 'member') {
+        await supabase.auth.signOut();
         toast({
-          title: language === 'bn' ? 'সফল!' : 'Success!',
-          description: language === 'bn' ? 'মেস ভেরিফাইড হয়েছে' : 'Mess verified successfully',
+          title: language === 'bn' ? 'ত্রুটি' : 'Error',
+          description: language === 'bn' 
+            ? 'এই অ্যাকাউন্ট মেম্বার নয়। ম্যানেজার ট্যাব থেকে লগইন করুন।' 
+            : 'This account is not a member. Please use Manager tab to login.',
+          variant: 'destructive',
         });
-        
-        // Redirect to member dashboard where they select their profile
-        window.location.href = '/member/dashboard';
+        setIsLoading(false);
+        return;
       }
+
+      // Check if member is active
+      const { data: member } = await supabase
+        .from('members')
+        .select('is_active, mess_id')
+        .eq('user_id', data.user.id)
+        .single();
+
+      if (!member?.is_active) {
+        await supabase.auth.signOut();
+        toast({
+          title: language === 'bn' ? 'ত্রুটি' : 'Error',
+          description: language === 'bn' 
+            ? 'আপনার অ্যাকাউন্ট নিষ্ক্রিয়। ম্যানেজারের সাথে যোগাযোগ করুন।' 
+            : 'Your account is inactive. Please contact your manager.',
+          variant: 'destructive',
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      // Check mess status
+      const { data: mess } = await supabase
+        .from('messes')
+        .select('status')
+        .eq('id', member.mess_id)
+        .single();
+
+      if (mess?.status === 'suspended') {
+        await supabase.auth.signOut();
+        toast({
+          title: language === 'bn' ? 'ত্রুটি' : 'Error',
+          description: language === 'bn' 
+            ? 'এই মেস সাসপেন্ড করা হয়েছে। অ্যাডমিনের সাথে যোগাযোগ করুন।' 
+            : 'This mess is suspended. Please contact admin.',
+          variant: 'destructive',
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      // Check subscription
+      const { data: subscription } = await supabase
+        .from('subscriptions')
+        .select('status, end_date')
+        .eq('mess_id', member.mess_id)
+        .single();
+
+      if (!subscription || subscription.status !== 'active' || new Date(subscription.end_date) < new Date()) {
+        await supabase.auth.signOut();
+        toast({
+          title: language === 'bn' ? 'ত্রুটি' : 'Error',
+          description: language === 'bn' 
+            ? 'সাবস্ক্রিপশন মেয়াদ উত্তীর্ণ। ম্যানেজারের সাথে যোগাযোগ করুন।' 
+            : 'Subscription expired. Please contact your manager.',
+          variant: 'destructive',
+        });
+        setIsLoading(false);
+        return;
+      }
+        
+      toast({
+        title: language === 'bn' ? 'সফল!' : 'Success!',
+        description: language === 'bn' ? 'লগইন সফল হয়েছে' : 'Login successful',
+      });
+      
+      window.location.href = '/member/portal';
     } catch (error: any) {
       toast({
         title: language === 'bn' ? 'ত্রুটি' : 'Error',
-        description: error.message || 'Invalid MessID or MessPassword',
+        description: language === 'bn' 
+          ? 'ইমেইল বা পাসওয়ার্ড ভুল' 
+          : 'Invalid email or password',
         variant: 'destructive',
       });
     } finally {
@@ -214,25 +288,25 @@ export default function Login() {
             <TabsContent value="member">
               <form onSubmit={handleMemberLogin} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="mess-id">{t('auth.messId')}</Label>
+                  <Label htmlFor="member-email">{t('auth.email')}</Label>
                   <Input
-                    id="mess-id"
-                    type="text"
-                    value={messId}
-                    onChange={(e) => setMessId(e.target.value)}
-                    placeholder="MESS-XXXXXX"
+                    id="member-email"
+                    type="email"
+                    value={memberEmail}
+                    onChange={(e) => setMemberEmail(e.target.value)}
+                    placeholder="example@email.com"
                     className="rounded-xl"
                     required
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="mess-password">{t('auth.messPassword')}</Label>
+                  <Label htmlFor="member-password">{t('auth.password')}</Label>
                   <div className="relative">
                     <Input
-                      id="mess-password"
+                      id="member-password"
                       type={showPassword ? 'text' : 'password'}
-                      value={messPassword}
-                      onChange={(e) => setMessPassword(e.target.value)}
+                      value={memberPassword}
+                      onChange={(e) => setMemberPassword(e.target.value)}
                       className="rounded-xl pr-10"
                       required
                     />
@@ -245,6 +319,11 @@ export default function Login() {
                     </button>
                   </div>
                 </div>
+                <p className="text-xs text-muted-foreground">
+                  {language === 'bn' 
+                    ? 'আপনার ম্যানেজার থেকে পাওয়া ইমেইল ও পাসওয়ার্ড দিন' 
+                    : 'Use the email and password provided by your manager'}
+                </p>
                 <Button type="submit" className="w-full btn-primary-glow" disabled={isLoading}>
                   {isLoading ? t('common.loading') : t('auth.login')}
                 </Button>
