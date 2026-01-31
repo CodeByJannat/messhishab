@@ -6,44 +6,6 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
-// Simple hash function for PIN (in production, use bcrypt via a proper library)
-async function hashPin(pin: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(pin + Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')?.slice(0, 16));
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-}
-
-// Simple encryption for PII
-async function encryptData(data: string): Promise<string> {
-  if (!data) return '';
-  const key = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')?.slice(0, 32) || '';
-  const encoder = new TextEncoder();
-  const keyData = encoder.encode(key);
-  const dataBytes = encoder.encode(data);
-  
-  // XOR encryption (simplified - in production use proper encryption)
-  const encrypted = dataBytes.map((byte, i) => byte ^ keyData[i % keyData.length]);
-  return btoa(String.fromCharCode(...encrypted));
-}
-
-// Decrypt function for checking existing members
-function decryptData(encrypted: string): string {
-  if (!encrypted) return '';
-  const key = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')?.slice(0, 32) || '';
-  const encoder = new TextEncoder();
-  const keyData = encoder.encode(key);
-  
-  try {
-    const encryptedBytes = Uint8Array.from(atob(encrypted), c => c.charCodeAt(0));
-    const decrypted = encryptedBytes.map((byte, i) => byte ^ keyData[i % keyData.length]);
-    return new TextDecoder().decode(decrypted);
-  } catch {
-    return '';
-  }
-}
-
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -84,7 +46,8 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     );
-    const { action, messId, memberId, name, email, phone, roomNumber, pin } = await req.json();
+
+    const { action, messId, memberId, name, email, phone, roomNumber, password } = await req.json();
 
     // Verify user is manager of this mess
     const { data: mess, error: messError } = await supabaseAdmin
@@ -103,7 +66,7 @@ serve(async (req) => {
 
     if (action === 'create') {
       // Validate required fields
-      if (!name || !pin || !email || !phone) {
+      if (!name || !password || !email || !phone) {
         return new Response(
           JSON.stringify({ error: 'Name, email, phone and password are required' }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -120,95 +83,88 @@ serve(async (req) => {
       }
 
       // Check if member with same email or phone exists in ANY mess
-      const { data: allMembers, error: checkError } = await supabaseAdmin
-        .from('members')
-        .select('id, mess_id, email_encrypted, phone_encrypted')
-        .neq('mess_id', messId); // Check other messes
-
-      if (checkError) {
-        console.error('Check existing member error:', checkError);
-        return new Response(
-          JSON.stringify({ error: 'Failed to check existing members' }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-
-      // Decrypt and check each member's email and phone
       const normalizedEmail = email.toLowerCase().trim();
       const normalizedPhone = phoneDigits;
 
-      for (const existingMember of allMembers || []) {
-        const decryptedEmail = existingMember.email_encrypted ? decryptData(existingMember.email_encrypted) : '';
-        const decryptedPhone = existingMember.phone_encrypted ? decryptData(existingMember.phone_encrypted) : '';
-        
-        if (decryptedEmail && decryptedEmail.toLowerCase().trim() === normalizedEmail) {
-          return new Response(
-            JSON.stringify({
-              error: 'This email is already registered in another mess. One member can only be in one mess at a time.',
-              errorBn: 'এই ইমেইল অন্য একটি মেসে নিবন্ধিত। একজন মেম্বার একবারে শুধুমাত্র একটি মেসে থাকতে পারে।'
-            }),
-            { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
-        }
-        
-        if (decryptedPhone && decryptedPhone.replace(/\D/g, '') === normalizedPhone) {
-          return new Response(
-            JSON.stringify({
-              error: 'This phone number is already registered in another mess. One member can only be in one mess at a time.',
-              errorBn: 'এই ফোন নম্বর অন্য একটি মেসে নিবন্ধিত। একজন মেম্বার একবারে শুধুমাত্র একটি মেসে থাকতে পারে।'
-            }),
-            { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
-        }
-      }
-
-      // Also check within the same mess
-      const { data: sameMembersRaw } = await supabaseAdmin
+      const { data: existingByEmail } = await supabaseAdmin
         .from('members')
-        .select('id, email_encrypted, phone_encrypted')
-        .eq('mess_id', messId);
+        .select('id, mess_id')
+        .ilike('email', normalizedEmail)
+        .neq('mess_id', messId)
+        .limit(1);
 
-      for (const existingMember of sameMembersRaw || []) {
-        const decryptedEmail = existingMember.email_encrypted ? decryptData(existingMember.email_encrypted) : '';
-        const decryptedPhone = existingMember.phone_encrypted ? decryptData(existingMember.phone_encrypted) : '';
-        
-        if (decryptedEmail && decryptedEmail.toLowerCase().trim() === normalizedEmail) {
-          return new Response(
-            JSON.stringify({
-              error: 'This email is already registered in this mess.',
-              errorBn: 'এই ইমেইল ইতিমধ্যে এই মেসে নিবন্ধিত।'
-            }),
-            { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
-        }
-        
-        if (decryptedPhone && decryptedPhone.replace(/\D/g, '') === normalizedPhone) {
-          return new Response(
-            JSON.stringify({
-              error: 'This phone number is already registered in this mess.',
-              errorBn: 'এই ফোন নম্বর ইতিমধ্যে এই মেসে নিবন্ধিত।'
-            }),
-            { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
-        }
+      if (existingByEmail && existingByEmail.length > 0) {
+        return new Response(
+          JSON.stringify({
+            error: 'This email is already registered in another mess. One member can only be in one mess at a time.',
+            errorBn: 'এই ইমেইল অন্য একটি মেসে নিবন্ধিত। একজন মেম্বার একবারে শুধুমাত্র একটি মেসে থাকতে পারে।'
+          }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
       }
 
-      // Hash PIN and encrypt PII
-      const pinHash = await hashPin(pin);
-      const emailEncrypted = await encryptData(email);
-      const phoneEncrypted = await encryptData(phone);
-      const roomEncrypted = roomNumber ? await encryptData(roomNumber) : null;
+      const { data: existingByPhone } = await supabaseAdmin
+        .from('members')
+        .select('id, mess_id')
+        .eq('phone', normalizedPhone)
+        .neq('mess_id', messId)
+        .limit(1);
 
-      // Create member
+      if (existingByPhone && existingByPhone.length > 0) {
+        return new Response(
+          JSON.stringify({
+            error: 'This phone number is already registered in another mess. One member can only be in one mess at a time.',
+            errorBn: 'এই ফোন নম্বর অন্য একটি মেসে নিবন্ধিত। একজন মেম্বার একবারে শুধুমাত্র একটি মেসে থাকতে পারে।'
+          }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Check within the same mess
+      const { data: sameMessEmail } = await supabaseAdmin
+        .from('members')
+        .select('id')
+        .eq('mess_id', messId)
+        .ilike('email', normalizedEmail)
+        .limit(1);
+
+      if (sameMessEmail && sameMessEmail.length > 0) {
+        return new Response(
+          JSON.stringify({
+            error: 'This email is already registered in this mess.',
+            errorBn: 'এই ইমেইল ইতিমধ্যে এই মেসে নিবন্ধিত।'
+          }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const { data: sameMessPhone } = await supabaseAdmin
+        .from('members')
+        .select('id')
+        .eq('mess_id', messId)
+        .eq('phone', normalizedPhone)
+        .limit(1);
+
+      if (sameMessPhone && sameMessPhone.length > 0) {
+        return new Response(
+          JSON.stringify({
+            error: 'This phone number is already registered in this mess.',
+            errorBn: 'এই ফোন নম্বর ইতিমধ্যে এই মেসে নিবন্ধিত।'
+          }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Create member with plain text fields
       const { data: member, error: memberError } = await supabaseAdmin
         .from('members')
         .insert({
           mess_id: messId,
           name,
-          email_encrypted: emailEncrypted,
-          phone_encrypted: phoneEncrypted,
-          room_number_encrypted: roomEncrypted,
-          pin_hash: pinHash,
+          email: normalizedEmail,
+          phone: normalizedPhone,
+          room_number: roomNumber || null,
+          password: password,
         })
         .select()
         .single();
@@ -235,26 +191,55 @@ serve(async (req) => {
         );
       }
 
-      // Encrypt PII
-      const emailEncrypted = email ? await encryptData(email) : null;
-      const phoneEncrypted = phone ? await encryptData(phone) : null;
-      const roomEncrypted = roomNumber ? await encryptData(roomNumber) : null;
+      // Update member with plain text fields
+      const updateData: Record<string, unknown> = {
+        name,
+        updated_at: new Date().toISOString(),
+      };
 
-      // Update member
+      if (email) updateData.email = email.toLowerCase().trim();
+      if (phone) updateData.phone = phone.replace(/\D/g, '');
+      if (roomNumber !== undefined) updateData.room_number = roomNumber || null;
+
+      const { error: updateError } = await supabaseAdmin
+        .from('members')
+        .update(updateData)
+        .eq('id', memberId)
+        .eq('mess_id', messId);
+
+      if (updateError) {
+        console.error('Member update error:', updateError);
+        return new Response(
+          JSON.stringify({ error: updateError.message }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      return new Response(
+        JSON.stringify({ success: true }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (action === 'update-password') {
+      if (!memberId || !password) {
+        return new Response(
+          JSON.stringify({ error: 'Member ID and password are required' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
       const { error: updateError } = await supabaseAdmin
         .from('members')
         .update({
-          name,
-          email_encrypted: emailEncrypted,
-          phone_encrypted: phoneEncrypted,
-          room_number_encrypted: roomEncrypted,
+          password: password,
           updated_at: new Date().toISOString(),
         })
         .eq('id', memberId)
         .eq('mess_id', messId);
 
       if (updateError) {
-        console.error('Member update error:', updateError);
+        console.error('Password update error:', updateError);
         return new Response(
           JSON.stringify({ error: updateError.message }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

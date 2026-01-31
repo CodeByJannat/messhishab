@@ -6,22 +6,6 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
-// Decrypt function matching manage-member
-function decryptData(encrypted: string): string {
-  if (!encrypted) return '';
-  const key = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')?.slice(0, 32) || '';
-  const encoder = new TextEncoder();
-  const keyData = encoder.encode(key);
-  
-  try {
-    const encryptedBytes = Uint8Array.from(atob(encrypted), c => c.charCodeAt(0));
-    const decrypted = encryptedBytes.map((byte, i) => byte ^ keyData[i % keyData.length]);
-    return new TextDecoder().decode(decrypted);
-  } catch {
-    return '';
-  }
-}
-
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -62,6 +46,7 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     );
+
     const { messId } = await req.json();
 
     // Verify user is manager of this mess
@@ -79,10 +64,10 @@ serve(async (req) => {
       );
     }
 
-    // Get all members for this mess
+    // Get all members for this mess with plain text fields
     const { data: members, error: membersError } = await supabaseAdmin
       .from('members')
-      .select('id, name, email_encrypted, phone_encrypted, room_number_encrypted, is_active, created_at')
+      .select('id, name, email, phone, room_number, is_active, created_at')
       .eq('mess_id', messId)
       .order('created_at', { ascending: false });
 
@@ -90,19 +75,19 @@ serve(async (req) => {
       throw membersError;
     }
 
-    // Decrypt all member data
-    const decryptedMembers = (members || []).map(member => ({
+    // Map to expected format
+    const formattedMembers = (members || []).map(member => ({
       id: member.id,
       name: member.name,
-      email: decryptData(member.email_encrypted || ''),
-      phone: decryptData(member.phone_encrypted || ''),
-      roomNumber: decryptData(member.room_number_encrypted || ''),
+      email: member.email || '',
+      phone: member.phone || '',
+      roomNumber: member.room_number || '',
       is_active: member.is_active,
       created_at: member.created_at,
     }));
 
     return new Response(
-      JSON.stringify({ success: true, members: decryptedMembers }),
+      JSON.stringify({ success: true, members: formattedMembers }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error: unknown) {

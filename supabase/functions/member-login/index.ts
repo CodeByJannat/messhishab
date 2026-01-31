@@ -5,26 +5,6 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
-// Simple hash function for PIN verification (same as member-verify-pin)
-async function hashPin(pin: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(pin);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-}
-
-// Simple decryption for member data
-function decryptData(encryptedData: string | null): string | null {
-  if (!encryptedData) return null;
-  try {
-    const decoded = atob(encryptedData);
-    return decoded;
-  } catch {
-    return encryptedData;
-  }
-}
-
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -44,44 +24,29 @@ Deno.serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Hash the provided password
-    const passwordHash = await hashPin(password);
-
-    // Find member by email and password
-    // First, get all active members and check email
-    const { data: members, error: membersError } = await supabase
+    // Find member by email (case-insensitive) using plain text email field
+    const normalizedEmail = email.toLowerCase().trim();
+    
+    const { data: member, error: memberError } = await supabase
       .from('members')
-      .select('id, name, email_encrypted, pin_hash, mess_id, is_active')
-      .eq('is_active', true);
+      .select('id, name, email, phone, room_number, password, mess_id, is_active')
+      .ilike('email', normalizedEmail)
+      .eq('is_active', true)
+      .single();
 
-    if (membersError) throw membersError;
-
-    // Find member with matching email
-    const member = members?.find(m => {
-      const decryptedEmail = decryptData(m.email_encrypted);
-      return decryptedEmail?.toLowerCase() === email.toLowerCase();
-    });
-
-    if (!member) {
+    if (memberError || !member) {
+      console.error('Member lookup error:', memberError?.message);
       return new Response(
         JSON.stringify({ error: 'Invalid email or password' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Verify password (stored as pin_hash)
-    if (member.pin_hash !== passwordHash) {
+    // Verify password (plain text comparison)
+    if (member.password !== password) {
       return new Response(
         JSON.stringify({ error: 'Invalid email or password' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Check if member is active
-    if (!member.is_active) {
-      return new Response(
-        JSON.stringify({ error: 'Your account has been deactivated. Contact your manager.' }),
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -134,6 +99,9 @@ Deno.serve(async (req) => {
         member: {
           id: member.id,
           name: member.name,
+          email: member.email,
+          phone: member.phone,
+          roomNumber: member.room_number,
         },
         mess: {
           id: mess.id,
@@ -152,6 +120,7 @@ Deno.serve(async (req) => {
     );
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error('Server error:', errorMessage);
     return new Response(
       JSON.stringify({ error: errorMessage }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

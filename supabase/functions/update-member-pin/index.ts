@@ -5,18 +5,13 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
-async function hashPin(pin: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(pin + Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')?.slice(0, 16));
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-}
-
-function generateRandomPin(): string {
-  const min = 1000;
-  const max = 999999;
-  return String(Math.floor(Math.random() * (max - min + 1)) + min).padStart(4, '0');
+function generateRandomPassword(): string {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+  let password = '';
+  for (let i = 0; i < 6; i++) {
+    password += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return password;
 }
 
 Deno.serve(async (req) => {
@@ -33,22 +28,33 @@ Deno.serve(async (req) => {
       );
     }
 
-    const supabaseAdmin = createClient(
+    // Create client with user's auth header for token validation
+    const supabaseUser = createClient(
       Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+      Deno.env.get('SUPABASE_ANON_KEY')!,
+      { global: { headers: { Authorization: authHeader } } }
     );
 
+    // Validate token using getClaims
     const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token);
+    const { data: claimsData, error: claimsError } = await supabaseUser.auth.getClaims(token);
     
-    if (userError || !user) {
+    if (claimsError || !claimsData?.claims) {
       return new Response(
         JSON.stringify({ error: 'Unauthorized: Invalid token' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    const { action, memberId, newPin } = await req.json();
+    const userId = claimsData.claims.sub as string;
+
+    // Create admin client for database operations
+    const supabaseAdmin = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    );
+
+    const { action, memberId, newPassword } = await req.json();
 
     // Get member and verify manager ownership
     const { data: member, error: memberError } = await supabaseAdmin
@@ -69,7 +75,7 @@ Deno.serve(async (req) => {
       .from('messes')
       .select('id')
       .eq('id', member.mess_id)
-      .eq('manager_id', user.id)
+      .eq('manager_id', userId)
       .single();
 
     if (messError || !mess) {
@@ -79,20 +85,20 @@ Deno.serve(async (req) => {
       );
     }
 
-    let pinToSet: string;
-    let pinToReturn: string | null = null;
+    let passwordToSet: string;
+    let passwordToReturn: string | null = null;
 
     if (action === 'edit') {
-      if (!newPin || newPin.length < 4 || newPin.length > 6) {
+      if (!newPassword || newPassword.length < 4 || newPassword.length > 20) {
         return new Response(
-          JSON.stringify({ error: 'PIN must be 4-6 digits' }),
+          JSON.stringify({ error: 'Password must be 4-20 characters' }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
-      pinToSet = newPin;
+      passwordToSet = newPassword;
     } else if (action === 'reset') {
-      pinToSet = generateRandomPin();
-      pinToReturn = pinToSet; // Return the generated PIN to show manager once
+      passwordToSet = generateRandomPassword();
+      passwordToReturn = passwordToSet; // Return the generated password to show manager once
     } else {
       return new Response(
         JSON.stringify({ error: 'Invalid action' }),
@@ -100,11 +106,9 @@ Deno.serve(async (req) => {
       );
     }
 
-    const pinHash = await hashPin(pinToSet);
-
     const { error: updateError } = await supabaseAdmin
       .from('members')
-      .update({ pin_hash: pinHash })
+      .update({ password: passwordToSet })
       .eq('id', memberId);
 
     if (updateError) {
@@ -117,8 +121,8 @@ Deno.serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         success: true, 
-        newPin: pinToReturn,
-        message: action === 'reset' ? 'PIN reset successfully' : 'PIN updated successfully'
+        newPassword: passwordToReturn,
+        message: action === 'reset' ? 'Password reset successfully' : 'Password updated successfully'
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

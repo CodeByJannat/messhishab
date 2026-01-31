@@ -1,12 +1,11 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -20,27 +19,32 @@ serve(async (req) => {
       );
     }
 
-    const supabaseAdmin = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-    );
-
-    const supabaseClient = createClient(
+    // Create client with user's auth header for token validation
+    const supabaseUser = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_ANON_KEY')!,
       { global: { headers: { Authorization: authHeader } } }
     );
 
-    // Verify user using getUser
-    const { data: userData, error: userError } = await supabaseClient.auth.getUser();
-    if (userError || !userData?.user) {
+    // Validate token using getClaims
+    const token = authHeader.replace('Bearer ', '');
+    const { data: claimsData, error: claimsError } = await supabaseUser.auth.getClaims(token);
+    
+    if (claimsError || !claimsData?.claims) {
       return new Response(
         JSON.stringify({ error: 'Unauthorized' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    const userId = userData.user.id;
+    const userId = claimsData.claims.sub as string;
+
+    // Create admin client for database operations
+    const supabaseAdmin = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    );
+
     const { messId } = await req.json();
 
     // Verify user is manager of this mess
@@ -58,10 +62,10 @@ serve(async (req) => {
       );
     }
 
-    // Get all members with their PINs (we'll show placeholder for security)
+    // Get all members with their passwords (plain text now)
     const { data: members, error: membersError } = await supabaseAdmin
       .from('members')
-      .select('id, name, pin_hash, is_active, created_at')
+      .select('id, name, password, is_active, created_at')
       .eq('mess_id', messId)
       .order('name');
 
@@ -72,17 +76,17 @@ serve(async (req) => {
       );
     }
 
-    // For PIN display, we show a masked version
-    const membersWithPins = (members || []).map(member => ({
+    // Format response with password display
+    const membersWithPasswords = (members || []).map(member => ({
       id: member.id,
       name: member.name,
-      pin_display: '••••', // PIN is hashed, so we can't show it
+      password: member.password || '',
       is_active: member.is_active,
       created_at: member.created_at,
     }));
 
     return new Response(
-      JSON.stringify({ members: membersWithPins }),
+      JSON.stringify({ members: membersWithPasswords }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error: unknown) {
