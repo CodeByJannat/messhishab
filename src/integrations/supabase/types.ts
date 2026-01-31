@@ -370,40 +370,40 @@ export type Database = {
       members: {
         Row: {
           created_at: string
-          email_encrypted: string | null
+          email: string | null
           id: string
           is_active: boolean
           mess_id: string
           name: string
-          phone_encrypted: string | null
-          pin_hash: string
-          room_number_encrypted: string | null
+          password: string
+          phone: string | null
+          room_number: string | null
           updated_at: string
           user_id: string | null
         }
         Insert: {
           created_at?: string
-          email_encrypted?: string | null
+          email?: string | null
           id?: string
           is_active?: boolean
           mess_id: string
           name: string
-          phone_encrypted?: string | null
-          pin_hash: string
-          room_number_encrypted?: string | null
+          password: string
+          phone?: string | null
+          room_number?: string | null
           updated_at?: string
           user_id?: string | null
         }
         Update: {
           created_at?: string
-          email_encrypted?: string | null
+          email?: string | null
           id?: string
           is_active?: boolean
           mess_id?: string
           name?: string
-          phone_encrypted?: string | null
-          pin_hash?: string
-          room_number_encrypted?: string | null
+          password?: string
+          phone?: string | null
+          room_number?: string | null
           updated_at?: string
           user_id?: string | null
         }
