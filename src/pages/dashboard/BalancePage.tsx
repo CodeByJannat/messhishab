@@ -77,13 +77,11 @@ export default function BalancePage() {
   const [monthlyTotalMeals, setMonthlyTotalMeals] = useState(0);
   const [monthlyTotalDeposits, setMonthlyTotalDeposits] = useState(0);
   
-  // PIN verification state
-  const [isPinOpen, setIsPinOpen] = useState(false);
+  // Details dialog state
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [selectedMember, setSelectedMember] = useState<MemberBalance | null>(null);
   const [memberDetails, setMemberDetails] = useState<MemberDetails | null>(null);
-  const [pinInput, setPinInput] = useState('');
-  const [isPinVerifying, setIsPinVerifying] = useState(false);
+  const [isLoadingDetails, setIsLoadingDetails] = useState(false);
 
   useEffect(() => {
     if (mess) {
@@ -239,36 +237,25 @@ export default function BalancePage() {
     }
   };
 
-  const handleVerifyPin = async () => {
-    if (!selectedMember) return;
-    setIsPinVerifying(true);
+  const fetchMemberDetails = async (member: MemberBalance) => {
+    setSelectedMember(member);
+    setIsLoadingDetails(true);
+    setIsDetailsOpen(true);
 
     try {
-      const { data, error } = await supabase.functions.invoke('verify-pin', {
-        body: {
-          memberId: selectedMember.id,
-          pin: pinInput,
-        },
-      });
+      const { data, error } = await supabase
+        .from('members')
+        .select('email, phone, room_number')
+        .eq('id', member.id)
+        .single();
 
       if (error) throw error;
 
-      if (data.success) {
-        setMemberDetails({
-          email: data.email || '',
-          phone: data.phone || '',
-          roomNumber: data.roomNumber || '',
-        });
-        setIsPinOpen(false);
-        setIsDetailsOpen(true);
-        setPinInput('');
-      } else {
-        toast({
-          title: language === 'bn' ? 'ভুল পিন' : 'Wrong PIN',
-          description: language === 'bn' ? 'সঠিক পিন দিন' : 'Please enter correct PIN',
-          variant: 'destructive',
-        });
-      }
+      setMemberDetails({
+        email: data?.email || '',
+        phone: data?.phone || '',
+        roomNumber: data?.room_number || '',
+      });
     } catch (error: any) {
       toast({
         title: language === 'bn' ? 'ত্রুটি' : 'Error',
@@ -276,14 +263,8 @@ export default function BalancePage() {
         variant: 'destructive',
       });
     } finally {
-      setIsPinVerifying(false);
+      setIsLoadingDetails(false);
     }
-  };
-
-  const openPinDialog = (member: MemberBalance) => {
-    setSelectedMember(member);
-    setPinInput('');
-    setIsPinOpen(true);
   };
 
   const getBalanceColor = (balance: number) => {
@@ -417,7 +398,7 @@ export default function BalancePage() {
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => openPinDialog(member)}
+                            onClick={() => fetchMemberDetails(member)}
                             className="rounded-xl"
                             title={language === 'bn' ? 'বিস্তারিত দেখুন' : 'View details'}
                           >
@@ -433,43 +414,6 @@ export default function BalancePage() {
           </CardContent>
         </Card>
 
-        {/* PIN Verification Dialog */}
-        <Dialog open={isPinOpen} onOpenChange={setIsPinOpen}>
-          <DialogContent className="sm:max-w-sm">
-            <DialogHeader>
-              <DialogTitle>
-                {language === 'bn' ? 'পিন যাচাই করুন' : 'Verify PIN'}
-              </DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              <p className="text-muted-foreground text-sm">
-                {language === 'bn'
-                  ? `${selectedMember?.name} এর তথ্য দেখতে পিন দিন`
-                  : `Enter PIN to view ${selectedMember?.name}'s details`}
-              </p>
-              <Input
-                type="password"
-                value={pinInput}
-                onChange={(e) => setPinInput(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                placeholder="••••"
-                maxLength={6}
-                className="rounded-xl text-center text-2xl tracking-widest"
-                autoFocus
-              />
-              <Button
-                onClick={handleVerifyPin}
-                disabled={isPinVerifying || pinInput.length < 4}
-                className="w-full"
-              >
-                {isPinVerifying ? (
-                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                ) : null}
-                {language === 'bn' ? 'যাচাই করুন' : 'Verify'}
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
-
         {/* Member Details Dialog */}
         <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
           <DialogContent className="sm:max-w-md">
@@ -478,7 +422,11 @@ export default function BalancePage() {
                 {selectedMember?.name} - {language === 'bn' ? 'বিস্তারিত' : 'Details'}
               </DialogTitle>
             </DialogHeader>
-            <div className="space-y-4">
+            {isLoadingDetails ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="w-6 h-6 animate-spin text-primary" />
+              </div>
+            ) : (
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm text-muted-foreground">{language === 'bn' ? 'ইমেইল' : 'Email'}</p>
@@ -493,7 +441,7 @@ export default function BalancePage() {
                   <p className="font-medium">{memberDetails?.roomNumber || '-'}</p>
                 </div>
               </div>
-            </div>
+            )}
           </DialogContent>
         </Dialog>
       </div>

@@ -34,8 +34,8 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useDateValidation } from '@/hooks/useDateValidation';
-import { Plus, Trash2, Loader2, AlertCircle } from 'lucide-react';
-import { format } from 'date-fns';
+import { Plus, Trash2, Loader2, AlertCircle, Calendar } from 'lucide-react';
+import { format, parseISO, endOfMonth } from 'date-fns';
 import { motion } from 'framer-motion';
 
 interface Member {
@@ -53,11 +53,16 @@ interface Bazar {
   created_at: string;
 }
 
+interface AvailableMonth {
+  value: string;
+  label: string;
+}
+
 export default function BazarPage() {
   const { mess } = useAuth();
   const { language } = useLanguage();
   const { toast } = useToast();
-  const { validateDate, getMaxDate, getMinDate } = useDateValidation();
+  const { validateDate, getMaxDate, getMinDate, filterValidMonths } = useDateValidation();
   
   const [members, setMembers] = useState<Member[]>([]);
   const [bazars, setBazars] = useState<Bazar[]>([]);
@@ -65,6 +70,10 @@ export default function BazarPage() {
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [dateError, setDateError] = useState<string | null>(null);
+
+  // Monthly selection
+  const [availableMonths, setAvailableMonths] = useState<AvailableMonth[]>([]);
+  const [selectedMonth, setSelectedMonth] = useState(format(new Date(), 'yyyy-MM'));
 
   const [formData, setFormData] = useState({
     personName: '',
@@ -77,9 +86,15 @@ export default function BazarPage() {
   useEffect(() => {
     if (mess) {
       fetchMembers();
-      fetchBazars();
+      fetchAvailableMonths();
     }
   }, [mess]);
+
+  useEffect(() => {
+    if (mess && selectedMonth) {
+      fetchBazars();
+    }
+  }, [mess, selectedMonth]);
 
   const fetchMembers = async () => {
     if (!mess) return;
@@ -99,15 +114,56 @@ export default function BazarPage() {
     }
   };
 
-  const fetchBazars = async () => {
+  const fetchAvailableMonths = async () => {
     if (!mess) return;
+
+    try {
+      const { data } = await supabase
+        .from('bazars')
+        .select('date')
+        .eq('mess_id', mess.id);
+
+      const monthsSet = new Set<string>();
+      monthsSet.add(format(new Date(), 'yyyy-MM'));
+      
+      (data || []).forEach(item => {
+        const month = item.date.substring(0, 7);
+        monthsSet.add(month);
+      });
+
+      const months = Array.from(monthsSet).sort((a, b) => b.localeCompare(a)).map(month => {
+        const date = parseISO(`${month}-01`);
+        return {
+          value: month,
+          label: format(date, language === 'bn' ? 'MMMM yyyy' : 'MMMM yyyy'),
+        };
+      });
+
+      const validMonths = filterValidMonths(months);
+      setAvailableMonths(validMonths);
+      
+      if (validMonths.length > 0 && !validMonths.find(m => m.value === selectedMonth)) {
+        setSelectedMonth(validMonths[0].value);
+      }
+    } catch (error) {
+      console.error('Error fetching months:', error);
+    }
+  };
+
+  const fetchBazars = async () => {
+    if (!mess || !selectedMonth) return;
     setIsLoading(true);
 
     try {
+      const startDate = `${selectedMonth}-01`;
+      const endDate = format(endOfMonth(parseISO(startDate)), 'yyyy-MM-dd');
+
       const { data, error } = await supabase
         .from('bazars')
         .select('*')
         .eq('mess_id', mess.id)
+        .gte('date', startDate)
+        .lte('date', endDate)
         .order('date', { ascending: false });
 
       if (error) throw error;
@@ -183,9 +239,10 @@ export default function BazarPage() {
       });
       setDateError(null);
       fetchBazars();
+      fetchAvailableMonths();
     } catch (error: any) {
       toast({
-        title: language === 'bn' ? 'ত্রুটি' : 'Error',
+        title: language === 'bn' ? 'ত্রुटि' : 'Error',
         description: error.message,
         variant: 'destructive',
       });
@@ -223,7 +280,7 @@ export default function BazarPage() {
     <DashboardLayout>
       <div className="space-y-6">
         {/* Page Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
           <div>
             <h1 className="text-2xl md:text-3xl font-bold text-foreground">
               {language === 'bn' ? 'বাজার ম্যানেজমেন্ট' : 'Bazar Management'}
@@ -234,18 +291,36 @@ export default function BazarPage() {
             </p>
           </div>
 
-          <Dialog open={isAddOpen} onOpenChange={(open) => {
-            setIsAddOpen(open);
-            if (!open) {
-              setDateError(null);
-            }
-          }}>
-            <DialogTrigger asChild>
-              <Button className="btn-primary-glow">
-                <Plus className="w-4 h-4 mr-2" />
-                {language === 'bn' ? 'বাজার যোগ করুন' : 'Add Bazar'}
-              </Button>
-            </DialogTrigger>
+          <div className="flex items-center gap-3">
+            {/* Month Selector */}
+            <div className="flex items-center gap-2">
+              <Calendar className="w-5 h-5 text-muted-foreground" />
+              <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+                <SelectTrigger className="w-[180px] rounded-xl">
+                  <SelectValue placeholder={language === 'bn' ? 'মাস সিলেক্ট করুন' : 'Select month'} />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableMonths.map((month) => (
+                    <SelectItem key={month.value} value={month.value}>
+                      {month.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <Dialog open={isAddOpen} onOpenChange={(open) => {
+              setIsAddOpen(open);
+              if (!open) {
+                setDateError(null);
+              }
+            }}>
+              <DialogTrigger asChild>
+                <Button className="btn-primary-glow">
+                  <Plus className="w-4 h-4 mr-2" />
+                  {language === 'bn' ? 'বাজার যোগ করুন' : 'Add Bazar'}
+                </Button>
+              </DialogTrigger>
             <DialogContent className="sm:max-w-md">
               <DialogHeader>
                 <DialogTitle>
@@ -326,8 +401,9 @@ export default function BazarPage() {
                   </Button>
                 </DialogFooter>
               </form>
-            </DialogContent>
-          </Dialog>
+              </DialogContent>
+            </Dialog>
+          </div>
         </div>
 
         {/* Bazar Table */}

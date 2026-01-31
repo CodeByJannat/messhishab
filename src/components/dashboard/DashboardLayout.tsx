@@ -27,6 +27,7 @@ import {
   CreditCard,
   MessageSquare,
   History,
+  Receipt,
 } from 'lucide-react';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -38,6 +39,7 @@ const managerNavItems = [
   { href: '/manager/meals', icon: Utensils, labelBn: 'মিল', labelEn: 'Meals' },
   { href: '/manager/bazar', icon: ShoppingCart, labelBn: 'বাজার', labelEn: 'Bazar' },
   { href: '/manager/deposits', icon: Wallet, labelBn: 'জমা', labelEn: 'Deposits' },
+  { href: '/manager/additional-costs', icon: Receipt, labelBn: 'অতিরিক্ত খরচ', labelEn: 'Additional Costs' },
   { href: '/manager/balance', icon: BarChart3, labelBn: 'ব্যালেন্স', labelEn: 'Balance' },
   { href: '/manager/notifications', icon: Bell, labelBn: 'নোটিফিকেশন', labelEn: 'Notifications' },
   { href: '/manager/subscription', icon: CreditCard, labelBn: 'সাবস্ক্রিপশন', labelEn: 'Subscription' },

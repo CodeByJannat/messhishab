@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
+import { useMemberAuth } from '@/contexts/MemberAuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { MemberDashboardLayout } from '@/components/dashboard/MemberDashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -17,48 +17,39 @@ interface SentMessage {
 }
 
 export default function MemberContactPage() {
-  const { user } = useAuth();
+  const { memberSession } = useMemberAuth();
   const { language } = useLanguage();
   const { toast } = useToast();
   const [message, setMessage] = useState('');
   const [sentMessages, setSentMessages] = useState<SentMessage[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [memberInfo, setMemberInfo] = useState<{ id: string; mess_id: string } | null>(null);
 
   useEffect(() => {
-    if (user) {
-      fetchMemberInfo();
+    if (memberSession) {
+      fetchSentMessages();
     }
-  }, [user]);
+  }, [memberSession]);
 
-  const fetchMemberInfo = async () => {
-    if (!user) return;
+  const fetchSentMessages = async () => {
+    if (!memberSession) return;
     setIsLoading(true);
 
     try {
-      const { data, error } = await supabase
-        .from('members')
-        .select('id, mess_id')
-        .eq('user_id', user.id)
-        .eq('is_active', true)
-        .single();
+      // Call edge function to get sent messages
+      const { data, error } = await supabase.functions.invoke('get-member-portal-data', {
+        body: {
+          member_id: memberSession.member.id,
+          mess_id: memberSession.mess.id,
+          session_token: memberSession.session_token,
+        },
+      });
 
       if (error) throw error;
-      setMemberInfo(data);
+      if (data.error) throw new Error(data.error);
 
-      // Fetch sent messages (where from_user_id is current user)
-      const { data: messages, error: messagesError } = await supabase
-        .from('notifications')
-        .select('id, message, created_at')
-        .eq('mess_id', data.mess_id)
-        .eq('from_user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(10);
-
-      if (!messagesError) {
-        setSentMessages(messages || []);
-      }
+      // Get sent messages from the response
+      setSentMessages(data.data.sentMessages || []);
     } catch (error: any) {
       toast({
         title: language === 'bn' ? 'ত্রুটি' : 'Error',
@@ -72,24 +63,23 @@ export default function MemberContactPage() {
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!memberInfo || !user || !message.trim()) return;
+    if (!memberSession || !message.trim()) return;
 
     setIsSubmitting(true);
 
     try {
-      const { data, error } = await supabase
-        .from('notifications')
-        .insert({
-          mess_id: memberInfo.mess_id,
-          from_user_id: user.id,
-          to_all: false,
-          to_member_id: null, // Going to manager
+      // Use edge function to send message
+      const { data, error } = await supabase.functions.invoke('submit-member-message', {
+        body: {
+          member_id: memberSession.member.id,
+          mess_id: memberSession.mess.id,
+          session_token: memberSession.session_token,
           message: message.trim(),
-        })
-        .select()
-        .single();
+        },
+      });
 
       if (error) throw error;
+      if (data.error) throw new Error(data.error);
 
       toast({
         title: language === 'bn' ? 'সফল!' : 'Success!',
@@ -97,7 +87,7 @@ export default function MemberContactPage() {
       });
 
       setMessage('');
-      setSentMessages((prev) => [data, ...prev]);
+      setSentMessages((prev) => [data.message, ...prev]);
     } catch (error: any) {
       toast({
         title: language === 'bn' ? 'ত্রুটি' : 'Error',

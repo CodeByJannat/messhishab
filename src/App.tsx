@@ -35,6 +35,7 @@ const MealsPage = lazy(() => import("./pages/dashboard/MealsPage"));
 const BazarPage = lazy(() => import("./pages/dashboard/BazarPage"));
 const DepositsPage = lazy(() => import("./pages/dashboard/DepositsPage"));
 const BalancePage = lazy(() => import("./pages/dashboard/BalancePage"));
+const AdditionalCostsPage = lazy(() => import("./pages/dashboard/AdditionalCostsPage"));
 const NotificationsPage = lazy(() => import("./pages/dashboard/NotificationsPage"));
 
 const SubscriptionPage = lazy(() => import("./pages/dashboard/SubscriptionPage"));
@@ -105,6 +106,7 @@ function App() {
                       <Route path="/manager/deposits" element={<ProtectedRoute requiredRole="manager"><DepositsPage /></ProtectedRoute>} />
                       <Route path="/manager/balance" element={<ProtectedRoute requiredRole="manager"><BalancePage /></ProtectedRoute>} />
                       <Route path="/manager/notifications" element={<ProtectedRoute requiredRole="manager"><NotificationsPage /></ProtectedRoute>} />
+                      <Route path="/manager/additional-costs" element={<ProtectedRoute requiredRole="manager"><AdditionalCostsPage /></ProtectedRoute>} />
                       <Route path="/manager/subscription" element={<ProtectedRoute requiredRole="manager"><SubscriptionPage /></ProtectedRoute>} />
                       <Route path="/manager/payment" element={<ProtectedRoute requiredRole="manager"><PaymentPage /></ProtectedRoute>} />
                       <Route path="/manager/payment-history" element={<ProtectedRoute requiredRole="manager"><PaymentHistoryPage /></ProtectedRoute>} />

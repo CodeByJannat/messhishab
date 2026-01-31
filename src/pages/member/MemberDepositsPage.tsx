@@ -4,6 +4,13 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { MemberDashboardLayout } from '@/components/dashboard/MemberDashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
   Table,
   TableBody,
   TableCell,
@@ -14,8 +21,9 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { MemberDepositsSkeleton } from '@/components/ui/loading-skeletons';
-import { Wallet, TrendingUp, TrendingDown } from 'lucide-react';
+import { Wallet, TrendingUp, TrendingDown, Calendar } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { format, parseISO, endOfMonth } from 'date-fns';
 
 interface Deposit {
   id: string;
@@ -24,20 +32,34 @@ interface Deposit {
   note: string | null;
 }
 
+interface AvailableMonth {
+  value: string;
+  label: string;
+}
+
 export default function MemberDepositsPage() {
   const { memberSession } = useMemberAuth();
   const { language } = useLanguage();
   const { toast } = useToast();
-  const [deposits, setDeposits] = useState<Deposit[]>([]);
+  const [allDeposits, setAllDeposits] = useState<Deposit[]>([]);
+  const [filteredDeposits, setFilteredDeposits] = useState<Deposit[]>([]);
   const [totalDeposit, setTotalDeposit] = useState(0);
   const [balance, setBalance] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Monthly selection
+  const [availableMonths, setAvailableMonths] = useState<AvailableMonth[]>([]);
+  const [selectedMonth, setSelectedMonth] = useState(format(new Date(), 'yyyy-MM'));
 
   useEffect(() => {
     if (memberSession) {
       fetchDeposits();
     }
   }, [memberSession]);
+
+  useEffect(() => {
+    filterDepositsByMonth();
+  }, [selectedMonth, allDeposits]);
 
   const fetchDeposits = async () => {
     if (!memberSession) return;
@@ -55,9 +77,28 @@ export default function MemberDepositsPage() {
       if (error) throw error;
       if (data.error) throw new Error(data.error);
 
-      setDeposits(data.data.deposits || []);
-      setTotalDeposit(data.data.totalDeposit);
+      const deposits = data.data.deposits || [];
+      setAllDeposits(deposits);
       setBalance(data.data.balance);
+
+      // Get available months
+      const monthsSet = new Set<string>();
+      monthsSet.add(format(new Date(), 'yyyy-MM'));
+      
+      deposits.forEach((deposit: Deposit) => {
+        const month = deposit.date.substring(0, 7);
+        monthsSet.add(month);
+      });
+
+      const months = Array.from(monthsSet).sort((a, b) => b.localeCompare(a)).map(month => {
+        const date = parseISO(`${month}-01`);
+        return {
+          value: month,
+          label: format(date, language === 'bn' ? 'MMMM yyyy' : 'MMMM yyyy'),
+        };
+      });
+
+      setAvailableMonths(months);
     } catch (error: any) {
       toast({
         title: language === 'bn' ? 'ত্রুটি' : 'Error',
@@ -67,6 +108,24 @@ export default function MemberDepositsPage() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const filterDepositsByMonth = () => {
+    if (!selectedMonth || allDeposits.length === 0) {
+      setFilteredDeposits([]);
+      setTotalDeposit(0);
+      return;
+    }
+
+    const startDate = `${selectedMonth}-01`;
+    const endDate = format(endOfMonth(parseISO(startDate)), 'yyyy-MM-dd');
+
+    const filtered = allDeposits.filter(deposit => 
+      deposit.date >= startDate && deposit.date <= endDate
+    );
+
+    setFilteredDeposits(filtered);
+    setTotalDeposit(filtered.reduce((sum, d) => sum + Number(d.amount), 0));
   };
 
   if (isLoading) {
@@ -81,13 +140,32 @@ export default function MemberDepositsPage() {
     <MemberDashboardLayout>
       <div className="space-y-6">
         {/* Page Header */}
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-foreground">
-            {language === 'bn' ? 'জমার রেকর্ড' : 'Deposit Records'}
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            {language === 'bn' ? 'আপনার জমার বিস্তারিত' : 'Your deposit details'}
-          </p>
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold text-foreground">
+              {language === 'bn' ? 'জমার রেকর্ড' : 'Deposit Records'}
+            </h1>
+            <p className="text-muted-foreground mt-1">
+              {language === 'bn' ? 'আপনার জমার বিস্তারিত' : 'Your deposit details'}
+            </p>
+          </div>
+
+          {/* Month Selector */}
+          <div className="flex items-center gap-2">
+            <Calendar className="w-5 h-5 text-muted-foreground" />
+            <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+              <SelectTrigger className="w-[180px] rounded-xl">
+                <SelectValue placeholder={language === 'bn' ? 'মাস সিলেক্ট করুন' : 'Select month'} />
+              </SelectTrigger>
+              <SelectContent>
+                {availableMonths.map((month) => (
+                  <SelectItem key={month.value} value={month.value}>
+                    {month.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         {/* Summary Cards */}
@@ -97,7 +175,7 @@ export default function MemberDepositsPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">
-                    {language === 'bn' ? 'মোট জমা' : 'Total Deposit'}
+                    {language === 'bn' ? 'এই মাসে জমা' : 'This Month Deposit'}
                   </p>
                   <p className="text-3xl font-bold text-success mt-1">৳{totalDeposit.toFixed(2)}</p>
                 </div>
@@ -145,11 +223,11 @@ export default function MemberDepositsPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0">
-            {deposits.length === 0 ? (
+            {filteredDeposits.length === 0 ? (
               <div className="text-center py-12">
                 <Wallet className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
                 <p className="text-muted-foreground">
-                  {language === 'bn' ? 'কোনো জমা নেই' : 'No deposits yet'}
+                  {language === 'bn' ? 'এই মাসে কোনো জমা নেই' : 'No deposits for this month'}
                 </p>
               </div>
             ) : (
@@ -163,7 +241,7 @@ export default function MemberDepositsPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {deposits.map((deposit, index) => (
+                    {filteredDeposits.map((deposit, index) => (
                       <motion.tr
                         key={deposit.id}
                         initial={{ opacity: 0, y: 10 }}

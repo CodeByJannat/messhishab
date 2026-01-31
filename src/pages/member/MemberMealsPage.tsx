@@ -4,6 +4,13 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { MemberDashboardLayout } from '@/components/dashboard/MemberDashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
   Table,
   TableBody,
   TableCell,
@@ -14,8 +21,9 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { MemberMealsSkeleton } from '@/components/ui/loading-skeletons';
-import { Utensils, Coffee, Sun, Moon } from 'lucide-react';
+import { Utensils, Coffee, Sun, Moon, Calendar } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { format, parseISO, endOfMonth } from 'date-fns';
 
 interface Meal {
   id: string;
@@ -32,19 +40,33 @@ interface MealBreakdown {
   total: number;
 }
 
+interface AvailableMonth {
+  value: string;
+  label: string;
+}
+
 export default function MemberMealsPage() {
   const { memberSession } = useMemberAuth();
   const { language } = useLanguage();
   const { toast } = useToast();
-  const [meals, setMeals] = useState<Meal[]>([]);
+  const [allMeals, setAllMeals] = useState<Meal[]>([]);
+  const [filteredMeals, setFilteredMeals] = useState<Meal[]>([]);
   const [mealBreakdown, setMealBreakdown] = useState<MealBreakdown>({ breakfast: 0, lunch: 0, dinner: 0, total: 0 });
   const [isLoading, setIsLoading] = useState(true);
+
+  // Monthly selection
+  const [availableMonths, setAvailableMonths] = useState<AvailableMonth[]>([]);
+  const [selectedMonth, setSelectedMonth] = useState(format(new Date(), 'yyyy-MM'));
 
   useEffect(() => {
     if (memberSession) {
       fetchMeals();
     }
   }, [memberSession]);
+
+  useEffect(() => {
+    filterMealsByMonth();
+  }, [selectedMonth, allMeals]);
 
   const fetchMeals = async () => {
     if (!memberSession) return;
@@ -62,8 +84,27 @@ export default function MemberMealsPage() {
       if (error) throw error;
       if (data.error) throw new Error(data.error);
 
-      setMeals(data.data.meals || []);
-      setMealBreakdown(data.data.mealBreakdown);
+      const meals = data.data.meals || [];
+      setAllMeals(meals);
+
+      // Get available months
+      const monthsSet = new Set<string>();
+      monthsSet.add(format(new Date(), 'yyyy-MM'));
+      
+      meals.forEach((meal: Meal) => {
+        const month = meal.date.substring(0, 7);
+        monthsSet.add(month);
+      });
+
+      const months = Array.from(monthsSet).sort((a, b) => b.localeCompare(a)).map(month => {
+        const date = parseISO(`${month}-01`);
+        return {
+          value: month,
+          label: format(date, language === 'bn' ? 'MMMM yyyy' : 'MMMM yyyy'),
+        };
+      });
+
+      setAvailableMonths(months);
     } catch (error: any) {
       toast({
         title: language === 'bn' ? 'ত্রুটি' : 'Error',
@@ -73,6 +114,30 @@ export default function MemberMealsPage() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const filterMealsByMonth = () => {
+    if (!selectedMonth || allMeals.length === 0) return;
+
+    const startDate = `${selectedMonth}-01`;
+    const endDate = format(endOfMonth(parseISO(startDate)), 'yyyy-MM-dd');
+
+    const filtered = allMeals.filter(meal => 
+      meal.date >= startDate && meal.date <= endDate
+    );
+
+    setFilteredMeals(filtered);
+
+    // Calculate breakdown for filtered meals
+    const breakfast = filtered.reduce((sum, m) => sum + m.breakfast, 0);
+    const lunch = filtered.reduce((sum, m) => sum + m.lunch, 0);
+    const dinner = filtered.reduce((sum, m) => sum + m.dinner, 0);
+    setMealBreakdown({
+      breakfast,
+      lunch,
+      dinner,
+      total: breakfast + lunch + dinner,
+    });
   };
 
   if (isLoading) {
@@ -87,13 +152,32 @@ export default function MemberMealsPage() {
     <MemberDashboardLayout>
       <div className="space-y-6">
         {/* Page Header */}
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-foreground">
-            {language === 'bn' ? 'মিল রেকর্ড' : 'Meal Records'}
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            {language === 'bn' ? 'আপনার মিলের বিস্তারিত' : 'Your meal details'}
-          </p>
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold text-foreground">
+              {language === 'bn' ? 'মিল রেকর্ড' : 'Meal Records'}
+            </h1>
+            <p className="text-muted-foreground mt-1">
+              {language === 'bn' ? 'আপনার মিলের বিস্তারিত' : 'Your meal details'}
+            </p>
+          </div>
+
+          {/* Month Selector */}
+          <div className="flex items-center gap-2">
+            <Calendar className="w-5 h-5 text-muted-foreground" />
+            <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+              <SelectTrigger className="w-[180px] rounded-xl">
+                <SelectValue placeholder={language === 'bn' ? 'মাস সিলেক্ট করুন' : 'Select month'} />
+              </SelectTrigger>
+              <SelectContent>
+                {availableMonths.map((month) => (
+                  <SelectItem key={month.value} value={month.value}>
+                    {month.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         {/* Summary Cards */}
@@ -137,11 +221,11 @@ export default function MemberMealsPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0">
-            {meals.length === 0 ? (
+            {filteredMeals.length === 0 ? (
               <div className="text-center py-12">
                 <Utensils className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
                 <p className="text-muted-foreground">
-                  {language === 'bn' ? 'কোনো মিল রেকর্ড নেই' : 'No meal records yet'}
+                  {language === 'bn' ? 'এই মাসে কোনো মিল রেকর্ড নেই' : 'No meal records for this month'}
                 </p>
               </div>
             ) : (
@@ -157,7 +241,7 @@ export default function MemberMealsPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {meals.map((meal, index) => (
+                    {filteredMeals.map((meal, index) => (
                       <motion.tr
                         key={meal.id}
                         initial={{ opacity: 0, y: 10 }}
