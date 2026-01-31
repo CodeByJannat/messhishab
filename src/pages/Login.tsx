@@ -5,8 +5,8 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { Sun, Moon, Globe, ArrowLeft, Eye, EyeOff, Users, UserCog } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Sun, Moon, Globe, ArrowLeft, Eye, EyeOff, User, ChevronLeft } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -17,11 +17,16 @@ export default function Login() {
   const { toast } = useToast();
   const navigate = useNavigate();
   
-  const [activeTab, setActiveTab] = useState<'manager' | 'member'>('manager');
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  
+  // Manager login state
+  const [managerEmail, setManagerEmail] = useState('');
+  const [managerPassword, setManagerPassword] = useState('');
+  
+  // Member login state
+  const [messId, setMessId] = useState('');
+  const [messPassword, setMessPassword] = useState('');
 
   const toggleLanguage = () => {
     setLanguage(language === 'bn' ? 'en' : 'bn');
@@ -33,72 +38,37 @@ export default function Login() {
     
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
+        email: managerEmail,
+        password: managerPassword,
       });
       
-      if (error) {
-        // Handle aborted signal error gracefully
-        if (error.message?.includes('abort') || error.name === 'AbortError') {
-          console.warn('Login request was aborted');
-          return;
-        }
-        throw error;
-      }
-      
-      if (!data.user || !data.session) {
-        throw new Error(language === 'bn' ? 'লগইন ব্যর্থ হয়েছে' : 'Login failed');
-      }
-
-      const userId = data.user.id;
+      if (error) throw error;
       
       // Check user role to determine redirect
-      const { data: roleData, error: roleError } = await supabase
+      const { data: roleData } = await supabase
         .from('user_roles')
         .select('role')
-        .eq('user_id', userId)
-        .maybeSingle();
-      
-      if (roleError) {
-        console.error('Role fetch error:', roleError);
-        await supabase.auth.signOut();
-        throw new Error(language === 'bn' ? 'ব্যবহারকারী রোল পাওয়া যায়নি' : 'User role not found');
-      }
-      
-      if (!roleData) {
-        await supabase.auth.signOut();
-        throw new Error(language === 'bn' ? 'ব্যবহারকারী রোল পাওয়া যায়নি' : 'User role not found');
-      }
-      
-      const role = roleData.role;
-      
-      // Only allow manager or admin roles through manager tab
-      if (role !== 'manager' && role !== 'admin') {
-        await supabase.auth.signOut();
-        throw new Error(language === 'bn' ? 'এই অ্যাকাউন্ট ম্যানেজার/এডমিন নয়। মেম্বার ট্যাব ব্যবহার করুন।' : 'This account is not a manager/admin. Please use the Member tab.');
-      }
+        .eq('user_id', data.user.id)
+        .single();
       
       toast({
         title: language === 'bn' ? 'সফল!' : 'Success!',
         description: language === 'bn' ? 'লগইন সফল হয়েছে' : 'Login successful',
       });
       
-      // Use navigate instead of window.location.href to prevent full page reload
-      const targetPath = role === 'admin' ? '/admin/dashboard' : '/manager/dashboard';
-      navigate(targetPath, { replace: true });
-    } catch (error: any) {
-      // Ignore abort errors
-      if (error?.message?.includes('abort') || error?.name === 'AbortError') {
-        console.warn('Request aborted:', error);
-        return;
+      // CRITICAL: Use window.location.href for immediate redirect
+      // This ensures auth state is fully synchronized before navigation
+      if (roleData?.role === 'admin') {
+        window.location.href = '/admin';
+      } else {
+        window.location.href = '/dashboard';
       }
-      console.error('Login error:', error);
+    } catch (error: any) {
       toast({
         title: language === 'bn' ? 'ত্রুটি' : 'Error',
-        description: error.message || (language === 'bn' ? 'লগইন ব্যর্থ হয়েছে' : 'Login failed'),
+        description: error.message,
         variant: 'destructive',
       });
-    } finally {
       setIsLoading(false);
     }
   };
@@ -108,82 +78,32 @@ export default function Login() {
     setIsLoading(true);
     
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
+      const { data, error } = await supabase.functions.invoke('member-login', {
+        body: { mess_id: messId, mess_password: messPassword },
       });
-      
-      if (error) {
-        // Handle aborted signal error gracefully
-        if (error.message?.includes('abort') || error.name === 'AbortError') {
-          console.warn('Login request was aborted');
-          return;
-        }
-        throw error;
-      }
-      
-      if (!data.user) {
-        throw new Error(language === 'bn' ? 'লগইন ব্যর্থ হয়েছে' : 'Login failed');
-      }
 
-      const userId = data.user.id;
+      if (error) throw error;
       
-      // Check user role - must be member
-      const { data: roleData, error: roleError } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', userId)
-        .maybeSingle();
-      
-      if (roleError) {
-        console.error('Role fetch error:', roleError);
-        await supabase.auth.signOut();
-        throw new Error(language === 'bn' ? 'ব্যবহারকারী রোল পাওয়া যায়নি' : 'User role not found');
+      if (data.success) {
+        // Store mess info and members for the member dashboard
+        localStorage.setItem('member_mess_session', JSON.stringify({
+          mess: data.mess,
+          members: data.members,
+          subscription: data.subscription,
+        }));
+        
+        toast({
+          title: language === 'bn' ? 'সফল!' : 'Success!',
+          description: language === 'bn' ? 'মেস ভেরিফাইড হয়েছে' : 'Mess verified successfully',
+        });
+        
+        // Redirect to member dashboard where they select their profile
+        window.location.href = '/member';
       }
-      
-      if (!roleData) {
-        await supabase.auth.signOut();
-        throw new Error(language === 'bn' ? 'ব্যবহারকারী রোল পাওয়া যায়নি' : 'User role not found');
-      }
-      
-      const role = roleData.role;
-      
-      // Only allow member role through member tab
-      if (role !== 'member') {
-        await supabase.auth.signOut();
-        throw new Error(language === 'bn' ? 'এই অ্যাকাউন্ট মেম্বার নয়। ম্যানেজার ট্যাব ব্যবহার করুন।' : 'This account is not a member. Please use the Manager tab.');
-      }
-      
-      // Verify member is active
-      const { data: memberData, error: memberError } = await supabase
-        .from('members')
-        .select('id, is_active')
-        .eq('user_id', userId)
-        .eq('is_active', true)
-        .maybeSingle();
-      
-      if (memberError || !memberData) {
-        await supabase.auth.signOut();
-        throw new Error(language === 'bn' ? 'মেম্বার অ্যাকাউন্ট সক্রিয় নেই' : 'Member account is not active');
-      }
-      
-      toast({
-        title: language === 'bn' ? 'সফল!' : 'Success!',
-        description: language === 'bn' ? 'লগইন সফল হয়েছে' : 'Login successful',
-      });
-      
-      // Use navigate instead of window.location.href to prevent full page reload
-      navigate('/member/dashboard', { replace: true });
     } catch (error: any) {
-      // Ignore abort errors
-      if (error?.message?.includes('abort') || error?.name === 'AbortError') {
-        console.warn('Request aborted:', error);
-        return;
-      }
-      console.error('Login error:', error);
       toast({
         title: language === 'bn' ? 'ত্রুটি' : 'Error',
-        description: error.message || (language === 'bn' ? 'লগইন ব্যর্থ হয়েছে' : 'Login failed'),
+        description: error.message || 'Invalid MessID or MessPassword',
         variant: 'destructive',
       });
     } finally {
@@ -231,54 +151,52 @@ export default function Login() {
         animate={{ opacity: 1, y: 0 }}
         className="w-full max-w-md relative z-10"
       >
-        <div className="glass-card p-6">
-          <h2 className="text-xl font-semibold text-center mb-4">
-            {language === 'bn' ? 'লগইন করুন' : 'Login'}
-          </h2>
+        <div className="glass-card p-8">
+          {/* Logo */}
+          <div className="flex items-center justify-center gap-2 mb-8">
+            <div className="w-12 h-12 bg-primary rounded-xl flex items-center justify-center">
+              <span className="text-primary-foreground font-bold text-2xl">M</span>
+            </div>
+            <span className="font-bold text-2xl text-foreground">MessHishab</span>
+          </div>
 
-          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'manager' | 'member')} className="w-full">
-            <TabsList className="grid w-full grid-cols-2 mb-4">
-              <TabsTrigger value="manager" className="flex items-center gap-2">
-                <UserCog className="w-4 h-4" />
-                {language === 'bn' ? 'ম্যানেজার' : 'Manager'}
-              </TabsTrigger>
-              <TabsTrigger value="member" className="flex items-center gap-2">
-                <Users className="w-4 h-4" />
-                {language === 'bn' ? 'মেম্বার' : 'Member'}
-              </TabsTrigger>
+          <Tabs defaultValue="manager" className="w-full">
+            <TabsList className="grid w-full grid-cols-2 mb-6">
+              <TabsTrigger value="manager">{t('auth.managerLogin')}</TabsTrigger>
+              <TabsTrigger value="member">{t('auth.memberLogin')}</TabsTrigger>
             </TabsList>
 
             <TabsContent value="manager">
-              <form onSubmit={handleManagerLogin} className="space-y-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="manager-email" className="text-sm">{t('auth.email')}</Label>
+              <form onSubmit={handleManagerLogin} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="manager-email">{t('auth.email')}</Label>
                   <Input
                     id="manager-email"
                     type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    value={managerEmail}
+                    onChange={(e) => setManagerEmail(e.target.value)}
                     placeholder="example@email.com"
-                    className="rounded-xl h-9"
+                    className="rounded-xl"
                     required
                   />
                 </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="manager-password" className="text-sm">{t('auth.password')}</Label>
+                <div className="space-y-2">
+                  <Label htmlFor="manager-password">{t('auth.password')}</Label>
                   <div className="relative">
                     <Input
                       id="manager-password"
                       type={showPassword ? 'text' : 'password'}
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      className="rounded-xl h-9 pr-9"
+                      value={managerPassword}
+                      onChange={(e) => setManagerPassword(e.target.value)}
+                      className="rounded-xl pr-10"
                       required
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                     >
-                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                     </button>
                   </div>
                 </div>
@@ -291,66 +209,55 @@ export default function Login() {
                   {isLoading ? t('common.loading') : t('auth.login')}
                 </Button>
               </form>
-
-              <p className="text-center text-muted-foreground text-sm mt-4">
-                {t('auth.noAccount')}{' '}
-                <Link to="/register" className="text-primary hover:underline">
-                  {t('auth.registerHere')}
-                </Link>
-              </p>
             </TabsContent>
 
             <TabsContent value="member">
-              <form onSubmit={handleMemberLogin} className="space-y-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="member-email" className="text-sm">{t('auth.email')}</Label>
+              <form onSubmit={handleMemberLogin} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="mess-id">{t('auth.messId')}</Label>
                   <Input
-                    id="member-email"
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="example@email.com"
-                    className="rounded-xl h-9"
+                    id="mess-id"
+                    type="text"
+                    value={messId}
+                    onChange={(e) => setMessId(e.target.value)}
+                    placeholder="MESS-XXXXXX"
+                    className="rounded-xl"
                     required
                   />
                 </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="member-password" className="text-sm">{t('auth.password')}</Label>
+                <div className="space-y-2">
+                  <Label htmlFor="mess-password">{t('auth.messPassword')}</Label>
                   <div className="relative">
                     <Input
-                      id="member-password"
+                      id="mess-password"
                       type={showPassword ? 'text' : 'password'}
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      className="rounded-xl h-9 pr-9"
+                      value={messPassword}
+                      onChange={(e) => setMessPassword(e.target.value)}
+                      className="rounded-xl pr-10"
                       required
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                     >
-                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                     </button>
                   </div>
-                </div>
-                <div className="text-right">
-                  <Link to="/forgot-password" className="text-sm text-primary hover:underline">
-                    {t('auth.forgotPassword')}
-                  </Link>
                 </div>
                 <Button type="submit" className="w-full btn-primary-glow" disabled={isLoading}>
                   {isLoading ? t('common.loading') : t('auth.login')}
                 </Button>
               </form>
-
-              <p className="text-center text-muted-foreground text-xs mt-4">
-                {language === 'bn' 
-                  ? 'মেম্বার অ্যাকাউন্ট ম্যানেজার দ্বারা তৈরি করা হয়' 
-                  : 'Member accounts are created by managers'}
-              </p>
             </TabsContent>
           </Tabs>
+
+          <p className="text-center text-muted-foreground mt-6">
+            {t('auth.noAccount')}{' '}
+            <Link to="/register" className="text-primary hover:underline">
+              {t('auth.registerHere')}
+            </Link>
+          </p>
         </div>
       </motion.div>
     </div>

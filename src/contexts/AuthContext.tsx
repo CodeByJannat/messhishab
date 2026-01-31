@@ -40,67 +40,43 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [userRole, setUserRole] = useState<'manager' | 'member' | 'admin' | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isUserDataLoaded, setIsUserDataLoaded] = useState(false);
 
-  const fetchUserData = async (userId: string): Promise<boolean> => {
+  const fetchUserData = async (userId: string) => {
     try {
-      // Fetch user role - use maybeSingle to avoid error when no data found
-      const { data: roleData, error: roleError } = await supabase
+      // Fetch user role
+      const { data: roleData } = await supabase
         .from('user_roles')
         .select('role')
         .eq('user_id', userId)
-        .maybeSingle();
-
-      if (roleError) {
-        console.error('Error fetching role:', roleError);
-        return false;
-      }
+        .single();
 
       if (roleData) {
         setUserRole(roleData.role as 'manager' | 'member' | 'admin');
-      } else {
-        setUserRole(null);
       }
 
-      // Fetch mess data (as manager) - use maybeSingle to avoid error
-      const { data: messData, error: messError } = await supabase
+      // Fetch mess data (as manager)
+      const { data: messData } = await supabase
         .from('messes')
         .select('*')
         .eq('manager_id', userId)
-        .maybeSingle();
-
-      if (messError) {
-        console.error('Error fetching mess:', messError);
-      }
+        .single();
 
       if (messData) {
         setMess(messData as Mess);
 
-        // Fetch subscription - use maybeSingle to avoid error
-        const { data: subData, error: subError } = await supabase
+        // Fetch subscription
+        const { data: subData } = await supabase
           .from('subscriptions')
           .select('*')
           .eq('mess_id', messData.id)
-          .maybeSingle();
-
-        if (subError) {
-          console.error('Error fetching subscription:', subError);
-        }
+          .single();
 
         if (subData) {
           setSubscription(subData as Subscription);
-        } else {
-          setSubscription(null);
         }
-      } else {
-        setMess(null);
-        setSubscription(null);
       }
-      
-      return true;
     } catch (error) {
       console.error('Error fetching user data:', error);
-      return false;
     }
   };
 
@@ -113,67 +89,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let mounted = true;
 
-    // Set up auth state listener FIRST (before getSession)
-    const { data: { subscription: authSubscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (!mounted) return;
-        
-        // Update session and user synchronously
-        setSession(session);
-        setUser(session?.user ?? null);
-
-        if (session?.user) {
-          // Reset user data loaded state when auth changes
-          setIsUserDataLoaded(false);
-          
-          // Fetch user data with small delay to avoid race with session
-          const success = await fetchUserData(session.user.id);
-          
-          if (mounted) {
-            setIsUserDataLoaded(true);
-            // Only set loading to false after user data is loaded
-            setIsLoading(false);
-          }
-        } else {
-          // No user - clear all data
-          setMess(null);
-          setSubscription(null);
-          setUserRole(null);
-          setIsUserDataLoaded(false);
-          if (mounted) {
-            setIsLoading(false);
-          }
-        }
-      }
-    );
-
-    // THEN check for existing session
+    // Check for existing session first
     const initializeAuth = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         
         if (!mounted) return;
         
-        // If no session, we're done loading
-        if (!session) {
-          setIsLoading(false);
-          return;
-        }
-        
-        // Session exists - the onAuthStateChange will handle the rest
-        // But we need to set initial state
         setSession(session);
-        setUser(session.user);
+        setUser(session?.user ?? null);
         
-        // Fetch user data
-        const success = await fetchUserData(session.user.id);
-        
-        if (mounted) {
-          setIsUserDataLoaded(true);
-          setIsLoading(false);
+        if (session?.user) {
+          await fetchUserData(session.user.id);
         }
       } catch (error) {
         console.error('Error initializing auth:', error);
+      } finally {
         if (mounted) {
           setIsLoading(false);
         }
@@ -181,6 +112,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
 
     initializeAuth();
+
+    // Set up auth state listener for subsequent changes
+    const { data: { subscription: authSubscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        if (!mounted) return;
+        
+        setSession(session);
+        setUser(session?.user ?? null);
+
+        if (session?.user) {
+          // Use setTimeout to avoid blocking the auth state change
+          setTimeout(() => {
+            if (mounted) {
+              fetchUserData(session.user.id);
+            }
+          }, 0);
+        } else {
+          setMess(null);
+          setSubscription(null);
+          setUserRole(null);
+        }
+      }
+    );
 
     return () => {
       mounted = false;
@@ -195,11 +149,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setMess(null);
     setSubscription(null);
     setUserRole(null);
-    setIsUserDataLoaded(false);
   };
-
-  // Consider loading if: initial load OR (user exists but role not yet loaded)
-  const effectiveIsLoading = isLoading || (user !== null && !isUserDataLoaded);
 
   return (
     <AuthContext.Provider
@@ -209,7 +159,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         mess,
         subscription,
         userRole,
-        isLoading: effectiveIsLoading,
+        isLoading,
         signOut,
         refreshMess,
       }}

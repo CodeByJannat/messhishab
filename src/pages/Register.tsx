@@ -161,6 +161,14 @@ export default function Register() {
         className="w-full max-w-md relative z-10"
       >
         <div className="glass-card p-6">
+          {/* Logo */}
+          <div className="flex items-center justify-center gap-2 mb-4">
+            <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center">
+              <span className="text-primary-foreground font-bold text-xl">M</span>
+            </div>
+            <span className="font-bold text-xl text-foreground">MessHishab</span>
+          </div>
+
           <h1 className="text-xl font-bold text-center text-foreground mb-4">
             {t('auth.register')}
           </h1>
@@ -284,7 +292,7 @@ export default function Register() {
             </Button>
           </form>
 
-          <p className="text-center text-muted-foreground text-sm mt-4">
+          <p className="text-center text-muted-foreground mt-6">
             {t('auth.hasAccount')}{' '}
             <Link to="/login" className="text-primary hover:underline">
               {t('auth.loginHere')}
