@@ -243,6 +243,33 @@ export type Database = {
           },
         ]
       }
+      email_otps: {
+        Row: {
+          created_at: string
+          email: string
+          expires_at: string
+          id: string
+          otp_code: string
+          verified: boolean
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          expires_at: string
+          id?: string
+          otp_code: string
+          verified?: boolean
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          expires_at?: string
+          id?: string
+          otp_code?: string
+          verified?: boolean
+        }
+        Relationships: []
+      }
       help_desk_messages: {
         Row: {
           created_at: string
@@ -790,6 +817,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      cleanup_expired_otps: { Args: never; Returns: undefined }
       finalize_mess_setup: {
         Args: { p_mess_name: string; p_mess_uuid: string }
         Returns: string
