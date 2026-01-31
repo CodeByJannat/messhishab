@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
+import { MessNameSetupModal } from "@/components/dashboard/MessNameSetupModal";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -17,13 +18,23 @@ import { motion } from "framer-motion";
 export default function SubscriptionPage() {
   const navigate = useNavigate();
   const { language } = useLanguage();
-  const { subscription, mess } = useAuth();
+  const { subscription, mess, refreshMess } = useAuth();
   const { toast } = useToast();
   const { pricing, isLoading: isPricingLoading } = usePricing();
   const { appliedCoupon, isApplying, validateAndApplyCoupon, clearCoupon, calculateDiscount } = useCoupon();
 
   const [selectedPlan, setSelectedPlan] = useState<"monthly" | "yearly">("monthly");
   const [couponCode, setCouponCode] = useState("");
+  const [showMessNameModal, setShowMessNameModal] = useState(false);
+
+  // Check if mess name is set OR mess_id is PENDING - if so, show modal
+  useEffect(() => {
+    if (mess && (!mess.name || mess.mess_id === "PENDING")) {
+      setShowMessNameModal(true);
+    } else {
+      setShowMessNameModal(false);
+    }
+  }, [mess]);
 
   const basePrice = selectedPlan === "yearly" ? pricing.yearly_price : pricing.monthly_price;
   const { discountAmount, finalPrice } = calculateDiscount(basePrice);
@@ -39,6 +50,20 @@ export default function SubscriptionPage() {
   };
 
   const handleProceedToPayment = () => {
+    // Check if mess name is set and mess_id is valid
+    if (!mess?.name || mess?.mess_id === "PENDING") {
+      setShowMessNameModal(true);
+      toast({
+        title: language === "bn" ? "মেসের নাম প্রয়োজন" : "Mess Name Required",
+        description:
+          language === "bn"
+            ? "সাবস্ক্রিপশন কেনার আগে মেসের নাম সেট করুন"
+            : "Please set your mess name before purchasing a subscription",
+        variant: "destructive",
+      });
+      return;
+    }
+
     // Navigate to payment page with plan info
     navigate("/manager/payment", {
       state: {
@@ -58,6 +83,9 @@ export default function SubscriptionPage() {
 
   return (
     <DashboardLayout>
+      {/* Mess Name Setup Modal - Blocking for subscription */}
+      {showMessNameModal && mess && <MessNameSetupModal isOpen={true} messId={mess.id} />}
+
       <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-bold text-foreground">{language === "bn" ? "সাবস্ক্রিপশন" : "Subscription"}</h1>
