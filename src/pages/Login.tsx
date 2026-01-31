@@ -59,9 +59,9 @@ export default function Login() {
       // CRITICAL: Use window.location.href for immediate redirect
       // This ensures auth state is fully synchronized before navigation
       if (roleData?.role === 'admin') {
-        window.location.href = '/admin';
+        window.location.href = '/admin/dashboard';
       } else {
-        window.location.href = '/dashboard';
+        window.location.href = '/manager/dashboard';
       }
     } catch (error: any) {
       toast({
@@ -98,7 +98,7 @@ export default function Login() {
         });
         
         // Redirect to member dashboard where they select their profile
-        window.location.href = '/member';
+        window.location.href = '/member/dashboard';
       }
     } catch (error: any) {
       toast({

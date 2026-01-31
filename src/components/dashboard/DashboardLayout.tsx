@@ -33,16 +33,16 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { SuspendedMessModal } from './SuspendedMessModal';
 
 const managerNavItems = [
-  { href: '/dashboard', icon: Home, labelBn: 'ড্যাশবোর্ড', labelEn: 'Dashboard' },
-  { href: '/dashboard/members', icon: Users, labelBn: 'মেম্বার', labelEn: 'Members' },
-  { href: '/dashboard/meals', icon: Utensils, labelBn: 'মিল', labelEn: 'Meals' },
-  { href: '/dashboard/bazar', icon: ShoppingCart, labelBn: 'বাজার', labelEn: 'Bazar' },
-  { href: '/dashboard/deposits', icon: Wallet, labelBn: 'জমা', labelEn: 'Deposits' },
-  { href: '/dashboard/balance', icon: BarChart3, labelBn: 'ব্যালেন্স', labelEn: 'Balance' },
-  { href: '/dashboard/notifications', icon: Bell, labelBn: 'নোটিফিকেশন', labelEn: 'Notifications' },
-  { href: '/dashboard/subscription', icon: CreditCard, labelBn: 'সাবস্ক্রিপশন', labelEn: 'Subscription' },
-  { href: '/dashboard/payment-history', icon: History, labelBn: 'পেমেন্ট হিস্ট্রি', labelEn: 'Payment History' },
-  { href: '/dashboard/helpdesk', icon: MessageSquare, labelBn: 'হেল্প ডেস্ক', labelEn: 'Help Desk' },
+  { href: '/manager/dashboard', icon: Home, labelBn: 'ড্যাশবোর্ড', labelEn: 'Dashboard' },
+  { href: '/manager/members', icon: Users, labelBn: 'মেম্বার', labelEn: 'Members' },
+  { href: '/manager/meals', icon: Utensils, labelBn: 'মিল', labelEn: 'Meals' },
+  { href: '/manager/bazar', icon: ShoppingCart, labelBn: 'বাজার', labelEn: 'Bazar' },
+  { href: '/manager/deposits', icon: Wallet, labelBn: 'জমা', labelEn: 'Deposits' },
+  { href: '/manager/balance', icon: BarChart3, labelBn: 'ব্যালেন্স', labelEn: 'Balance' },
+  { href: '/manager/notifications', icon: Bell, labelBn: 'নোটিফিকেশন', labelEn: 'Notifications' },
+  { href: '/manager/subscription', icon: CreditCard, labelBn: 'সাবস্ক্রিপশন', labelEn: 'Subscription' },
+  { href: '/manager/payment-history', icon: History, labelBn: 'পেমেন্ট হিস্ট্রি', labelEn: 'Payment History' },
+  { href: '/manager/helpdesk', icon: MessageSquare, labelBn: 'হেল্প ডেস্ক', labelEn: 'Help Desk' },
 ];
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -63,7 +63,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   };
 
   const handleContactAdmin = () => {
-    navigate('/dashboard/helpdesk');
+    navigate('/manager/helpdesk');
   };
 
   const isMessSuspended = mess?.status === 'suspended';
@@ -190,7 +190,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuItem onClick={() => navigate('/dashboard/settings')}>
+                <DropdownMenuItem onClick={() => navigate('/manager/settings')}>
                   <Settings className="w-4 h-4 mr-2" />
                   {language === 'bn' ? 'সেটিংস' : 'Settings'}
                 </DropdownMenuItem>
