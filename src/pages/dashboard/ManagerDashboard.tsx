@@ -1,11 +1,9 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { DashboardLayout } from '@/components/dashboard/DashboardLayout';
-import { MessNameSetupModal } from '@/components/dashboard/MessNameSetupModal';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import {
   Select,
@@ -18,7 +16,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useDateValidation } from '@/hooks/useDateValidation';
-import { Copy, Users, Utensils, ShoppingCart, Wallet, TrendingUp, TrendingDown, Loader2, CheckCircle, XCircle, Calendar, Home, Pencil } from 'lucide-react';
+import { Copy, Users, Utensils, ShoppingCart, Wallet, TrendingUp, TrendingDown, Loader2, CheckCircle, XCircle, Calendar, Home, Pencil, Check, X } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { format, parseISO, endOfMonth } from 'date-fns';
@@ -56,9 +54,6 @@ export default function ManagerDashboard() {
   // Monthly selection
   const [availableMonths, setAvailableMonths] = useState<AvailableMonth[]>([]);
   const [selectedMonth, setSelectedMonth] = useState(format(new Date(), 'yyyy-MM'));
-
-  // Check if mess name is not set OR mess_id is still PENDING - show blocking modal
-  const showMessNameModal = mess && (!mess.name || mess.mess_id === 'PENDING');
 
   // Track original name to detect changes
   const [originalName, setOriginalName] = useState('');
@@ -274,11 +269,6 @@ export default function ManagerDashboard() {
 
   return (
     <DashboardLayout>
-      {/* Mess Name Setup Modal - Blocking */}
-      {showMessNameModal && (
-        <MessNameSetupModal isOpen={true} messId={mess.id} />
-      )}
-
       <div className="space-y-6">
         {/* Page Header */}
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
@@ -309,116 +299,102 @@ export default function ManagerDashboard() {
           </div>
         </div>
 
-        {/* Mess Info Card */}
-        {/* Mess Info Card - Simplified */}
-        <Card className="glass-card overflow-hidden">
-          <CardHeader className="pb-4">
-            <CardTitle className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                <Home className="w-5 h-5 text-primary" />
+        {/* Mess Info Card - Clean & Compact */}
+        <Card className="border bg-card/50 backdrop-blur-sm">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-4">
+              {/* Icon */}
+              <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                <Home className="w-6 h-6 text-primary" />
               </div>
-              <div className="flex-1">
-                <div className="flex items-center gap-2">
-                  <span>{language === 'bn' ? 'মেস তথ্য' : 'Mess Info'}</span>
-                  {/* Subscription Status Badge */}
-                  {isSubscriptionActive ? (
-                    <Badge variant="default" className="bg-success/10 text-success border-success/20 hover:bg-success/20">
-                      <CheckCircle className="w-3 h-3 mr-1" />
-                      {language === 'bn' ? 'সক্রিয়' : 'Active'}
-                    </Badge>
-                  ) : (
-                    <Badge variant="destructive" className="bg-destructive/10 text-destructive border-destructive/20 hover:bg-destructive/20">
-                      <XCircle className="w-3 h-3 mr-1" />
-                      {language === 'bn' ? 'নিষ্ক্রিয়' : 'Inactive'}
-                    </Badge>
-                  )}
-                </div>
-              </div>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid sm:grid-cols-3 gap-6">
-              {/* Mess ID */}
-              <div className="space-y-2">
-                <Label className="text-muted-foreground text-sm">{language === 'bn' ? 'মেস আইডি' : 'Mess ID'}</Label>
-                <div className="flex items-center gap-2">
-                  <span className="text-xl font-mono font-bold text-primary">
-                    {mess?.mess_id?.startsWith('PENDING') ? (language === 'bn' ? 'অপেক্ষমাণ...' : 'Pending...') : (mess?.mess_id || '-')}
-                  </span>
-                  {mess && !mess.mess_id?.startsWith('PENDING') && (
+              
+              {/* Info Grid */}
+              <div className="flex-1 grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {/* Mess ID */}
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">
+                    {language === 'bn' ? 'মেস আইডি' : 'Mess ID'}
+                  </p>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-lg font-mono font-bold text-primary">
+                      {mess?.mess_id || '-'}
+                    </span>
                     <Button 
                       variant="ghost" 
                       size="icon" 
                       onClick={copyMessId} 
-                      className="h-8 w-8 rounded-lg"
+                      className="h-7 w-7 rounded-lg hover:bg-primary/10"
                     >
-                      <Copy className="w-4 h-4" />
+                      <Copy className="w-3.5 h-3.5" />
                     </Button>
+                  </div>
+                </div>
+
+                {/* Mess Name */}
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">
+                    {language === 'bn' ? 'মেসের নাম' : 'Mess Name'}
+                  </p>
+                  {!isEditingName ? (
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-base font-medium truncate">
+                        {mess?.name || (language === 'bn' ? 'নাম সেট করা হয়নি' : 'Not set')}
+                      </span>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        onClick={() => setIsEditingName(true)} 
+                        className="h-7 w-7 rounded-lg hover:bg-muted shrink-0"
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-1.5">
+                      <Input
+                        value={messName}
+                        onChange={(e) => setMessName(e.target.value)}
+                        placeholder={language === 'bn' ? 'মেসের নাম' : 'Mess name'}
+                        className="h-8 rounded-lg text-sm max-w-[160px]"
+                        autoFocus
+                      />
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        onClick={handleUpdateMessName} 
+                        disabled={isSaving || !hasNameChanges}
+                        className="h-7 w-7 rounded-lg text-success hover:bg-success/10 shrink-0"
+                      >
+                        {isSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        onClick={handleCancelEditName}
+                        disabled={isSaving}
+                        className="h-7 w-7 rounded-lg text-muted-foreground hover:bg-muted shrink-0"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
                   )}
                 </div>
-              </div>
 
-              {/* Mess Name with inline edit */}
-              <div className="space-y-2">
-                <Label className="text-muted-foreground text-sm">{language === 'bn' ? 'মেসের নাম' : 'Mess Name'}</Label>
-                {!isEditingName ? (
-                  <div className="flex items-center gap-2">
-                    <span className="text-lg font-semibold">
-                      {mess?.name || (language === 'bn' ? 'নাম সেট করুন' : 'Set name')}
-                    </span>
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      onClick={() => setIsEditingName(true)} 
-                      className="h-8 w-8 rounded-lg"
-                    >
-                      <Pencil className="w-4 h-4" />
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <Input
-                      value={messName}
-                      onChange={(e) => setMessName(e.target.value)}
-                      placeholder={language === 'bn' ? 'মেসের নাম' : 'Mess name'}
-                      className="rounded-xl h-9 max-w-[200px]"
-                      autoFocus
-                    />
-                    <Button 
-                      size="sm" 
-                      onClick={handleUpdateMessName} 
-                      disabled={isSaving || !hasNameChanges}
-                      className="h-9 rounded-xl"
-                    >
-                      {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : (language === 'bn' ? 'সেভ' : 'Save')}
-                    </Button>
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      onClick={handleCancelEditName}
-                      disabled={isSaving}
-                      className="h-9 rounded-xl"
-                    >
-                      {language === 'bn' ? 'বাতিল' : 'Cancel'}
-                    </Button>
-                  </div>
-                )}
-              </div>
-
-              {/* Status */}
-              <div className="space-y-2">
-                <Label className="text-muted-foreground text-sm">{language === 'bn' ? 'স্ট্যাটাস' : 'Status'}</Label>
-                <div className="flex items-center gap-2">
+                {/* Status */}
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">
+                    {language === 'bn' ? 'স্ট্যাটাস' : 'Status'}
+                  </p>
                   {isSubscriptionActive ? (
-                    <span className="text-lg font-semibold text-success flex items-center gap-2">
-                      <CheckCircle className="w-5 h-5" />
+                    <Badge className="bg-success/10 text-success border-0 font-medium">
+                      <CheckCircle className="w-3.5 h-3.5 mr-1.5" />
                       {language === 'bn' ? 'সক্রিয়' : 'Active'}
-                    </span>
+                    </Badge>
                   ) : (
-                    <span className="text-lg font-semibold text-destructive flex items-center gap-2">
-                      <XCircle className="w-5 h-5" />
+                    <Badge variant="secondary" className="bg-muted text-muted-foreground border-0 font-medium">
+                      <XCircle className="w-3.5 h-3.5 mr-1.5" />
                       {language === 'bn' ? 'নিষ্ক্রিয়' : 'Inactive'}
-                    </span>
+                    </Badge>
                   )}
                 </div>
               </div>
