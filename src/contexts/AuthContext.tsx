@@ -27,6 +27,7 @@ interface AuthContextType {
   subscription: Subscription | null;
   userRole: 'manager' | 'member' | 'admin' | null;
   isLoading: boolean;
+  isUserDataLoaded: boolean;
   signOut: () => Promise<void>;
   refreshMess: () => Promise<void>;
 }
@@ -40,9 +41,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [userRole, setUserRole] = useState<'manager' | 'member' | 'admin' | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isUserDataLoaded, setIsUserDataLoaded] = useState(false);
 
   const fetchUserData = async (userId: string) => {
     try {
+      setIsUserDataLoaded(false);
+      
       // Fetch user role
       const { data: roleData } = await supabase
         .from('user_roles')
@@ -77,6 +81,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     } catch (error) {
       console.error('Error fetching user data:', error);
+    } finally {
+      setIsUserDataLoaded(true);
     }
   };
 
@@ -89,52 +95,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let mounted = true;
 
-    // Check for existing session first
-    const initializeAuth = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        
+    // Set up auth state listener FIRST
+    const { data: { subscription: authSubscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
         if (!mounted) return;
         
         setSession(session);
         setUser(session?.user ?? null);
-        
+
         if (session?.user) {
           await fetchUserData(session.user.id);
-        }
-      } catch (error) {
-        console.error('Error initializing auth:', error);
-      } finally {
-        if (mounted) {
-          setIsLoading(false);
-        }
-      }
-    };
-
-    initializeAuth();
-
-    // Set up auth state listener for subsequent changes
-    const { data: { subscription: authSubscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        if (!mounted) return;
-        
-        setSession(session);
-        setUser(session?.user ?? null);
-
-        if (session?.user) {
-          // Use setTimeout to avoid blocking the auth state change
-          setTimeout(() => {
-            if (mounted) {
-              fetchUserData(session.user.id);
-            }
-          }, 0);
         } else {
           setMess(null);
           setSubscription(null);
           setUserRole(null);
+          setIsUserDataLoaded(true);
         }
+        
+        setIsLoading(false);
       }
     );
+
+    // Then check for existing session
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (!mounted) return;
+      
+      setSession(session);
+      setUser(session?.user ?? null);
+      
+      if (session?.user) {
+        await fetchUserData(session.user.id);
+      } else {
+        setIsUserDataLoaded(true);
+      }
+      
+      setIsLoading(false);
+    });
 
     return () => {
       mounted = false;
@@ -160,6 +156,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         subscription,
         userRole,
         isLoading,
+        isUserDataLoaded,
         signOut,
         refreshMess,
       }}
