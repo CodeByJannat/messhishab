@@ -42,10 +42,12 @@ export default function MemberNotificationsPage() {
     setIsLoading(true);
 
     try {
+      // Use the edge function to fetch data (bypasses RLS for PIN-authenticated members)
       const { data, error } = await supabase.functions.invoke('get-member-portal-data', {
         body: {
           member_id: memberSession.member.id,
           mess_id: memberSession.mess.id,
+          session_token: memberSession.session_token,
         },
       });
 

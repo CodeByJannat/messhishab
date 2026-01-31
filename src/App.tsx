@@ -43,7 +43,7 @@ const PaymentHistoryPage = lazy(() => import("./pages/dashboard/PaymentHistoryPa
 const ManagerHelpDeskPage = lazy(() => import("./pages/dashboard/ManagerHelpDeskPage"));
 
 // Member Dashboard
-
+const MemberDashboard = lazy(() => import("./pages/member/MemberDashboard"));
 const MemberPortalPage = lazy(() => import("./pages/member/MemberPortalPage"));
 const MemberMealsPage = lazy(() => import("./pages/member/MemberMealsPage"));
 const MemberBazarPage = lazy(() => import("./pages/member/MemberBazarPage"));
@@ -111,6 +111,7 @@ function App() {
                       <Route path="/manager/payment-history" element={<ProtectedRoute requiredRole="manager"><PaymentHistoryPage /></ProtectedRoute>} />
                       <Route path="/manager/helpdesk" element={<ProtectedRoute requiredRole="manager"><ManagerHelpDeskPage /></ProtectedRoute>} />
                       {/* Member Dashboard Routes */}
+                      <Route path="/member/dashboard" element={<MemberDashboard />} />
                       <Route path="/member/portal" element={<MemberProtectedRoute><MemberPortalPage /></MemberProtectedRoute>} />
                       <Route path="/member/meals" element={<MemberProtectedRoute><MemberMealsPage /></MemberProtectedRoute>} />
                       <Route path="/member/bazar" element={<MemberProtectedRoute><MemberBazarPage /></MemberProtectedRoute>} />

@@ -27,12 +27,11 @@ const SUBSCRIPTION_REQUIRED_ROUTES = [
 ];
 
 export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) {
-  const { user, isLoading, isUserDataLoaded, userRole, subscription } = useAuth();
+  const { user, isLoading, userRole, subscription } = useAuth();
   const { language } = useLanguage();
   const location = useLocation();
 
-  // Wait for both auth loading AND user data to be fetched
-  if (isLoading || !isUserDataLoaded) {
+  if (isLoading) {
     // Return minimal loading state - individual pages handle their own skeleton loading
     return <div className="min-h-screen bg-background" />;
   }

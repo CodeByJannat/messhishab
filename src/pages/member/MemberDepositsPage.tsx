@@ -48,6 +48,7 @@ export default function MemberDepositsPage() {
         body: {
           member_id: memberSession.member.id,
           mess_id: memberSession.mess.id,
+          session_token: memberSession.session_token,
         },
       });
 

@@ -165,10 +165,10 @@ export default function MembersPage() {
       return;
     }
 
-    if (formData.password.length < 6) {
+    if (formData.password.length < 4 || formData.password.length > 6) {
       toast({
         title: language === 'bn' ? 'ত্রুটি' : 'Error',
-        description: language === 'bn' ? 'পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে' : 'Password must be at least 6 characters',
+        description: language === 'bn' ? 'পাসওয়ার্ড ৪-৬ অক্ষরের হতে হবে' : 'Password must be 4-6 characters',
         variant: 'destructive',
       });
       return;
@@ -185,7 +185,7 @@ export default function MembersPage() {
           email: formData.email,
           phone: formData.phone,
           roomNumber: formData.roomNumber,
-          password: formData.password,
+          pin: formData.password,
         },
       });
 
@@ -347,12 +347,12 @@ export default function MembersPage() {
   };
 
   const handleResetPassword = async () => {
-    if (!editingMember || !mess) return;
+    if (!editingMember) return;
 
-    if (newPassword.length < 6) {
+    if (newPassword.length < 4 || newPassword.length > 6) {
       toast({
         title: language === 'bn' ? 'ত্রুটি' : 'Error',
-        description: language === 'bn' ? 'পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে' : 'Password must be at least 6 characters',
+        description: language === 'bn' ? 'পাসওয়ার্ড ৪-৬ অক্ষরের হতে হবে' : 'Password must be 4-6 characters',
         variant: 'destructive',
       });
       return;
@@ -361,17 +361,11 @@ export default function MembersPage() {
     setIsResettingPassword(true);
 
     try {
-      const { data, error } = await supabase.functions.invoke('manage-member', {
-        body: { 
-          action: 'reset-password', 
-          messId: mess.id,
-          memberId: editingMember.id, 
-          password: newPassword 
-        },
+      const { data, error } = await supabase.functions.invoke('update-member-pin', {
+        body: { action: 'edit', memberId: editingMember.id, newPin: newPassword },
       });
 
       if (error) throw error;
-      if (data?.error) throw new Error(data.error);
 
       setResetPasswordResult(newPassword);
       setIsResetResultOpen(true);
@@ -500,16 +494,16 @@ export default function MembersPage() {
                   </div>
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-sm">{language === 'bn' ? 'পাসওয়ার্ড (৬+ অক্ষর) *' : 'Password (6+ chars) *'}</Label>
+                  <Label className="text-sm">{language === 'bn' ? 'পাসওয়ার্ড (৪-৬ অক্ষর) *' : 'Password (4-6 chars) *'}</Label>
                   <div className="flex gap-2">
                     <div className="relative flex-1">
                       <Input
                         type={showPassword ? 'text' : 'password'}
                         value={formData.password}
-                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                        onChange={(e) => setFormData({ ...formData, password: e.target.value.slice(0, 6) })}
                         placeholder="••••••"
                         required
-                        minLength={6}
+                        maxLength={6}
                         className="rounded-xl h-9 pr-10"
                       />
                       <Button
