@@ -58,24 +58,32 @@ serve(async (req) => {
       );
     }
 
-    const supabaseAdmin = createClient(
+    // Create client with user's auth header for token validation
+    const supabaseUser = createClient(
       Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+      Deno.env.get('SUPABASE_ANON_KEY')!,
+      { global: { headers: { Authorization: authHeader } } }
     );
 
-    // Verify user using admin client with the token
+    // Validate token using getClaims
     const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token);
+    const { data: claimsData, error: claimsError } = await supabaseUser.auth.getClaims(token);
     
-    if (userError || !user) {
-      console.error('Auth error:', userError?.message || 'No user found');
+    if (claimsError || !claimsData?.claims) {
+      console.error('Auth error:', claimsError?.message || 'No claims found');
       return new Response(
         JSON.stringify({ error: 'Unauthorized: Invalid token' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    const userId = user.id;
+    const userId = claimsData.claims.sub as string;
+
+    // Create admin client for database operations
+    const supabaseAdmin = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    );
     const { action, messId, memberId, name, email, phone, roomNumber, pin } = await req.json();
 
     // Verify user is manager of this mess
