@@ -14,7 +14,7 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
 const memberNavItems = [
-  { href: "/member/portal", icon: User, labelBn: "আমার পোর্টাল", labelEn: "My Portal" },
+  { href: "/member/dashboard", icon: Home, labelBn: "ড্যাশবোর্ড", labelEn: "Dashboard" },
   { href: "/member/meals", icon: Utensils, labelBn: "মিল", labelEn: "Meals" },
   { href: "/member/bazar", icon: ShoppingCart, labelBn: "বাজার", labelEn: "Bazar" },
   { href: "/member/deposits", icon: Wallet, labelBn: "জমা", labelEn: "Deposits" },

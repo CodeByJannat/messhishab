@@ -1,5 +1,4 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { useNavigate } from 'react-router-dom';
 
 interface MemberSession {
   member: {
@@ -50,7 +49,7 @@ export function MemberAuthProvider({ children }: { children: ReactNode }) {
   const logout = () => {
     localStorage.removeItem('member_session');
     setMemberSession(null);
-    window.location.href = '/member/dashboard';
+    window.location.href = '/login';
   };
 
   return (

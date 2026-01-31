@@ -3,342 +3,385 @@ import { useNavigate } from 'react-router-dom';
 import { useMemberAuth } from '@/contexts/MemberAuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { MemberDashboardLayout } from '@/components/dashboard/MemberDashboardLayout';
-import { Card, CardContent } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { User, Search, Key, Loader2, AlertCircle, LogOut } from 'lucide-react';
+import { MemberPortalSkeleton } from '@/components/ui/loading-skeletons';
+import { 
+  Utensils, 
+  Wallet, 
+  TrendingUp, 
+  TrendingDown, 
+  Sun, 
+  Coffee,
+  Moon,
+  Bell,
+  ShoppingCart,
+  Calendar,
+  ArrowRight,
+  Loader2
+} from 'lucide-react';
 import { motion } from 'framer-motion';
 
-interface Member {
-  id: string;
-  name: string;
-  is_active?: boolean;
+interface MealBreakdown {
+  breakfast: number;
+  lunch: number;
+  dinner: number;
+  total: number;
 }
 
-interface MessSession {
-  mess: {
-    id: string;
-    mess_id: string;
-    name: string | null;
-    current_month: string;
-  };
-  members: Member[];
-  subscription: {
-    type: string;
-    status: string;
-    end_date: string;
-  } | null;
+interface Deposit {
+  id: string;
+  amount: number;
+  date: string;
+  note: string | null;
+}
+
+interface Notification {
+  id: string;
+  message: string;
+  to_all: boolean;
+  created_at: string;
+}
+
+interface AdminMessage {
+  id: string;
+  message: string;
+  target_type: string;
+  created_at: string;
 }
 
 export default function MemberDashboard() {
-  const { memberSession, isAuthenticated } = useMemberAuth();
+  const { memberSession, isAuthenticated, isLoading: authLoading } = useMemberAuth();
   const { language } = useLanguage();
   const { toast } = useToast();
   const navigate = useNavigate();
-  
-  const [messSession, setMessSession] = useState<MessSession | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  
-  // PIN verification modal state
-  const [isPinModalOpen, setIsPinModalOpen] = useState(false);
-  const [selectedMember, setSelectedMember] = useState<Member | null>(null);
-  const [pin, setPin] = useState('');
-  const [isVerifying, setIsVerifying] = useState(false);
-  const [pinError, setPinError] = useState('');
-  const [attemptCount, setAttemptCount] = useState(0);
-  const [isLocked, setIsLocked] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [mealBreakdown, setMealBreakdown] = useState<MealBreakdown>({ breakfast: 0, lunch: 0, dinner: 0, total: 0 });
+  const [bazarContribution, setBazarContribution] = useState(0);
+  const [deposits, setDeposits] = useState<Deposit[]>([]);
+  const [totalDeposit, setTotalDeposit] = useState(0);
+  const [balance, setBalance] = useState(0);
+  const [mealRate, setMealRate] = useState(0);
+  const [notifications, setNotifications] = useState<(Notification | AdminMessage)[]>([]);
 
   useEffect(() => {
-    // If already authenticated with full session, redirect to portal
-    if (isAuthenticated && memberSession) {
-      navigate('/member/portal');
-      return;
-    }
-
-    // Check for mess session from login
-    const storedMessSession = localStorage.getItem('member_mess_session');
-    if (storedMessSession) {
-      try {
-        const parsed = JSON.parse(storedMessSession);
-        setMessSession(parsed);
-      } catch (e) {
-        localStorage.removeItem('member_mess_session');
-        navigate('/login');
-      }
-    } else {
-      // No session at all, redirect to login
+    // Wait for auth to finish loading
+    if (authLoading) return;
+    
+    // If not authenticated, redirect to login
+    if (!isAuthenticated || !memberSession) {
       navigate('/login');
-    }
-  }, [isAuthenticated, memberSession, navigate]);
-
-  const filteredMembers = messSession?.members.filter((member) =>
-    member.name.toLowerCase().includes(searchQuery.toLowerCase())
-  ) || [];
-
-  const handleMemberClick = (member: Member) => {
-    if (isLocked) {
-      toast({
-        title: language === 'bn' ? 'সাময়িক লক' : 'Temporarily Locked',
-        description: language === 'bn' 
-          ? 'অনেকবার ভুল পিন দেওয়ায় সাময়িকভাবে লক করা হয়েছে। কিছুক্ষণ পর চেষ্টা করুন।' 
-          : 'Too many wrong attempts. Please try again later.',
-        variant: 'destructive',
-      });
       return;
     }
+    
+    fetchPortalData();
+  }, [authLoading, isAuthenticated, memberSession, navigate]);
 
-    setSelectedMember(member);
-    setPin('');
-    setPinError('');
-    setIsPinModalOpen(true);
-  };
-
-  const handlePinVerify = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedMember || !messSession) return;
-
-    setIsVerifying(true);
-    setPinError('');
+  const fetchPortalData = async () => {
+    if (!memberSession) return;
+    setIsLoading(true);
 
     try {
-      const { data, error } = await supabase.functions.invoke('member-verify-pin', {
-        body: { member_id: selectedMember.id, pin },
+      const { data, error } = await supabase.functions.invoke('get-member-portal-data', {
+        body: {
+          member_id: memberSession.member.id,
+          mess_id: memberSession.mess.id,
+          session_token: memberSession.session_token,
+        },
       });
 
       if (error) throw error;
+      if (data.error) throw new Error(data.error);
 
-      if (data.success) {
-        // Save the verified session to localStorage
-        const verifiedSession = {
-          member: data.member,
-          mess: data.mess,
-          subscription: data.subscription,
-          session_token: data.session_token,
-        };
-        localStorage.setItem('member_session', JSON.stringify(verifiedSession));
-        
-        // Clear the mess session since we now have full member session
-        localStorage.removeItem('member_mess_session');
-        
-        setIsPinModalOpen(false);
-        setAttemptCount(0);
-        // Use window.location for full page reload to pick up the new session
-        window.location.href = '/member/portal';
-      }
-    } catch (error: any) {
-      const newAttemptCount = attemptCount + 1;
-      setAttemptCount(newAttemptCount);
+      const portalData = data.data;
       
-      if (newAttemptCount >= 3) {
-        setIsLocked(true);
-        setIsPinModalOpen(false);
-        // Auto unlock after 30 seconds
-        setTimeout(() => {
-          setIsLocked(false);
-          setAttemptCount(0);
-        }, 30000);
-        
-        toast({
-          title: language === 'bn' ? 'সাময়িক লক' : 'Temporarily Locked',
-          description: language === 'bn' 
-            ? '৩ বার ভুল পিন দেওয়ায় ৩০ সেকেন্ডের জন্য লক করা হয়েছে' 
-            : 'Locked for 30 seconds due to 3 wrong attempts',
-          variant: 'destructive',
-        });
-      } else {
-        setPinError(language === 'bn' ? 'ভুল পিন। আবার চেষ্টা করুন।' : 'Wrong PIN. Try again.');
-      }
+      setMealBreakdown(portalData.mealBreakdown);
+      setBazarContribution(portalData.bazarContribution);
+      setDeposits(portalData.deposits);
+      setTotalDeposit(portalData.totalDeposit);
+      setMealRate(portalData.mealRate);
+      setBalance(portalData.balance);
+
+      // Combine notifications
+      const combined = [
+        ...(portalData.notifications || []).map((n: Notification) => ({ ...n, isAdmin: false })),
+        ...(portalData.adminMessages || []).map((a: AdminMessage) => ({ ...a, isAdmin: true, to_all: a.target_type === 'global' }))
+      ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+      setNotifications(combined.slice(0, 10));
+
+    } catch (error: any) {
+      toast({
+        title: language === 'bn' ? 'ত্রুটি' : 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
     } finally {
-      setIsVerifying(false);
+      setIsLoading(false);
     }
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('member_mess_session');
-    localStorage.removeItem('member_session');
-    window.location.href = '/login';
-  };
-
-  if (!messSession) {
+  // Show loading while auth is checking
+  if (authLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     );
   }
 
+  // If not authenticated after loading, the useEffect will redirect
+  if (!isAuthenticated || !memberSession) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <MemberDashboardLayout>
+        <MemberPortalSkeleton />
+      </MemberDashboardLayout>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="sticky top-0 z-40 w-full border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center">
-              <span className="text-primary-foreground font-bold text-lg">M</span>
-            </div>
-            <div>
-              <h1 className="font-semibold text-foreground">{messSession.mess.name || messSession.mess.mess_id}</h1>
-              <p className="text-xs text-muted-foreground">{messSession.mess.mess_id}</p>
-            </div>
-          </div>
-          <Button variant="ghost" size="sm" onClick={handleLogout}>
-            <LogOut className="w-4 h-4 mr-2" />
-            {language === 'bn' ? 'লগআউট' : 'Logout'}
-          </Button>
-        </div>
-      </header>
-
-      <main className="container mx-auto px-4 py-6 max-w-2xl">
-        <div className="space-y-6">
-          {/* Page Header */}
-          <div className="text-center">
-            <h2 className="text-2xl md:text-3xl font-bold text-foreground">
-              {language === 'bn' ? 'আপনার নাম সিলেক্ট করুন' : 'Select Your Name'}
-            </h2>
-            <p className="text-muted-foreground mt-2">
-              {language === 'bn' 
-                ? 'নাম সিলেক্ট করে পিন দিয়ে পোর্টালে প্রবেশ করুন' 
-                : 'Select your name and enter PIN to access your portal'}
-            </p>
-          </div>
-
-          {/* Search */}
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-            <Input
-              type="text"
-              placeholder={language === 'bn' ? 'মেম্বার খুঁজুন...' : 'Search members...'}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 rounded-xl"
-            />
-          </div>
-
-          {/* Members List */}
-          <div className="space-y-3">
-            {filteredMembers.length === 0 ? (
-              <Card className="glass-card">
-                <CardContent className="py-12 text-center">
-                  <User className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-muted-foreground">
-                    {searchQuery 
-                      ? (language === 'bn' ? 'কোনো ফলাফল নেই' : 'No results found')
-                      : (language === 'bn' ? 'কোনো মেম্বার নেই' : 'No members yet')}
-                  </p>
-                </CardContent>
-              </Card>
-            ) : (
-              filteredMembers.map((member, index) => (
-                <motion.div
-                  key={member.id}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.03 }}
-                >
-                  <Card 
-                    className="glass-card cursor-pointer transition-all hover:border-primary/50 hover:bg-primary/5"
-                    onClick={() => handleMemberClick(member)}
-                  >
-                    <CardContent className="p-4">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                          <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-                            <User className="w-6 h-6 text-primary" />
-                          </div>
-                          <p className="font-medium text-foreground">{member.name}</p>
-                        </div>
-                        <div className="flex items-center gap-2 text-muted-foreground">
-                          <Key className="w-4 h-4" />
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              ))
-            )}
-          </div>
-
-          {isLocked && (
-            <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-xl text-center">
-              <AlertCircle className="w-6 h-6 text-destructive mx-auto mb-2" />
-              <p className="text-sm text-destructive">
-                {language === 'bn' 
-                  ? '৩ বার ভুল পিন দেওয়ায় সাময়িকভাবে লক করা হয়েছে' 
-                  : 'Temporarily locked due to 3 wrong attempts'}
-              </p>
-            </div>
-          )}
+    <MemberDashboardLayout>
+      <div className="space-y-6">
+        {/* Page Header */}
+        <div>
+          <h1 className="text-2xl md:text-3xl font-bold text-foreground">
+            {language === 'bn' ? 'ড্যাশবোর্ড' : 'Dashboard'}
+          </h1>
+          <p className="text-muted-foreground mt-1">
+            {language === 'bn' ? `${memberSession?.member.name} - বিস্তারিত হিসাব` : `${memberSession?.member.name} - Detailed Account`}
+          </p>
         </div>
 
-        {/* PIN Verification Modal */}
-        <Dialog open={isPinModalOpen} onOpenChange={setIsPinModalOpen}>
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle className="text-center">
-                {language === 'bn' ? 'পিন যাচাই করুন' : 'Verify PIN'}
-              </DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handlePinVerify} className="space-y-4">
-              <div className="text-center mb-4">
-                <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-3">
-                  <User className="w-8 h-8 text-primary" />
-                </div>
-                <p className="font-medium text-foreground text-lg">{selectedMember?.name}</p>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="pin">{language === 'bn' ? 'পিন লিখুন' : 'Enter PIN'}</Label>
-                <Input
-                  id="pin"
-                  type="password"
-                  value={pin}
-                  onChange={(e) => setPin(e.target.value)}
-                  placeholder="••••••"
-                  className="rounded-xl text-center text-xl tracking-widest"
-                  maxLength={6}
-                  required
-                  autoFocus
-                />
-              </div>
-
-              {pinError && (
-                <div className="flex items-center gap-2 text-destructive text-sm">
-                  <AlertCircle className="w-4 h-4" />
-                  <span>{pinError}</span>
-                </div>
-              )}
-
-              <Button 
-                type="submit" 
-                className="w-full btn-primary-glow" 
-                disabled={isVerifying || pin.length < 4}
+        {/* Meal Breakdown */}
+        <Card className="glass-card">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Utensils className="w-5 h-5 text-primary" />
+              {language === 'bn' ? 'মিল বিস্তারিত' : 'Meal Breakdown'}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="text-center p-4 bg-warning/10 rounded-xl"
               >
-                {isVerifying ? (
-                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                ) : (
-                  <Key className="w-4 h-4 mr-2" />
-                )}
-                {language === 'bn' ? 'যাচাই করুন' : 'Verify'}
-              </Button>
+                <Coffee className="w-6 h-6 mx-auto text-warning mb-2" />
+                <p className="text-sm text-muted-foreground">{language === 'bn' ? 'সকাল' : 'Breakfast'}</p>
+                <p className="text-2xl font-bold text-foreground">{mealBreakdown.breakfast}</p>
+              </motion.div>
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 }}
+                className="text-center p-4 bg-primary/10 rounded-xl"
+              >
+                <Sun className="w-6 h-6 mx-auto text-primary mb-2" />
+                <p className="text-sm text-muted-foreground">{language === 'bn' ? 'দুপুর' : 'Lunch'}</p>
+                <p className="text-2xl font-bold text-foreground">{mealBreakdown.lunch}</p>
+              </motion.div>
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+                className="text-center p-4 bg-muted rounded-xl"
+              >
+                <Moon className="w-6 h-6 mx-auto text-muted-foreground mb-2" />
+                <p className="text-sm text-muted-foreground">{language === 'bn' ? 'রাত' : 'Dinner'}</p>
+                <p className="text-2xl font-bold text-foreground">{mealBreakdown.dinner}</p>
+              </motion.div>
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
+                className="text-center p-4 bg-success/10 rounded-xl"
+              >
+                <Utensils className="w-6 h-6 mx-auto text-success mb-2" />
+                <p className="text-sm text-muted-foreground">{language === 'bn' ? 'মোট' : 'Total'}</p>
+                <p className="text-2xl font-bold text-success">{mealBreakdown.total}</p>
+              </motion.div>
+            </div>
+          </CardContent>
+        </Card>
 
-              <p className="text-xs text-center text-muted-foreground">
-                {language === 'bn' 
-                  ? `বাকি চেষ্টা: ${3 - attemptCount}` 
-                  : `Attempts remaining: ${3 - attemptCount}`}
+        {/* Financial Summary */}
+        <div className="grid md:grid-cols-4 gap-4">
+          <Card className="glass-card">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">
+                    {language === 'bn' ? 'মিল রেট' : 'Meal Rate'}
+                  </p>
+                  <p className="text-2xl font-bold text-foreground mt-1">৳{mealRate.toFixed(2)}</p>
+                </div>
+                <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center">
+                  <Utensils className="w-6 h-6 text-muted-foreground" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="glass-card">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">
+                    {language === 'bn' ? 'বাজার অবদান' : 'Bazar Contribution'}
+                  </p>
+                  <p className="text-2xl font-bold text-primary mt-1">৳{bazarContribution.toFixed(2)}</p>
+                </div>
+                <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
+                  <ShoppingCart className="w-6 h-6 text-primary" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="glass-card">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">
+                    {language === 'bn' ? 'মোট জমা' : 'Total Deposit'}
+                  </p>
+                  <p className="text-2xl font-bold text-success mt-1">৳{totalDeposit.toFixed(2)}</p>
+                </div>
+                <div className="w-12 h-12 rounded-xl bg-success/10 flex items-center justify-center">
+                  <Wallet className="w-6 h-6 text-success" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="glass-card">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">
+                    {language === 'bn' ? 'ব্যালেন্স' : 'Balance'}
+                  </p>
+                  <p className={`text-2xl font-bold mt-1 ${balance >= 0 ? 'text-success' : 'text-destructive'}`}>
+                    ৳{Math.abs(balance).toFixed(2)}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {balance >= 0 
+                      ? (language === 'bn' ? 'উদ্বৃত্ত' : 'Surplus')
+                      : (language === 'bn' ? 'বকেয়া' : 'Due')}
+                  </p>
+                </div>
+                <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${balance >= 0 ? 'bg-success/10' : 'bg-destructive/10'}`}>
+                  {balance >= 0 ? (
+                    <TrendingUp className="w-6 h-6 text-success" />
+                  ) : (
+                    <TrendingDown className="w-6 h-6 text-destructive" />
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Deposit History */}
+        <Card className="glass-card">
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <Calendar className="w-5 h-5 text-primary" />
+              {language === 'bn' ? 'জমার ইতিহাস' : 'Deposit History'}
+            </CardTitle>
+            {deposits.length > 5 && (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => navigate('/member/deposits')}
+                className="text-primary hover:text-primary hover:bg-primary/10"
+              >
+                {language === 'bn' ? 'সব দেখুন' : 'Show All'}
+                <ArrowRight className="w-4 h-4 ml-1" />
+              </Button>
+            )}
+          </CardHeader>
+          <CardContent>
+            {deposits.length === 0 ? (
+              <p className="text-center text-muted-foreground py-4">
+                {language === 'bn' ? 'কোনো জমা নেই' : 'No deposits yet'}
               </p>
-            </form>
-          </DialogContent>
-        </Dialog>
-      </main>
-    </div>
+            ) : (
+              <div className="space-y-3">
+                {deposits.slice(0, 5).map((deposit) => (
+                  <div key={deposit.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-xl">
+                    <div>
+                      <p className="font-medium text-foreground">৳{Number(deposit.amount).toFixed(2)}</p>
+                      <p className="text-xs text-muted-foreground">{deposit.note || '-'}</p>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      {new Date(deposit.date).toLocaleDateString(language === 'bn' ? 'bn-BD' : 'en-US')}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Notifications */}
+        <Card className="glass-card">
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <Bell className="w-5 h-5 text-primary" />
+              {language === 'bn' ? 'নোটিফিকেশন' : 'Notifications'}
+            </CardTitle>
+            {notifications.length > 5 && (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => navigate('/member/notifications')}
+                className="text-primary hover:text-primary hover:bg-primary/10"
+              >
+                {language === 'bn' ? 'সব দেখুন' : 'Show All'}
+                <ArrowRight className="w-4 h-4 ml-1" />
+              </Button>
+            )}
+          </CardHeader>
+          <CardContent>
+            {notifications.length === 0 ? (
+              <p className="text-center text-muted-foreground py-4">
+                {language === 'bn' ? 'কোনো নোটিফিকেশন নেই' : 'No notifications'}
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {notifications.slice(0, 5).map((notif: any) => (
+                  <div key={notif.id} className="p-3 bg-muted/50 rounded-xl">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Badge variant={notif.isAdmin ? 'default' : 'secondary'} className="text-xs">
+                        {notif.isAdmin 
+                          ? (language === 'bn' ? 'এডমিন' : 'Admin')
+                          : (language === 'bn' ? 'ম্যানেজার' : 'Manager')}
+                      </Badge>
+                      <span className="text-xs text-muted-foreground">
+                        {new Date(notif.created_at).toLocaleDateString(language === 'bn' ? 'bn-BD' : 'en-US')}
+                      </span>
+                    </div>
+                    <p className="text-foreground">{notif.message}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </MemberDashboardLayout>
   );
 }
