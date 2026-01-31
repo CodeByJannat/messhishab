@@ -424,7 +424,7 @@ export type Database = {
           id: string
           manager_id: string
           mess_id: string
-          mess_password: string
+          mess_password: string | null
           name: string | null
           status: Database["public"]["Enums"]["mess_status"]
           suspend_reason: string | null
@@ -436,7 +436,7 @@ export type Database = {
           id?: string
           manager_id: string
           mess_id: string
-          mess_password?: string
+          mess_password?: string | null
           name?: string | null
           status?: Database["public"]["Enums"]["mess_status"]
           suspend_reason?: string | null
@@ -448,7 +448,7 @@ export type Database = {
           id?: string
           manager_id?: string
           mess_id?: string
-          mess_password?: string
+          mess_password?: string | null
           name?: string | null
           status?: Database["public"]["Enums"]["mess_status"]
           suspend_reason?: string | null

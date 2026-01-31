@@ -5,7 +5,6 @@ import { supabase } from '@/integrations/supabase/client';
 interface Mess {
   id: string;
   mess_id: string;
-  mess_password: string;
   name: string | null;
   current_month: string;
   status: 'active' | 'inactive' | 'suspended';
