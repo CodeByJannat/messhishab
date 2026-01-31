@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Sun, Moon, Globe, ArrowLeft, Eye, EyeOff, User, ChevronLeft } from 'lucide-react';
+import { Sun, Moon, Globe, ArrowLeft, Eye, EyeOff } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -20,18 +20,19 @@ export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   
-  // Manager login state
+  // Manager/Admin login state
   const [managerEmail, setManagerEmail] = useState('');
   const [managerPassword, setManagerPassword] = useState('');
   
   // Member login state
-  const [messId, setMessId] = useState('');
-  const [messPassword, setMessPassword] = useState('');
+  const [memberEmail, setMemberEmail] = useState('');
+  const [memberPassword, setMemberPassword] = useState('');
 
   const toggleLanguage = () => {
     setLanguage(language === 'bn' ? 'en' : 'bn');
   };
 
+  // Manager/Admin login - uses Supabase Auth
   const handleManagerLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -56,8 +57,7 @@ export default function Login() {
         description: language === 'bn' ? 'লগইন সফল হয়েছে' : 'Login successful',
       });
       
-      // CRITICAL: Use window.location.href for immediate redirect
-      // This ensures auth state is fully synchronized before navigation
+      // Redirect based on role
       if (roleData?.role === 'admin') {
         window.location.href = '/admin/dashboard';
       } else {
@@ -73,37 +73,44 @@ export default function Login() {
     }
   };
 
+  // Member login - uses members table directly
   const handleMemberLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     
     try {
       const { data, error } = await supabase.functions.invoke('member-login', {
-        body: { mess_id: messId, mess_password: messPassword },
+        body: { email: memberEmail, password: memberPassword },
       });
 
       if (error) throw error;
       
+      if (data.error) {
+        throw new Error(data.error);
+      }
+      
       if (data.success) {
-        // Store mess info and members for the member dashboard
-        localStorage.setItem('member_mess_session', JSON.stringify({
+        // Save the verified session to localStorage
+        const memberSession = {
+          member: data.member,
           mess: data.mess,
-          members: data.members,
           subscription: data.subscription,
-        }));
+          session_token: data.session_token,
+        };
+        localStorage.setItem('member_session', JSON.stringify(memberSession));
         
         toast({
           title: language === 'bn' ? 'সফল!' : 'Success!',
-          description: language === 'bn' ? 'মেস ভেরিফাইড হয়েছে' : 'Mess verified successfully',
+          description: language === 'bn' ? 'লগইন সফল হয়েছে' : 'Login successful',
         });
         
-        // Redirect to member dashboard where they select their profile
+        // Redirect to member dashboard
         window.location.href = '/member/dashboard';
       }
     } catch (error: any) {
       toast({
         title: language === 'bn' ? 'ত্রুটি' : 'Error',
-        description: error.message || 'Invalid MessID or MessPassword',
+        description: error.message || (language === 'bn' ? 'ইমেইল বা পাসওয়ার্ড ভুল' : 'Invalid email or password'),
         variant: 'destructive',
       });
     } finally {
@@ -166,6 +173,7 @@ export default function Login() {
               <TabsTrigger value="member">{t('auth.memberLogin')}</TabsTrigger>
             </TabsList>
 
+            {/* Manager/Admin Login Tab */}
             <TabsContent value="manager">
               <form onSubmit={handleManagerLogin} className="space-y-4">
                 <div className="space-y-2">
@@ -211,28 +219,30 @@ export default function Login() {
               </form>
             </TabsContent>
 
+            {/* Member Login Tab */}
             <TabsContent value="member">
               <form onSubmit={handleMemberLogin} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="mess-id">{t('auth.messId')}</Label>
+                  <Label htmlFor="member-email">{t('auth.email')}</Label>
                   <Input
-                    id="mess-id"
-                    type="text"
-                    value={messId}
-                    onChange={(e) => setMessId(e.target.value)}
-                    placeholder="MESS-XXXXXX"
+                    id="member-email"
+                    type="email"
+                    value={memberEmail}
+                    onChange={(e) => setMemberEmail(e.target.value)}
+                    placeholder="member@email.com"
                     className="rounded-xl"
                     required
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="mess-password">{t('auth.messPassword')}</Label>
+                  <Label htmlFor="member-password">{t('auth.password')}</Label>
                   <div className="relative">
                     <Input
-                      id="mess-password"
+                      id="member-password"
                       type={showPassword ? 'text' : 'password'}
-                      value={messPassword}
-                      onChange={(e) => setMessPassword(e.target.value)}
+                      value={memberPassword}
+                      onChange={(e) => setMemberPassword(e.target.value)}
+                      placeholder="••••••"
                       className="rounded-xl pr-10"
                       required
                     />
@@ -245,6 +255,11 @@ export default function Login() {
                     </button>
                   </div>
                 </div>
+                <p className="text-xs text-muted-foreground">
+                  {language === 'bn' 
+                    ? 'আপনার ম্যানেজার প্রদত্ত ইমেইল ও পাসওয়ার্ড ব্যবহার করুন' 
+                    : 'Use the email and password provided by your manager'}
+                </p>
                 <Button type="submit" className="w-full btn-primary-glow" disabled={isLoading}>
                   {isLoading ? t('common.loading') : t('auth.login')}
                 </Button>
