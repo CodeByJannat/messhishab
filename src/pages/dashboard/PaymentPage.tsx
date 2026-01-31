@@ -76,7 +76,7 @@ export default function PaymentPage() {
           : 'Please set your mess name before making a payment',
         variant: 'destructive',
       });
-      navigate('/dashboard');
+      navigate('/manager/dashboard');
     }
   }, [mess, navigate, language, toast]);
 
@@ -173,7 +173,7 @@ export default function PaymentPage() {
             ? 'আপনার পেমেন্ট ভেরিফিকেশনের জন্য পাঠানো হয়েছে। অ্যাডমিন অনুমোদন করলে সাবস্ক্রিপশন সক্রিয় হবে।'
             : 'Your payment has been submitted for verification. Subscription will activate after admin approval.',
         });
-        navigate('/dashboard');
+        navigate('/manager/dashboard');
         return true;
       }
       return false;
