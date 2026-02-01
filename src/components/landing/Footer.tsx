@@ -1,8 +1,9 @@
-import { Link } from 'react-router-dom';
+import { memo } from 'react';
+import { PreloadLink } from '@/components/PreloadLink';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Facebook, MessageCircle } from 'lucide-react';
 
-export function Footer() {
+export const Footer = memo(function Footer() {
   const { t, language } = useLanguage();
   const currentYear = new Date().getFullYear();
 
@@ -29,13 +30,13 @@ export function Footer() {
           {/* Links */}
           <nav className="flex flex-wrap justify-center gap-6">
             {links.map((link) => (
-              <Link
+              <PreloadLink
                 key={link.key}
                 to={link.href}
                 className="text-muted-foreground hover:text-foreground transition-colors text-sm"
               >
                 {t(link.key)}
-              </Link>
+              </PreloadLink>
             ))}
           </nav>
 
@@ -80,4 +81,4 @@ export function Footer() {
       </div>
     </footer>
   );
-}
+});

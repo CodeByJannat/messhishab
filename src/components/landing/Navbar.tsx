@@ -1,21 +1,22 @@
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
+import { PreloadLink } from "@/components/PreloadLink";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { Button } from "@/components/ui/button";
 import { Menu, X, Sun, Moon, Globe } from "lucide-react";
-import { useState } from "react";
+import { useState, memo, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
-export function Navbar() {
+export const Navbar = memo(function Navbar() {
   const { t, language, setLanguage } = useLanguage();
   const { theme, toggleTheme } = useTheme();
   const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
 
-  const toggleLanguage = () => {
+  const toggleLanguage = useCallback(() => {
     setLanguage(language === "bn" ? "en" : "bn");
-  };
+  }, [language, setLanguage]);
 
   const navLinks = [
     { href: "#pricing", label: t("nav.pricing") },
@@ -23,7 +24,7 @@ export function Navbar() {
     { href: "#faq", label: t("nav.faq") },
   ];
 
-  const handleNavClick = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
+  const handleNavClick = useCallback((e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
     e.preventDefault();
     const hash = href;
     
@@ -37,19 +38,21 @@ export function Navbar() {
       // Navigate to homepage with hash
       navigate("/" + hash);
     }
-  };
+  }, [location.pathname, navigate]);
+
+  const closeMenu = useCallback(() => setIsOpen(false), []);
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 glass-nav">
       <div className="container-custom">
         <div className="flex items-center justify-between h-16 md:h-20">
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-2">
+          <PreloadLink to="/" className="flex items-center gap-2">
             <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center">
               <span className="text-primary-foreground font-bold text-xl">M</span>
             </div>
             <span className="font-bold text-xl text-foreground">MessHishab</span>
-          </Link>
+          </PreloadLink>
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center gap-6">
@@ -79,14 +82,14 @@ export function Navbar() {
             <Button variant="ghost" size="icon" onClick={toggleTheme} className="rounded-xl">
               {theme === "light" ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
             </Button>
-            <Link to="/login">
+            <PreloadLink to="/login">
               <Button variant="outline" className="rounded-xl">
                 {t("nav.login")}
               </Button>
-            </Link>
-            <Link to="/register">
+            </PreloadLink>
+            <PreloadLink to="/register">
               <Button className="btn-primary-glow">{t("nav.register")}</Button>
-            </Link>
+            </PreloadLink>
           </div>
 
           {/* Mobile Menu Button */}
@@ -138,14 +141,14 @@ export function Navbar() {
                   </a>
                 ))}
                 <div className="flex gap-3 pt-4">
-                  <Link to="/login" className="flex-1" onClick={() => setIsOpen(false)}>
+                  <PreloadLink to="/login" className="flex-1" onClick={closeMenu}>
                     <Button variant="outline" className="w-full rounded-xl">
                       {t("nav.login")}
                     </Button>
-                  </Link>
-                  <Link to="/register" className="flex-1" onClick={() => setIsOpen(false)}>
+                  </PreloadLink>
+                  <PreloadLink to="/register" className="flex-1" onClick={closeMenu}>
                     <Button className="w-full btn-primary-glow">{t("nav.register")}</Button>
-                  </Link>
+                  </PreloadLink>
                 </div>
               </div>
             </motion.div>
@@ -154,4 +157,4 @@ export function Navbar() {
       </div>
     </nav>
   );
-}
+});

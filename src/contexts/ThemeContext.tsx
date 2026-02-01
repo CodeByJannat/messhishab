@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useEffect, useState, ReactNode, useMemo, useCallback } from 'react';
 
 type Theme = 'light' | 'dark';
 
@@ -11,7 +11,7 @@ interface ThemeContextType {
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setTheme] = useState<Theme>(() => {
+  const [theme, setThemeState] = useState<Theme>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('messhishab-theme');
       if (saved === 'dark' || saved === 'light') {
@@ -32,12 +32,23 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('messhishab-theme', theme);
   }, [theme]);
 
-  const toggleTheme = () => {
-    setTheme(prev => prev === 'light' ? 'dark' : 'light');
-  };
+  const setTheme = useCallback((newTheme: Theme) => {
+    setThemeState(newTheme);
+  }, []);
+
+  const toggleTheme = useCallback(() => {
+    setThemeState(prev => prev === 'light' ? 'dark' : 'light');
+  }, []);
+
+  // Memoize context value to prevent unnecessary re-renders
+  const value = useMemo(() => ({
+    theme,
+    setTheme,
+    toggleTheme,
+  }), [theme, setTheme, toggleTheme]);
 
   return (
-    <ThemeContext.Provider value={{ theme, setTheme, toggleTheme }}>
+    <ThemeContext.Provider value={value}>
       {children}
     </ThemeContext.Provider>
   );

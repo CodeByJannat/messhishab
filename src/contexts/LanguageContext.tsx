@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useMemo, useCallback } from 'react';
 
 type Language = 'bn' | 'en';
 
@@ -480,12 +480,19 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('messhishab-language', language);
   }, [language]);
 
-  const t = (key: string): string => {
+  const t = useCallback((key: string): string => {
     return translations[language][key] || key;
-  };
+  }, [language]);
+
+  // Memoize context value to prevent unnecessary re-renders
+  const value = useMemo(() => ({
+    language,
+    setLanguage,
+    t,
+  }), [language, setLanguage, t]);
 
   return (
-    <LanguageContext.Provider value={{ language, setLanguage, t }}>
+    <LanguageContext.Provider value={value}>
       {children}
     </LanguageContext.Provider>
   );
