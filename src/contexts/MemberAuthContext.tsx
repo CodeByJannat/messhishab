@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, ReactNode, useMemo, useCallback } from 'react';
 
 interface MemberSession {
   member: {
@@ -46,21 +46,22 @@ export function MemberAuthProvider({ children }: { children: ReactNode }) {
     setIsLoading(false);
   }, []);
 
-  const logout = () => {
+  const logout = useCallback(() => {
     localStorage.removeItem('member_session');
     setMemberSession(null);
     window.location.href = '/login';
-  };
+  }, []);
+
+  // Memoize context value to prevent unnecessary re-renders
+  const value = useMemo(() => ({
+    memberSession,
+    isAuthenticated: !!memberSession,
+    isLoading,
+    logout,
+  }), [memberSession, isLoading, logout]);
 
   return (
-    <MemberAuthContext.Provider
-      value={{
-        memberSession,
-        isAuthenticated: !!memberSession,
-        isLoading,
-        logout,
-      }}
-    >
+    <MemberAuthContext.Provider value={value}>
       {children}
     </MemberAuthContext.Provider>
   );

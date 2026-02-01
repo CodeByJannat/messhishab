@@ -1,4 +1,5 @@
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { PreloadLink } from '@/components/PreloadLink';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -29,7 +30,7 @@ import {
   History,
   Receipt,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, memo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { SuspendedMessModal } from './SuspendedMessModal';
 
@@ -47,7 +48,7 @@ const managerNavItems = [
   { href: '/manager/helpdesk', icon: MessageSquare, labelBn: 'হেল্প ডেস্ক', labelEn: 'Help Desk' },
 ];
 
-export function DashboardLayout({ children }: { children: React.ReactNode }) {
+export const DashboardLayout = memo(function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { user, mess, signOut } = useAuth();
   const { language, setLanguage, t } = useLanguage();
   const { theme, toggleTheme } = useTheme();
@@ -55,18 +56,20 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-  const handleSignOut = async () => {
+  const handleSignOut = useCallback(async () => {
     await signOut();
     navigate('/login');
-  };
+  }, [signOut, navigate]);
 
-  const toggleLanguage = () => {
+  const toggleLanguage = useCallback(() => {
     setLanguage(language === 'bn' ? 'en' : 'bn');
-  };
+  }, [language, setLanguage]);
 
-  const handleContactAdmin = () => {
+  const handleContactAdmin = useCallback(() => {
     navigate('/manager/helpdesk');
-  };
+  }, [navigate]);
+
+  const closeSidebar = useCallback(() => setIsSidebarOpen(false), []);
 
   const isMessSuspended = mess?.status === 'suspended';
 
@@ -148,9 +151,9 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                 const isActive = location.pathname === item.href;
                 return (
                   <li key={item.href}>
-                    <Link
+                    <PreloadLink
                       to={item.href}
-                      onClick={() => setIsSidebarOpen(false)}
+                      onClick={closeSidebar}
                       className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
                         isActive
                           ? 'bg-primary text-primary-foreground'
@@ -159,7 +162,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                     >
                       <item.icon className="w-5 h-5" />
                       <span>{language === 'bn' ? item.labelBn : item.labelEn}</span>
-                    </Link>
+                    </PreloadLink>
                   </li>
                 );
               })}
@@ -215,4 +218,4 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       </main>
     </div>
   );
-}
+});

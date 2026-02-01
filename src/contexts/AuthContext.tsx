@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, ReactNode, useMemo, useCallback } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -40,7 +40,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [userRole, setUserRole] = useState<'manager' | 'member' | 'admin' | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const fetchUserData = async (userId: string) => {
+  const fetchUserData = useCallback(async (userId: string) => {
     try {
       // Fetch user role
       const { data: roleData } = await supabase
@@ -77,13 +77,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.error('Error fetching user data:', error);
     }
-  };
+  }, []);
 
-  const refreshMess = async () => {
+  const refreshMess = useCallback(async () => {
     if (user) {
       await fetchUserData(user.id);
     }
-  };
+  }, [user, fetchUserData]);
+
+  const signOut = useCallback(async () => {
+    await supabase.auth.signOut();
+    setUser(null);
+    setSession(null);
+    setMess(null);
+    setSubscription(null);
+    setUserRole(null);
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -139,30 +148,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       mounted = false;
       authSubscription.unsubscribe();
     };
-  }, []);
+  }, [fetchUserData]);
 
-  const signOut = async () => {
-    await supabase.auth.signOut();
-    setUser(null);
-    setSession(null);
-    setMess(null);
-    setSubscription(null);
-    setUserRole(null);
-  };
+  // Memoize context value to prevent unnecessary re-renders
+  const value = useMemo(() => ({
+    user,
+    session,
+    mess,
+    subscription,
+    userRole,
+    isLoading,
+    signOut,
+    refreshMess,
+  }), [user, session, mess, subscription, userRole, isLoading, signOut, refreshMess]);
 
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        session,
-        mess,
-        subscription,
-        userRole,
-        isLoading,
-        signOut,
-        refreshMess,
-      }}
-    >
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );

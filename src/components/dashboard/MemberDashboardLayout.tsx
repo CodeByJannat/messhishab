@@ -1,4 +1,5 @@
-import { Link, useLocation } from "react-router-dom";
+import { useLocation } from "react-router-dom";
+import { PreloadLink } from "@/components/PreloadLink";
 import { useMemberAuth } from "@/contexts/MemberAuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -10,7 +11,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Home, ShoppingCart, Bell, LogOut, Menu, Sun, Moon, Globe, Send, User, Utensils, Wallet } from "lucide-react";
-import { useState } from "react";
+import { useState, memo, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
 const memberNavItems = [
@@ -22,20 +23,22 @@ const memberNavItems = [
   { href: "/member/contact", icon: Send, labelBn: "ম্যানেজারকে মেসেজ", labelEn: "Message Manager" },
 ];
 
-export function MemberDashboardLayout({ children }: { children: React.ReactNode }) {
+export const MemberDashboardLayout = memo(function MemberDashboardLayout({ children }: { children: React.ReactNode }) {
   const { memberSession, logout } = useMemberAuth();
   const { language, setLanguage } = useLanguage();
   const { theme, toggleTheme } = useTheme();
   const location = useLocation();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-  const handleSignOut = () => {
+  const handleSignOut = useCallback(() => {
     logout();
-  };
+  }, [logout]);
 
-  const toggleLanguage = () => {
+  const toggleLanguage = useCallback(() => {
     setLanguage(language === "bn" ? "en" : "bn");
-  };
+  }, [language, setLanguage]);
+
+  const closeSidebar = useCallback(() => setIsSidebarOpen(false), []);
 
   return (
     <div className="min-h-screen bg-background">
@@ -95,16 +98,15 @@ export function MemberDashboardLayout({ children }: { children: React.ReactNode 
             </div>
           </div>
 
-          {/* Navigation */}
           <nav className="flex-1 p-4 overflow-y-auto">
             <ul className="space-y-2">
               {memberNavItems.map((item) => {
                 const isActive = location.pathname === item.href;
                 return (
                   <li key={item.href}>
-                    <Link
+                    <PreloadLink
                       to={item.href}
-                      onClick={() => setIsSidebarOpen(false)}
+                      onClick={closeSidebar}
                       className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
                         isActive
                           ? "bg-primary text-primary-foreground"
@@ -113,7 +115,7 @@ export function MemberDashboardLayout({ children }: { children: React.ReactNode 
                     >
                       <item.icon className="w-5 h-5" />
                       <span>{language === "bn" ? item.labelBn : item.labelEn}</span>
-                    </Link>
+                    </PreloadLink>
                   </li>
                 );
               })}
@@ -160,4 +162,4 @@ export function MemberDashboardLayout({ children }: { children: React.ReactNode 
       </main>
     </div>
   );
-}
+});

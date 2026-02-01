@@ -1,12 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, memo } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { Copy, Check, X, Sparkles, Gift, ArrowRight } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useToast } from '@/hooks/use-toast';
-import { Link } from 'react-router-dom';
+import { PreloadLink } from '@/components/PreloadLink';
 
 interface Promotion {
   id: string;
@@ -18,7 +19,7 @@ interface Promotion {
   is_active: boolean;
 }
 
-export function PromotionModal() {
+export const PromotionModal = memo(function PromotionModal() {
   const { language } = useLanguage();
   const { toast } = useToast();
   const [promotion, setPromotion] = useState<Promotion | null>(null);
@@ -78,7 +79,16 @@ export function PromotionModal() {
       <DialogContent 
         hideCloseButton 
         className="sm:max-w-[420px] p-0 overflow-hidden border-0 bg-transparent shadow-none"
+        aria-describedby="promotion-description"
       >
+        <VisuallyHidden>
+          <DialogTitle>
+            {language === 'bn' ? 'বিশেষ অফার' : 'Special Offer'}
+          </DialogTitle>
+          <DialogDescription id="promotion-description">
+            {language === 'bn' ? promotion.offer_name_bn : promotion.offer_name_en}
+          </DialogDescription>
+        </VisuallyHidden>
         <motion.div
           initial={{ scale: 0.8, opacity: 0, y: 20 }}
           animate={{ scale: 1, opacity: 1, y: 0 }}
@@ -212,20 +222,19 @@ export function PromotionModal() {
                 </motion.div>
               )}
 
-              {/* CTA Button */}
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.3 }}
               >
-                <Link to="/register" onClick={() => setIsOpen(false)}>
+                <PreloadLink to="/register" onClick={() => setIsOpen(false)}>
                   <Button 
                     className="w-full h-14 text-lg font-bold rounded-2xl bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary shadow-lg shadow-primary/30 hover:shadow-xl hover:shadow-primary/40 transition-all duration-300 hover:scale-[1.02] group"
                   >
                     <span>{language === 'bn' ? promotion.cta_text_bn : promotion.cta_text_en}</span>
                     <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
                   </Button>
-                </Link>
+                </PreloadLink>
               </motion.div>
 
               {/* Bottom Trust Text */}
@@ -245,4 +254,4 @@ export function PromotionModal() {
       </DialogContent>
     </Dialog>
   );
-}
+});

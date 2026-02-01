@@ -147,6 +147,24 @@
   }
 }
 
+/* View transitions for smooth navigation */
+@view-transition {
+  navigation: auto;
+}
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 0.15s;
+}
+
+/* GPU acceleration for animated elements */
+.glass-card,
+.glass-nav,
+.btn-primary-glow {
+  will-change: transform;
+  transform: translateZ(0);
+}
+
 @layer base {
   * {
     @apply border-border;
@@ -154,6 +172,10 @@
   
   body {
     @apply bg-background text-foreground font-bengali antialiased;
+    /* Optimize text rendering */
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
   
   html {
