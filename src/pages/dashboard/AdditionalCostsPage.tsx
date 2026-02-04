@@ -271,25 +271,25 @@ export default function AdditionalCostsPage() {
   const totalCost = costs.reduce((sum, c) => sum + Number(c.amount), 0);
   const avgCostPerMember = memberCount > 0 ? totalCost / memberCount : 0;
 
-  // Export handlers
+  // Export handlers - PDF uses English only (jsPDF doesn't support Bengali fonts)
   const handleExportPDF = () => {
-    const monthLabel = availableMonths.find(m => m.value === selectedMonth)?.label || selectedMonth;
+    const monthDate = parseISO(`${selectedMonth}-01`);
+    const monthLabel = format(monthDate, 'MMMM yyyy');
     exportToPDF({
-      title: language === 'bn' ? 'অতিরিক্ত খরচ রিপোর্ট' : 'Additional Costs Report',
+      title: 'Additional Costs Report',
       subtitle: monthLabel,
-      messName: mess?.name || (language === 'bn' ? 'মেস' : 'Mess'),
+      messName: mess?.name || 'Mess',
       fileName: `additional-costs-${selectedMonth}`,
-      language: language as 'en' | 'bn',
       columns: [
-        { header: language === 'bn' ? 'তারিখ' : 'Date', key: 'date', width: 15 },
-        { header: language === 'bn' ? 'বিবরণ' : 'Description', key: 'description', width: 30 },
-        { header: language === 'bn' ? 'পরিমাণ' : 'Amount', key: 'amount', width: 15 },
-        { header: language === 'bn' ? 'নোট' : 'Note', key: 'note', width: 25 },
+        { header: 'Date', key: 'date', width: 15 },
+        { header: 'Description', key: 'description', width: 30 },
+        { header: 'Amount', key: 'amount', width: 15 },
+        { header: 'Note', key: 'note', width: 25 },
       ],
       data: [
-        ...costs.map(c => ({ ...c, amount: `৳${Number(c.amount).toFixed(2)}`, note: c.note || '-' })),
-        { date: '', description: language === 'bn' ? 'মোট' : 'Total', amount: `৳${totalCost.toFixed(2)}`, note: '' },
-        { date: '', description: language === 'bn' ? 'জনপ্রতি গড়' : 'Avg per member', amount: `৳${avgCostPerMember.toFixed(2)}`, note: '' },
+        ...costs.map(c => ({ ...c, amount: `${Number(c.amount).toFixed(2)} Tk`, note: c.note || '-' })),
+        { date: '', description: 'Total', amount: `${totalCost.toFixed(2)} Tk`, note: '' },
+        { date: '', description: 'Avg per member', amount: `${avgCostPerMember.toFixed(2)} Tk`, note: '' },
       ],
     });
   };
@@ -301,7 +301,6 @@ export default function AdditionalCostsPage() {
       subtitle: monthLabel,
       messName: mess?.name || (language === 'bn' ? 'মেস' : 'Mess'),
       fileName: `additional-costs-${selectedMonth}`,
-      language: language as 'en' | 'bn',
       columns: [
         { header: language === 'bn' ? 'তারিখ' : 'Date', key: 'date', width: 15 },
         { header: language === 'bn' ? 'বিবরণ' : 'Description', key: 'description', width: 30 },

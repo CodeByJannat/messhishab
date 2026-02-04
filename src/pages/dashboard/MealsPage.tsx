@@ -374,25 +374,25 @@ export default function MealsPage() {
   const totalLunch = monthlySummary.reduce((sum, m) => sum + m.lunch, 0);
   const totalDinner = monthlySummary.reduce((sum, m) => sum + m.dinner, 0);
 
-  // Export handlers
+  // Export handlers - PDF uses English only (jsPDF doesn't support Bengali fonts)
   const handleExportPDF = () => {
-    const monthLabel = availableMonths.find(m => m.value === selectedMonth)?.label || selectedMonth;
+    const monthDate = parseISO(`${selectedMonth}-01`);
+    const monthLabel = format(monthDate, 'MMMM yyyy');
     exportToPDF({
-      title: language === 'bn' ? 'মিল রিপোর্ট' : 'Meal Report',
+      title: 'Meal Report',
       subtitle: monthLabel,
-      messName: mess?.name || (language === 'bn' ? 'মেস' : 'Mess'),
+      messName: mess?.name || 'Mess',
       fileName: `meals-${selectedMonth}`,
-      language: language as 'en' | 'bn',
       columns: [
-        { header: language === 'bn' ? 'মেম্বারের নাম' : 'Member Name', key: 'memberName', width: 25 },
-        { header: language === 'bn' ? 'সকাল' : 'Breakfast', key: 'breakfast', width: 12 },
-        { header: language === 'bn' ? 'দুপুর' : 'Lunch', key: 'lunch', width: 12 },
-        { header: language === 'bn' ? 'রাত' : 'Dinner', key: 'dinner', width: 12 },
-        { header: language === 'bn' ? 'মোট' : 'Total', key: 'total', width: 12 },
+        { header: 'Member Name', key: 'memberName', width: 25 },
+        { header: 'Breakfast', key: 'breakfast', width: 12 },
+        { header: 'Lunch', key: 'lunch', width: 12 },
+        { header: 'Dinner', key: 'dinner', width: 12 },
+        { header: 'Total', key: 'total', width: 12 },
       ],
       data: [
         ...monthlySummary,
-        { memberName: language === 'bn' ? 'মোট' : 'Total', breakfast: totalBreakfast, lunch: totalLunch, dinner: totalDinner, total: totalMonthlyMeals }
+        { memberName: 'Total', breakfast: totalBreakfast, lunch: totalLunch, dinner: totalDinner, total: totalMonthlyMeals }
       ],
     });
   };

@@ -281,23 +281,23 @@ export default function BazarPage() {
 
   const totalBazar = bazars.reduce((sum, b) => sum + Number(b.cost), 0);
 
-  // Export handlers
+  // Export handlers - PDF uses English only (jsPDF doesn't support Bengali fonts)
   const handleExportPDF = () => {
-    const monthLabel = availableMonths.find(m => m.value === selectedMonth)?.label || selectedMonth;
+    const monthDate = parseISO(`${selectedMonth}-01`);
+    const monthLabel = format(monthDate, 'MMMM yyyy');
     exportToPDF({
-      title: language === 'bn' ? 'বাজার রিপোর্ট' : 'Bazar Report',
+      title: 'Bazar Report',
       subtitle: monthLabel,
-      messName: mess?.name || (language === 'bn' ? 'মেস' : 'Mess'),
+      messName: mess?.name || 'Mess',
       fileName: `bazar-${selectedMonth}`,
-      language: language as 'en' | 'bn',
       columns: [
-        { header: language === 'bn' ? 'তারিখ' : 'Date', key: 'date', width: 15 },
-        { header: language === 'bn' ? 'কে করেছে' : 'Person', key: 'person_name', width: 20 },
-        { header: language === 'bn' ? 'আইটেম' : 'Items', key: 'items', width: 30 },
-        { header: language === 'bn' ? 'খরচ' : 'Cost', key: 'cost', width: 15 },
+        { header: 'Date', key: 'date', width: 15 },
+        { header: 'Person', key: 'person_name', width: 20 },
+        { header: 'Items', key: 'items', width: 30 },
+        { header: 'Cost', key: 'cost', width: 15 },
       ],
-      data: [...bazars.map(b => ({ ...b, cost: `৳${Number(b.cost).toFixed(2)}` })), 
-        { date: '', person_name: language === 'bn' ? 'মোট' : 'Total', items: '', cost: `৳${totalBazar.toFixed(2)}` }],
+      data: [...bazars.map(b => ({ ...b, cost: `${Number(b.cost).toFixed(2)} Tk` })), 
+        { date: '', person_name: 'Total', items: '', cost: `${totalBazar.toFixed(2)} Tk` }],
     });
   };
 
@@ -308,7 +308,6 @@ export default function BazarPage() {
       subtitle: monthLabel,
       messName: mess?.name || (language === 'bn' ? 'মেস' : 'Mess'),
       fileName: `bazar-${selectedMonth}`,
-      language: language as 'en' | 'bn',
       columns: [
         { header: language === 'bn' ? 'তারিখ' : 'Date', key: 'date', width: 15 },
         { header: language === 'bn' ? 'কে করেছে' : 'Person', key: 'person_name', width: 20 },

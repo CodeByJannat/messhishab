@@ -280,28 +280,28 @@ export default function DepositsPage() {
 
   const totalDeposits = deposits.reduce((sum, d) => sum + Number(d.amount), 0);
 
-  // Export handlers
+  // Export handlers - PDF uses English only (jsPDF doesn't support Bengali fonts)
   const handleExportPDF = () => {
-    const monthLabel = availableMonths.find(m => m.value === selectedMonth)?.label || selectedMonth;
+    const monthDate = parseISO(`${selectedMonth}-01`);
+    const monthLabel = format(monthDate, 'MMMM yyyy');
     const depositData = deposits.map(d => ({
       date: d.date,
       member: getMemberName(d.member_id),
-      amount: `৳${Number(d.amount).toFixed(2)}`,
+      amount: `${Number(d.amount).toFixed(2)} Tk`,
       note: d.note || '-',
     }));
     exportToPDF({
-      title: language === 'bn' ? 'জমা রিপোর্ট' : 'Deposit Report',
+      title: 'Deposit Report',
       subtitle: monthLabel,
-      messName: mess?.name || (language === 'bn' ? 'মেস' : 'Mess'),
+      messName: mess?.name || 'Mess',
       fileName: `deposits-${selectedMonth}`,
-      language: language as 'en' | 'bn',
       columns: [
-        { header: language === 'bn' ? 'তারিখ' : 'Date', key: 'date', width: 15 },
-        { header: language === 'bn' ? 'মেম্বারের নাম' : 'Member Name', key: 'member', width: 25 },
-        { header: language === 'bn' ? 'পরিমাণ' : 'Amount', key: 'amount', width: 15 },
-        { header: language === 'bn' ? 'নোট' : 'Note', key: 'note', width: 25 },
+        { header: 'Date', key: 'date', width: 15 },
+        { header: 'Member Name', key: 'member', width: 25 },
+        { header: 'Amount', key: 'amount', width: 15 },
+        { header: 'Note', key: 'note', width: 25 },
       ],
-      data: [...depositData, { date: '', member: language === 'bn' ? 'মোট' : 'Total', amount: `৳${totalDeposits.toFixed(2)}`, note: '' }],
+      data: [...depositData, { date: '', member: 'Total', amount: `${totalDeposits.toFixed(2)} Tk`, note: '' }],
     });
   };
 
@@ -318,7 +318,6 @@ export default function DepositsPage() {
       subtitle: monthLabel,
       messName: mess?.name || (language === 'bn' ? 'মেস' : 'Mess'),
       fileName: `deposits-${selectedMonth}`,
-      language: language as 'en' | 'bn',
       columns: [
         { header: language === 'bn' ? 'তারিখ' : 'Date', key: 'date', width: 15 },
         { header: language === 'bn' ? 'মেম্বারের নাম' : 'Member Name', key: 'member', width: 25 },
