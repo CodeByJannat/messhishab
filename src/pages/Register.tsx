@@ -403,7 +403,7 @@ export default function Register() {
                 />
                 <Button
                   type="button"
-                  variant={otpVerified ? "outline" : "secondary"}
+                  variant={otpVerified ? "outline" : "default"}
                   size="sm"
                   onClick={handleSendOtp}
                   disabled={sendingOtp || otpVerified || !email || !isValidEmailDomain(email) || otpCountdown > 0}
