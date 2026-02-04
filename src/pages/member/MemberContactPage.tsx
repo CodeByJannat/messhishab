@@ -7,11 +7,50 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Skeleton } from '@/components/ui/skeleton';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Send, Loader2, MessageCircle, Users, Megaphone } from 'lucide-react';
 import { MessageBubble } from '@/components/messaging/MessageBubble';
 import { format } from 'date-fns';
+
+// Chat skeleton component
+function ChatSkeleton() {
+  return (
+    <div className="space-y-4 p-4">
+      {[...Array(5)].map((_, i) => (
+        <div key={i} className={`flex ${i % 2 === 0 ? 'justify-start' : 'justify-end'}`}>
+          <Skeleton className={`h-12 ${i % 2 === 0 ? 'w-48' : 'w-36'} rounded-2xl`} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// Broadcast skeleton component
+function BroadcastSkeleton() {
+  return (
+    <div className="space-y-4 p-4">
+      {[...Array(4)].map((_, i) => (
+        <Card key={i} className="bg-muted/30">
+          <div className="p-4">
+            <div className="flex items-start gap-3">
+              <Skeleton className="w-10 h-10 rounded-full shrink-0" />
+              <div className="flex-1 space-y-2">
+                <div className="flex items-center justify-between">
+                  <Skeleton className="h-3 w-24" />
+                  <Skeleton className="h-3 w-20" />
+                </div>
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-3/4" />
+              </div>
+            </div>
+          </div>
+        </Card>
+      ))}
+    </div>
+  );
+}
 
 interface DirectMessage {
   id: string;
@@ -172,9 +211,7 @@ export default function MemberContactPage() {
               {/* Messages */}
               <ScrollArea className="flex-1 p-4">
                 {isLoading ? (
-                  <div className="flex items-center justify-center h-full">
-                    <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                  </div>
+                  <ChatSkeleton />
                 ) : messages.length === 0 ? (
                   <div className="flex flex-col items-center justify-center h-full py-12 text-center">
                     <MessageCircle className="w-12 h-12 text-muted-foreground/50 mb-4" />
@@ -234,9 +271,7 @@ export default function MemberContactPage() {
             <Card className="glass-card h-full">
               <ScrollArea className="h-full p-4">
                 {isLoading ? (
-                  <div className="flex items-center justify-center h-full">
-                    <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                  </div>
+                  <BroadcastSkeleton />
                 ) : broadcasts.length === 0 ? (
                   <div className="flex flex-col items-center justify-center h-full py-12 text-center">
                     <Megaphone className="w-12 h-12 text-muted-foreground/50 mb-4" />

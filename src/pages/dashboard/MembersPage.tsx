@@ -27,6 +27,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Plus, Trash2, Loader2, Users, Pencil, Search, ChevronLeft, ChevronRight, RefreshCw, Eye, EyeOff } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { isValidEmailDomain, getEmailDomainError, isValidBangladeshPhone, getPhoneError } from '@/lib/validation';
+import { InlineTableSkeleton } from '@/components/ui/loading-skeletons';
 
 interface EditingMember {
   id: string;
@@ -715,9 +716,7 @@ export default function MembersPage() {
         <Card className="glass-card">
           <CardContent className="p-0">
             {isLoading ? (
-              <div className="flex items-center justify-center py-12">
-                <Loader2 className="w-8 h-8 animate-spin text-primary" />
-              </div>
+              <InlineTableSkeleton rows={8} />
             ) : filteredMembers.length === 0 ? (
               <div className="text-center py-12">
                 <Users className="w-12 h-12 mx-auto text-muted-foreground/50 mb-4" />

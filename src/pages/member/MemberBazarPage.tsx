@@ -20,9 +20,10 @@ import {
 } from '@/components/ui/table';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, ShoppingCart, Calendar } from 'lucide-react';
+import { ShoppingCart, Calendar } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { format, parseISO, endOfMonth } from 'date-fns';
+import { InlineTableSkeleton } from '@/components/ui/loading-skeletons';
 
 interface Bazar {
   id: string;
@@ -162,9 +163,7 @@ export default function MemberBazarPage() {
         <Card className="glass-card">
           <CardContent className="p-0">
             {isLoading ? (
-              <div className="flex items-center justify-center py-12">
-                <Loader2 className="w-8 h-8 animate-spin text-primary" />
-              </div>
+              <InlineTableSkeleton rows={6} />
             ) : filteredBazars.length === 0 ? (
               <div className="text-center py-12">
                 <ShoppingCart className="w-12 h-12 text-muted-foreground mx-auto mb-4" />

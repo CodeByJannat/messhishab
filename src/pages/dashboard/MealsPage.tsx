@@ -31,6 +31,7 @@ import { useDateValidation } from '@/hooks/useDateValidation';
 import { exportToPDF, exportToExcel } from '@/lib/exportUtils';
 import { Plus, Minus, Loader2, Calendar, BarChart3, AlertCircle } from 'lucide-react';
 import { format, endOfMonth, parseISO } from 'date-fns';
+import { ManagerMealsPageSkeleton, InlineTableSkeleton } from '@/components/ui/loading-skeletons';
 
 interface Member {
   id: string;
@@ -485,9 +486,7 @@ export default function MealsPage() {
             <Card className="glass-card">
               <CardContent className="p-0">
                 {isLoading ? (
-                  <div className="flex items-center justify-center py-12">
-                    <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                  </div>
+                  <InlineTableSkeleton rows={6} />
                 ) : members.length === 0 ? (
                   <div className="text-center py-12">
                     <p className="text-muted-foreground">
@@ -604,9 +603,7 @@ export default function MealsPage() {
               </CardHeader>
               <CardContent className="p-0">
                 {isLoadingReport ? (
-                  <div className="flex items-center justify-center py-12">
-                    <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                  </div>
+                  <InlineTableSkeleton rows={6} />
                 ) : monthlySummary.length === 0 ? (
                   <div className="text-center py-12">
                     <BarChart3 className="w-12 h-12 text-muted-foreground mx-auto mb-4" />

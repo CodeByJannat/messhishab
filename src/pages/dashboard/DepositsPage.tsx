@@ -40,6 +40,7 @@ import { exportToPDF, exportToExcel } from '@/lib/exportUtils';
 import { Plus, Trash2, Loader2, AlertCircle, Calendar } from 'lucide-react';
 import { format, parseISO, endOfMonth } from 'date-fns';
 import { motion } from 'framer-motion';
+import { InlineTableSkeleton } from '@/components/ui/loading-skeletons';
 
 interface Member {
   id: string;
@@ -457,9 +458,7 @@ export default function DepositsPage() {
         <Card className="glass-card">
           <CardContent className="p-0">
             {isLoading ? (
-              <div className="flex items-center justify-center py-12">
-                <Loader2 className="w-8 h-8 animate-spin text-primary" />
-              </div>
+              <InlineTableSkeleton rows={6} />
             ) : deposits.length === 0 ? (
               <div className="text-center py-12">
                 <p className="text-muted-foreground">
