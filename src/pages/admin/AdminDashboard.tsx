@@ -142,10 +142,10 @@ export default function AdminDashboard() {
 
         {/* Mess Status Cards */}
         <div>
-          <h2 className="text-lg font-semibold mb-4 text-foreground">
+          <h2 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 text-foreground">
             {language === 'bn' ? 'মেস স্ট্যাটাস' : 'Mess Status'}
           </h2>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             {messCards.map((card, index) => (
               <motion.div
                 key={card.label}
@@ -154,14 +154,14 @@ export default function AdminDashboard() {
                 transition={{ delay: index * 0.1 }}
               >
                 <Card className="glass-card">
-                  <CardContent className="pt-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm text-muted-foreground">{card.label}</p>
-                        <p className="text-3xl font-bold text-foreground">{card.value}</p>
+                  <CardContent className="p-4 sm:pt-6">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs sm:text-sm text-muted-foreground truncate">{card.label}</p>
+                        <p className="text-xl sm:text-3xl font-bold text-foreground">{card.value}</p>
                       </div>
-                      <div className={`w-12 h-12 rounded-xl ${card.color} flex items-center justify-center`}>
-                        <card.icon className="w-6 h-6 text-white" />
+                      <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl ${card.color} flex items-center justify-center shrink-0`}>
+                        <card.icon className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
                       </div>
                     </div>
                   </CardContent>
@@ -173,10 +173,10 @@ export default function AdminDashboard() {
 
         {/* Payment Status Cards */}
         <div>
-          <h2 className="text-lg font-semibold mb-4 text-foreground">
+          <h2 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 text-foreground">
             {language === 'bn' ? 'পেমেন্ট স্ট্যাটাস' : 'Payment Status'}
           </h2>
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-3 gap-2 sm:gap-4">
             {paymentCards.map((card, index) => (
               <motion.div
                 key={card.label}
@@ -185,14 +185,14 @@ export default function AdminDashboard() {
                 transition={{ delay: 0.4 + index * 0.1 }}
               >
                 <Card className="glass-card">
-                  <CardContent className="pt-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm text-muted-foreground">{card.label}</p>
-                        <p className="text-3xl font-bold text-foreground">{card.value}</p>
+                  <CardContent className="p-3 sm:pt-6">
+                    <div className="flex flex-col sm:flex-row items-center sm:justify-between gap-2">
+                      <div className="text-center sm:text-left order-2 sm:order-1">
+                        <p className="text-[10px] sm:text-sm text-muted-foreground">{card.label}</p>
+                        <p className="text-lg sm:text-3xl font-bold text-foreground">{card.value}</p>
                       </div>
-                      <div className={`w-12 h-12 rounded-xl ${card.color} flex items-center justify-center`}>
-                        <card.icon className="w-6 h-6 text-white" />
+                      <div className={`w-8 h-8 sm:w-12 sm:h-12 rounded-xl ${card.color} flex items-center justify-center order-1 sm:order-2`}>
+                        <card.icon className="w-4 h-4 sm:w-6 sm:h-6 text-white" />
                       </div>
                     </div>
                   </CardContent>
@@ -204,13 +204,13 @@ export default function AdminDashboard() {
 
         {/* Revenue Overview */}
         <Card className="glass-card">
-          <CardHeader className="flex flex-row items-center justify-between">
+          <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0 pb-2 sm:pb-4">
             <div>
-              <CardTitle>{language === 'bn' ? 'রেভিনিউ ওভারভিউ' : 'Revenue Overview'}</CardTitle>
-              <p className="text-2xl font-bold text-success mt-2">৳{totalRevenue.toLocaleString()}</p>
+              <CardTitle className="text-base sm:text-lg">{language === 'bn' ? 'রেভিনিউ ওভারভিউ' : 'Revenue Overview'}</CardTitle>
+              <p className="text-xl sm:text-2xl font-bold text-success mt-1 sm:mt-2">৳{totalRevenue.toLocaleString()}</p>
             </div>
             <Select value={revenueFilter} onValueChange={setRevenueFilter}>
-              <SelectTrigger className="w-40">
+              <SelectTrigger className="w-full sm:w-40">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -221,18 +221,19 @@ export default function AdminDashboard() {
               </SelectContent>
             </Select>
           </CardHeader>
-          <CardContent>
+          <CardContent className="px-2 sm:px-6">
             {revenueData.length > 0 ? (
-              <ResponsiveContainer width="100%" height={300}>
+              <ResponsiveContainer width="100%" height={250}>
                 <BarChart data={revenueData}>
                   <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                  <XAxis dataKey="period" className="text-muted-foreground" />
-                  <YAxis className="text-muted-foreground" />
+                  <XAxis dataKey="period" className="text-muted-foreground" tick={{ fontSize: 10 }} />
+                  <YAxis className="text-muted-foreground" tick={{ fontSize: 10 }} width={50} />
                   <Tooltip 
                     contentStyle={{ 
                       backgroundColor: 'hsl(var(--card))',
                       border: '1px solid hsl(var(--border))',
-                      borderRadius: '0.5rem'
+                      borderRadius: '0.5rem',
+                      fontSize: '12px'
                     }}
                     formatter={(value: number) => [`৳${value.toLocaleString()}`, language === 'bn' ? 'রেভিনিউ' : 'Revenue']}
                   />
@@ -240,7 +241,7 @@ export default function AdminDashboard() {
                 </BarChart>
               </ResponsiveContainer>
             ) : (
-              <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+              <div className="h-[250px] flex items-center justify-center text-muted-foreground">
                 {isLoading 
                   ? (language === 'bn' ? 'লোড হচ্ছে...' : 'Loading...') 
                   : (language === 'bn' ? 'কোনো ডেটা নেই' : 'No data available')

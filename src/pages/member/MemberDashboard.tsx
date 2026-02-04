@@ -165,128 +165,128 @@ export default function MemberDashboard() {
 
         {/* Meal Breakdown */}
         <Card className="glass-card">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Utensils className="w-5 h-5 text-primary" />
+          <CardHeader className="pb-2 sm:pb-4">
+            <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+              <Utensils className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
               {language === 'bn' ? 'মিল বিস্তারিত' : 'Meal Breakdown'}
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <CardContent className="pt-0">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4">
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="text-center p-4 bg-warning/10 rounded-xl"
+                className="text-center p-3 sm:p-4 bg-warning/10 rounded-xl"
               >
-                <Coffee className="w-6 h-6 mx-auto text-warning mb-2" />
-                <p className="text-sm text-muted-foreground">{language === 'bn' ? 'সকাল' : 'Breakfast'}</p>
-                <p className="text-2xl font-bold text-foreground">{mealBreakdown.breakfast}</p>
+                <Coffee className="w-5 h-5 sm:w-6 sm:h-6 mx-auto text-warning mb-1 sm:mb-2" />
+                <p className="text-xs sm:text-sm text-muted-foreground">{language === 'bn' ? 'সকাল' : 'Breakfast'}</p>
+                <p className="text-lg sm:text-2xl font-bold text-foreground">{mealBreakdown.breakfast}</p>
               </motion.div>
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1 }}
-                className="text-center p-4 bg-primary/10 rounded-xl"
+                className="text-center p-3 sm:p-4 bg-primary/10 rounded-xl"
               >
-                <Sun className="w-6 h-6 mx-auto text-primary mb-2" />
-                <p className="text-sm text-muted-foreground">{language === 'bn' ? 'দুপুর' : 'Lunch'}</p>
-                <p className="text-2xl font-bold text-foreground">{mealBreakdown.lunch}</p>
+                <Sun className="w-5 h-5 sm:w-6 sm:h-6 mx-auto text-primary mb-1 sm:mb-2" />
+                <p className="text-xs sm:text-sm text-muted-foreground">{language === 'bn' ? 'দুপুর' : 'Lunch'}</p>
+                <p className="text-lg sm:text-2xl font-bold text-foreground">{mealBreakdown.lunch}</p>
               </motion.div>
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.2 }}
-                className="text-center p-4 bg-muted rounded-xl"
+                className="text-center p-3 sm:p-4 bg-muted rounded-xl"
               >
-                <Moon className="w-6 h-6 mx-auto text-muted-foreground mb-2" />
-                <p className="text-sm text-muted-foreground">{language === 'bn' ? 'রাত' : 'Dinner'}</p>
-                <p className="text-2xl font-bold text-foreground">{mealBreakdown.dinner}</p>
+                <Moon className="w-5 h-5 sm:w-6 sm:h-6 mx-auto text-muted-foreground mb-1 sm:mb-2" />
+                <p className="text-xs sm:text-sm text-muted-foreground">{language === 'bn' ? 'রাত' : 'Dinner'}</p>
+                <p className="text-lg sm:text-2xl font-bold text-foreground">{mealBreakdown.dinner}</p>
               </motion.div>
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.3 }}
-                className="text-center p-4 bg-success/10 rounded-xl"
+                className="text-center p-3 sm:p-4 bg-success/10 rounded-xl"
               >
-                <Utensils className="w-6 h-6 mx-auto text-success mb-2" />
-                <p className="text-sm text-muted-foreground">{language === 'bn' ? 'মোট' : 'Total'}</p>
-                <p className="text-2xl font-bold text-success">{mealBreakdown.total}</p>
+                <Utensils className="w-5 h-5 sm:w-6 sm:h-6 mx-auto text-success mb-1 sm:mb-2" />
+                <p className="text-xs sm:text-sm text-muted-foreground">{language === 'bn' ? 'মোট' : 'Total'}</p>
+                <p className="text-lg sm:text-2xl font-bold text-success">{mealBreakdown.total}</p>
               </motion.div>
             </div>
           </CardContent>
         </Card>
 
         {/* Financial Summary */}
-        <div className="grid md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <Card className="glass-card">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">
+            <CardContent className="p-4 sm:p-6">
+              <div className="flex items-center justify-between gap-2">
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs sm:text-sm text-muted-foreground truncate">
                     {language === 'bn' ? 'মিল রেট' : 'Meal Rate'}
                   </p>
-                  <p className="text-2xl font-bold text-foreground mt-1">৳{mealRate.toFixed(2)}</p>
+                  <p className="text-lg sm:text-2xl font-bold text-foreground mt-1">৳{mealRate.toFixed(2)}</p>
                 </div>
-                <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center">
-                  <Utensils className="w-6 h-6 text-muted-foreground" />
+                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-muted flex items-center justify-center shrink-0">
+                  <Utensils className="w-5 h-5 sm:w-6 sm:h-6 text-muted-foreground" />
                 </div>
               </div>
             </CardContent>
           </Card>
 
           <Card className="glass-card">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">
-                    {language === 'bn' ? 'বাজার অবদান' : 'Bazar Contribution'}
+            <CardContent className="p-4 sm:p-6">
+              <div className="flex items-center justify-between gap-2">
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs sm:text-sm text-muted-foreground truncate">
+                    {language === 'bn' ? 'বাজার অবদান' : 'Bazar'}
                   </p>
-                  <p className="text-2xl font-bold text-primary mt-1">৳{bazarContribution.toFixed(2)}</p>
+                  <p className="text-lg sm:text-2xl font-bold text-primary mt-1">৳{bazarContribution.toFixed(2)}</p>
                 </div>
-                <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
-                  <ShoppingCart className="w-6 h-6 text-primary" />
+                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                  <ShoppingCart className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
                 </div>
               </div>
             </CardContent>
           </Card>
 
           <Card className="glass-card">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">
-                    {language === 'bn' ? 'মোট জমা' : 'Total Deposit'}
+            <CardContent className="p-4 sm:p-6">
+              <div className="flex items-center justify-between gap-2">
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs sm:text-sm text-muted-foreground truncate">
+                    {language === 'bn' ? 'মোট জমা' : 'Deposits'}
                   </p>
-                  <p className="text-2xl font-bold text-success mt-1">৳{totalDeposit.toFixed(2)}</p>
+                  <p className="text-lg sm:text-2xl font-bold text-success mt-1">৳{totalDeposit.toFixed(2)}</p>
                 </div>
-                <div className="w-12 h-12 rounded-xl bg-success/10 flex items-center justify-center">
-                  <Wallet className="w-6 h-6 text-success" />
+                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-success/10 flex items-center justify-center shrink-0">
+                  <Wallet className="w-5 h-5 sm:w-6 sm:h-6 text-success" />
                 </div>
               </div>
             </CardContent>
           </Card>
 
           <Card className="glass-card">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">
+            <CardContent className="p-4 sm:p-6">
+              <div className="flex items-center justify-between gap-2">
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs sm:text-sm text-muted-foreground truncate">
                     {language === 'bn' ? 'ব্যালেন্স' : 'Balance'}
                   </p>
-                  <p className={`text-2xl font-bold mt-1 ${balance >= 0 ? 'text-success' : 'text-destructive'}`}>
+                  <p className={`text-lg sm:text-2xl font-bold mt-1 ${balance >= 0 ? 'text-success' : 'text-destructive'}`}>
                     ৳{Math.abs(balance).toFixed(2)}
                   </p>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-[10px] sm:text-xs text-muted-foreground">
                     {balance >= 0 
                       ? (language === 'bn' ? 'উদ্বৃত্ত' : 'Surplus')
                       : (language === 'bn' ? 'বকেয়া' : 'Due')}
                   </p>
                 </div>
-                <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${balance >= 0 ? 'bg-success/10' : 'bg-destructive/10'}`}>
+                <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center shrink-0 ${balance >= 0 ? 'bg-success/10' : 'bg-destructive/10'}`}>
                   {balance >= 0 ? (
-                    <TrendingUp className="w-6 h-6 text-success" />
+                    <TrendingUp className="w-5 h-5 sm:w-6 sm:h-6 text-success" />
                   ) : (
-                    <TrendingDown className="w-6 h-6 text-destructive" />
+                    <TrendingDown className="w-5 h-5 sm:w-6 sm:h-6 text-destructive" />
                   )}
                 </div>
               </div>

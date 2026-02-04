@@ -287,6 +287,7 @@ export default function BazarPage() {
     exportToPDF({
       title: language === 'bn' ? 'বাজার রিপোর্ট' : 'Bazar Report',
       subtitle: monthLabel,
+      messName: mess?.name || (language === 'bn' ? 'মেস' : 'Mess'),
       fileName: `bazar-${selectedMonth}`,
       language: language as 'en' | 'bn',
       columns: [
@@ -305,7 +306,9 @@ export default function BazarPage() {
     exportToExcel({
       title: language === 'bn' ? 'বাজার রিপোর্ট' : 'Bazar Report',
       subtitle: monthLabel,
+      messName: mess?.name || (language === 'bn' ? 'মেস' : 'Mess'),
       fileName: `bazar-${selectedMonth}`,
+      language: language as 'en' | 'bn',
       columns: [
         { header: language === 'bn' ? 'তারিখ' : 'Date', key: 'date', width: 15 },
         { header: language === 'bn' ? 'কে করেছে' : 'Person', key: 'person_name', width: 20 },

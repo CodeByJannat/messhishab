@@ -14,6 +14,7 @@ interface ExportColumn {
 interface ExportOptions {
   title: string;
   subtitle?: string;
+  messName?: string; // Mess name to display at top of PDF
   columns: ExportColumn[];
   data: Record<string, any>[];
   fileName: string;
@@ -61,30 +62,44 @@ export function filterDataByDate<T extends { date: string }>(
 
 // Export to PDF
 export function exportToPDF(options: ExportOptions): void {
-  const { title, subtitle, columns, data, fileName, language = 'en' } = options;
+  const { title, subtitle, messName, columns, data, fileName, language = 'en' } = options;
   
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
   
-  // Title
-  doc.setFontSize(18);
-  doc.setTextColor(40, 40, 40);
-  doc.text(title, pageWidth / 2, 20, { align: 'center' });
+  let yOffset = 15;
   
-  // Subtitle
+  // Mess Name (if provided) - displayed prominently at top
+  if (messName) {
+    doc.setFontSize(20);
+    doc.setTextColor(59, 130, 246); // Primary blue color
+    doc.text(messName, pageWidth / 2, yOffset, { align: 'center' });
+    yOffset += 10;
+  }
+  
+  // Title
+  doc.setFontSize(16);
+  doc.setTextColor(40, 40, 40);
+  doc.text(title, pageWidth / 2, yOffset, { align: 'center' });
+  yOffset += 8;
+  
+  // Subtitle (Month)
   if (subtitle) {
     doc.setFontSize(12);
-    doc.setTextColor(100, 100, 100);
-    doc.text(subtitle, pageWidth / 2, 28, { align: 'center' });
+    doc.setTextColor(80, 80, 80);
+    const monthLabel = language === 'bn' ? `মাস: ${subtitle}` : `Month: ${subtitle}`;
+    doc.text(monthLabel, pageWidth / 2, yOffset, { align: 'center' });
+    yOffset += 8;
   }
   
   // Generated date
-  doc.setFontSize(10);
+  doc.setFontSize(9);
   doc.setTextColor(120, 120, 120);
   const generatedText = language === 'bn' 
     ? `তৈরির তারিখ: ${format(new Date(), 'dd/MM/yyyy hh:mm a')}`
     : `Generated: ${format(new Date(), 'dd/MM/yyyy hh:mm a')}`;
-  doc.text(generatedText, pageWidth / 2, 35, { align: 'center' });
+  doc.text(generatedText, pageWidth / 2, yOffset, { align: 'center' });
+  yOffset += 5;
   
   // Table
   const tableColumns = columns.map(col => col.header);
@@ -98,7 +113,7 @@ export function exportToPDF(options: ExportOptions): void {
   autoTable(doc, {
     head: [tableColumns],
     body: tableData,
-    startY: 42,
+    startY: yOffset + 5,
     theme: 'striped',
     headStyles: {
       fillColor: [59, 130, 246], // Primary blue
@@ -132,15 +147,21 @@ export function exportToPDF(options: ExportOptions): void {
 
 // Export to Excel
 export function exportToExcel(options: ExportOptions): void {
-  const { title, columns, data, fileName, subtitle } = options;
+  const { title, columns, data, fileName, subtitle, messName, language = 'en' } = options;
   
   // Create worksheet data
   const worksheetData: any[][] = [];
   
+  // Add mess name if provided
+  if (messName) {
+    worksheetData.push([messName]);
+  }
+  
   // Add title row
   worksheetData.push([title]);
   if (subtitle) {
-    worksheetData.push([subtitle]);
+    const monthLabel = language === 'bn' ? `মাস: ${subtitle}` : `Month: ${subtitle}`;
+    worksheetData.push([monthLabel]);
   }
   worksheetData.push([]); // Empty row
   
