@@ -1,7 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useReadOnly } from '@/components/auth/ProtectedRoute';
 import { DashboardLayout } from '@/components/dashboard/DashboardLayout';
+import { ReadOnlyBanner } from '@/components/dashboard/ReadOnlyBanner';
+import { ExportButton } from '@/components/dashboard/ExportButton';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -34,6 +37,7 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useDateValidation } from '@/hooks/useDateValidation';
+import { exportToPDF, exportToExcel } from '@/lib/exportUtils';
 import { Plus, Trash2, Loader2, AlertCircle, Calendar } from 'lucide-react';
 import { format, parseISO, endOfMonth } from 'date-fns';
 import { motion } from 'framer-motion';
@@ -63,6 +67,7 @@ export default function BazarPage() {
   const { language } = useLanguage();
   const { toast } = useToast();
   const { validateDate, getMaxDate, getMinDate, filterValidMonths } = useDateValidation();
+  const { isReadOnly, expiredDaysAgo, readOnlyMonths } = useReadOnly();
   
   const [members, setMembers] = useState<Member[]>([]);
   const [bazars, setBazars] = useState<Bazar[]>([]);
@@ -276,9 +281,47 @@ export default function BazarPage() {
 
   const totalBazar = bazars.reduce((sum, b) => sum + Number(b.cost), 0);
 
+  // Export handlers
+  const handleExportPDF = () => {
+    const monthLabel = availableMonths.find(m => m.value === selectedMonth)?.label || selectedMonth;
+    exportToPDF({
+      title: language === 'bn' ? 'বাজার রিপোর্ট' : 'Bazar Report',
+      subtitle: monthLabel,
+      fileName: `bazar-${selectedMonth}`,
+      language: language as 'en' | 'bn',
+      columns: [
+        { header: language === 'bn' ? 'তারিখ' : 'Date', key: 'date', width: 15 },
+        { header: language === 'bn' ? 'কে করেছে' : 'Person', key: 'person_name', width: 20 },
+        { header: language === 'bn' ? 'আইটেম' : 'Items', key: 'items', width: 30 },
+        { header: language === 'bn' ? 'খরচ' : 'Cost', key: 'cost', width: 15 },
+      ],
+      data: [...bazars.map(b => ({ ...b, cost: `৳${Number(b.cost).toFixed(2)}` })), 
+        { date: '', person_name: language === 'bn' ? 'মোট' : 'Total', items: '', cost: `৳${totalBazar.toFixed(2)}` }],
+    });
+  };
+
+  const handleExportExcel = () => {
+    const monthLabel = availableMonths.find(m => m.value === selectedMonth)?.label || selectedMonth;
+    exportToExcel({
+      title: language === 'bn' ? 'বাজার রিপোর্ট' : 'Bazar Report',
+      subtitle: monthLabel,
+      fileName: `bazar-${selectedMonth}`,
+      columns: [
+        { header: language === 'bn' ? 'তারিখ' : 'Date', key: 'date', width: 15 },
+        { header: language === 'bn' ? 'কে করেছে' : 'Person', key: 'person_name', width: 20 },
+        { header: language === 'bn' ? 'আইটেম' : 'Items', key: 'items', width: 30 },
+        { header: language === 'bn' ? 'খরচ' : 'Cost', key: 'cost', width: 15 },
+      ],
+      data: [...bazars, { date: '', person_name: language === 'bn' ? 'মোট' : 'Total', items: '', cost: totalBazar }],
+    });
+  };
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
+        {/* Read-Only Banner */}
+        {isReadOnly && <ReadOnlyBanner expiredDaysAgo={expiredDaysAgo} readOnlyMonths={readOnlyMonths} />}
+
         {/* Page Header */}
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
           <div>
@@ -291,7 +334,8 @@ export default function BazarPage() {
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
+            <ExportButton onExportPDF={handleExportPDF} onExportExcel={handleExportExcel} disabled={bazars.length === 0} />
             {/* Month Selector */}
             <div className="flex items-center gap-2">
               <Calendar className="w-5 h-5 text-muted-foreground" />
@@ -316,7 +360,7 @@ export default function BazarPage() {
               }
             }}>
               <DialogTrigger asChild>
-                <Button className="btn-primary-glow">
+                <Button className="btn-primary-glow" disabled={isReadOnly}>
                   <Plus className="w-4 h-4 mr-2" />
                   {language === 'bn' ? 'বাজার যোগ করুন' : 'Add Bazar'}
                 </Button>

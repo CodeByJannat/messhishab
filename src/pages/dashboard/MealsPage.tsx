@@ -1,7 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useReadOnly } from '@/components/auth/ProtectedRoute';
 import { DashboardLayout } from '@/components/dashboard/DashboardLayout';
+import { ReadOnlyBanner } from '@/components/dashboard/ReadOnlyBanner';
+import { ExportButton } from '@/components/dashboard/ExportButton';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -25,6 +28,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useDateValidation } from '@/hooks/useDateValidation';
+import { exportToPDF, exportToExcel } from '@/lib/exportUtils';
 import { Plus, Minus, Loader2, Calendar, BarChart3, AlertCircle } from 'lucide-react';
 import { format, endOfMonth, parseISO } from 'date-fns';
 
@@ -61,6 +65,7 @@ export default function MealsPage() {
   const { language } = useLanguage();
   const { toast } = useToast();
   const { validateDate, getMaxDate, getMinDate, filterValidMonths } = useDateValidation();
+  const { isReadOnly, expiredDaysAgo, readOnlyMonths } = useReadOnly();
   
   const [members, setMembers] = useState<Member[]>([]);
   const [meals, setMeals] = useState<Meal[]>([]);
@@ -74,6 +79,9 @@ export default function MealsPage() {
   const [selectedMonth, setSelectedMonth] = useState(format(new Date(), 'yyyy-MM'));
   const [monthlySummary, setMonthlySummary] = useState<MonthlyMealSummary[]>([]);
   const [isLoadingReport, setIsLoadingReport] = useState(false);
+
+  // Check if editing is disabled (read-only mode or date error)
+  const isEditingDisabled = isReadOnly || !!dateError;
 
   useEffect(() => {
     if (mess) {
@@ -252,6 +260,16 @@ export default function MealsPage() {
   ) => {
     if (!mess) return;
     
+    // Block updates in read-only mode
+    if (isReadOnly) {
+      toast({
+        title: language === 'bn' ? 'শুধুমাত্র দেখার মোড' : 'Read-Only Mode',
+        description: language === 'bn' ? 'এডিট করতে সাবস্ক্রাইব করুন' : 'Subscribe to edit',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
     // Validate date before allowing any update
     const validation = validateDate(selectedDate);
     if (!validation.isValid) {
@@ -318,7 +336,7 @@ export default function MealsPage() {
     type: 'breakfast' | 'lunch' | 'dinner';
     value: number;
   }) => {
-    const isDisabled = !!dateError;
+    const isDisabled = isEditingDisabled;
     
     return (
       <div className="flex items-center justify-center gap-2">
@@ -356,17 +374,65 @@ export default function MealsPage() {
   const totalLunch = monthlySummary.reduce((sum, m) => sum + m.lunch, 0);
   const totalDinner = monthlySummary.reduce((sum, m) => sum + m.dinner, 0);
 
+  // Export handlers
+  const handleExportPDF = () => {
+    const monthLabel = availableMonths.find(m => m.value === selectedMonth)?.label || selectedMonth;
+    exportToPDF({
+      title: language === 'bn' ? 'মিল রিপোর্ট' : 'Meal Report',
+      subtitle: monthLabel,
+      fileName: `meals-${selectedMonth}`,
+      language: language as 'en' | 'bn',
+      columns: [
+        { header: language === 'bn' ? 'মেম্বার' : 'Member', key: 'memberName', width: 25 },
+        { header: language === 'bn' ? 'সকাল' : 'Breakfast', key: 'breakfast', width: 12 },
+        { header: language === 'bn' ? 'দুপুর' : 'Lunch', key: 'lunch', width: 12 },
+        { header: language === 'bn' ? 'রাত' : 'Dinner', key: 'dinner', width: 12 },
+        { header: language === 'bn' ? 'মোট' : 'Total', key: 'total', width: 12 },
+      ],
+      data: [
+        ...monthlySummary,
+        { memberName: language === 'bn' ? 'মোট' : 'Total', breakfast: totalBreakfast, lunch: totalLunch, dinner: totalDinner, total: totalMonthlyMeals }
+      ],
+    });
+  };
+
+  const handleExportExcel = () => {
+    const monthLabel = availableMonths.find(m => m.value === selectedMonth)?.label || selectedMonth;
+    exportToExcel({
+      title: language === 'bn' ? 'মিল রিপোর্ট' : 'Meal Report',
+      subtitle: monthLabel,
+      fileName: `meals-${selectedMonth}`,
+      columns: [
+        { header: language === 'bn' ? 'মেম্বার' : 'Member', key: 'memberName', width: 25 },
+        { header: language === 'bn' ? 'সকাল' : 'Breakfast', key: 'breakfast', width: 12 },
+        { header: language === 'bn' ? 'দুপুর' : 'Lunch', key: 'lunch', width: 12 },
+        { header: language === 'bn' ? 'রাত' : 'Dinner', key: 'dinner', width: 12 },
+        { header: language === 'bn' ? 'মোট' : 'Total', key: 'total', width: 12 },
+      ],
+      data: [
+        ...monthlySummary,
+        { memberName: language === 'bn' ? 'মোট' : 'Total', breakfast: totalBreakfast, lunch: totalLunch, dinner: totalDinner, total: totalMonthlyMeals }
+      ],
+    });
+  };
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
+        {/* Read-Only Banner */}
+        {isReadOnly && <ReadOnlyBanner expiredDaysAgo={expiredDaysAgo} readOnlyMonths={readOnlyMonths} />}
+
         {/* Page Header */}
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-foreground">
-            {language === 'bn' ? 'মিল ম্যানেজমেন্ট' : 'Meal Management'}
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            {language === 'bn' ? 'প্রতিদিনের মিল রেকর্ড করুন' : 'Record daily meals'}
-          </p>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold text-foreground">
+              {language === 'bn' ? 'মিল ম্যানেজমেন্ট' : 'Meal Management'}
+            </h1>
+            <p className="text-muted-foreground mt-1">
+              {language === 'bn' ? 'প্রতিদিনের মিল রেকর্ড করুন' : 'Record daily meals'}
+            </p>
+          </div>
+          <ExportButton onExportPDF={handleExportPDF} onExportExcel={handleExportExcel} disabled={monthlySummary.length === 0} />
         </div>
 
         <Tabs defaultValue="daily" className="w-full">
