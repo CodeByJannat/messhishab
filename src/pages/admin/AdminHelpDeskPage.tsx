@@ -473,21 +473,21 @@ export default function AdminHelpDeskPage() {
 
           {/* Tickets Tab */}
           <TabsContent value="tickets" className="mt-6">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-280px)]">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-220px)]">
               {/* Ticket List */}
               <motion.div
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
-                className="lg:col-span-1"
+                className="lg:col-span-1 min-h-0"
               >
-                <Card className="glass-card h-full">
-                  <CardHeader className="pb-3">
+                <Card className="glass-card h-full flex flex-col">
+                  <CardHeader className="pb-3 shrink-0">
                     <CardTitle className="text-lg">
                       {language === 'bn' ? 'টিকেট তালিকা' : 'Tickets'} ({tickets.length})
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="p-0">
-                    <ScrollArea className="h-[calc(100vh-400px)]">
+                  <CardContent className="flex-1 min-h-0 p-0">
+                    <ScrollArea className="h-full">
                       {isLoading ? (
                         <div className="flex items-center justify-center py-8">
                           <Loader2 className="w-6 h-6 animate-spin" />
@@ -533,12 +533,12 @@ export default function AdminHelpDeskPage() {
               <motion.div
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
-                className="lg:col-span-2"
+                className="lg:col-span-2 min-h-0"
               >
                 <Card className="glass-card h-full flex flex-col">
                   {selectedTicket ? (
                     <>
-                      <CardHeader className="border-b">
+                      <CardHeader className="border-b shrink-0">
                         <div className="flex items-center justify-between">
                           <div>
                             <CardTitle>{selectedTicket.subject}</CardTitle>
@@ -560,39 +560,33 @@ export default function AdminHelpDeskPage() {
                         </div>
                       </CardHeader>
                       
-                      <CardContent className="flex-1 overflow-hidden p-0">
-                        <ScrollArea className="h-[calc(100vh-530px)] p-4">
-                          <div className="space-y-4">
+                      <CardContent className="flex-1 min-h-0 p-0">
+                        <ScrollArea className="h-full">
+                          <div className="space-y-4 p-4">
                             {messages.map(message => (
                               <div
                                 key={message.id}
                                 className={`flex ${message.sender_type === 'admin' ? 'justify-end' : 'justify-start'}`}
                               >
-                                <div className={`max-w-[80%] ${message.sender_type === 'admin' ? 'order-2' : 'order-1'}`}>
-                                  <div className="flex items-center gap-2 mb-1">
-                                    <div className={`w-6 h-6 rounded-full flex items-center justify-center ${
-                                      message.sender_type === 'admin' ? 'bg-destructive' : 'bg-primary'
-                                    }`}>
-                                      {message.sender_type === 'admin' 
-                                        ? <Shield className="w-3 h-3 text-white" />
-                                        : <User className="w-3 h-3 text-white" />
-                                      }
+                                <div className={`max-w-[80%]`}>
+                                  {message.sender_type !== 'admin' && (
+                                    <div className="flex items-center gap-2 mb-1">
+                                      <div className="w-6 h-6 rounded-full flex items-center justify-center bg-primary">
+                                        <User className="w-3 h-3 text-white" />
+                                      </div>
+                                      <span className="text-xs text-muted-foreground">
+                                        {language === 'bn' ? 'ম্যানেজার' : 'Manager'}
+                                      </span>
                                     </div>
-                                    <span className="text-xs text-muted-foreground">
-                                      {message.sender_type === 'admin' 
-                                        ? (language === 'bn' ? 'এডমিন' : 'Admin')
-                                        : (language === 'bn' ? 'ম্যানেজার' : 'Manager')
-                                      }
-                                    </span>
-                                  </div>
-                                  <div className={`p-3 rounded-xl ${
+                                  )}
+                                  <div className={`p-3 rounded-2xl ${
                                     message.sender_type === 'admin' 
-                                      ? 'bg-destructive text-destructive-foreground' 
-                                      : 'bg-muted'
+                                      ? 'bg-primary text-primary-foreground rounded-br-sm' 
+                                      : 'bg-muted rounded-bl-sm'
                                   }`}>
-                                    <p className="whitespace-pre-wrap">{message.message}</p>
+                                    <p className="whitespace-pre-wrap text-sm">{message.message}</p>
                                   </div>
-                                  <p className="text-xs text-muted-foreground mt-1">
+                                  <p className={`text-xs text-muted-foreground mt-1 ${message.sender_type === 'admin' ? 'text-right' : 'text-left'}`}>
                                     {format(new Date(message.created_at), 'HH:mm')}
                                   </p>
                                 </div>
@@ -602,13 +596,14 @@ export default function AdminHelpDeskPage() {
                         </ScrollArea>
                       </CardContent>
 
-                      <div className="p-4 border-t">
+                      <div className="p-4 border-t shrink-0">
                         <div className="flex gap-2">
                           <Textarea
                             value={newMessage}
                             onChange={(e) => setNewMessage(e.target.value)}
                             placeholder={language === 'bn' ? 'মেসেজ লিখুন...' : 'Type a message...'}
-                            className="min-h-[60px] resize-none"
+                            className="min-h-[50px] max-h-[120px] resize-none rounded-xl"
+                            rows={1}
                             onKeyDown={(e) => {
                               if (e.key === 'Enter' && !e.shiftKey) {
                                 e.preventDefault();
@@ -619,12 +614,13 @@ export default function AdminHelpDeskPage() {
                           <Button
                             onClick={handleSendMessage}
                             disabled={!newMessage.trim() || isSending}
-                            className="px-4"
+                            size="icon"
+                            className="h-[50px] w-[50px] rounded-xl shrink-0"
                           >
                             {isSending ? (
-                              <Loader2 className="w-4 h-4 animate-spin" />
+                              <Loader2 className="w-5 h-5 animate-spin" />
                             ) : (
-                              <Send className="w-4 h-4" />
+                              <Send className="w-5 h-5" />
                             )}
                           </Button>
                         </div>
