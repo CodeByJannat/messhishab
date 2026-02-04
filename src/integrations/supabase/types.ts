@@ -813,6 +813,7 @@ export type Database = {
           created_at: string
           email: string
           id: string
+          phone: string | null
           updated_at: string
           user_id: string
         }
@@ -820,6 +821,7 @@ export type Database = {
           created_at?: string
           email: string
           id?: string
+          phone?: string | null
           updated_at?: string
           user_id: string
         }
@@ -827,6 +829,7 @@ export type Database = {
           created_at?: string
           email?: string
           id?: string
+          phone?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -942,6 +945,7 @@ export type Database = {
       }
       generate_mess_id: { Args: never; Returns: string }
       generate_temp_mess_id: { Args: never; Returns: string }
+      get_mess_member_count: { Args: { mess_uuid: string }; Returns: number }
       get_user_emails_for_admin: {
         Args: { user_ids: string[] }
         Returns: {
