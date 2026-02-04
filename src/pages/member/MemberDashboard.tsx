@@ -129,19 +129,22 @@ export default function MemberDashboard() {
       setAdditionalCosts(portalData.additionalCosts || []);
       setTotalAdditionalCosts(portalData.totalAdditionalCosts || 0);
       
-      // Calculate per-head additional cost
+      // Use server-calculated values for consistency
       const memberCount = portalData.totalMembers || 1;
       setTotalMembers(memberCount);
-      const perHead = memberCount > 0 ? portalData.totalAdditionalCosts / memberCount : 0;
+      
+      // Use pre-calculated per-head additional cost from server
+      const perHead = portalData.perHeadAdditionalCost || 0;
       setPerHeadAdditionalCost(perHead);
       
-      // Calculate meal cost
-      const calculatedMealCost = portalData.mealBreakdown.total * portalData.mealRate;
-      setMealCost(calculatedMealCost);
+      // Use pre-calculated meal cost from server
+      const serverMealCost = portalData.mealCost || (portalData.mealBreakdown.total * portalData.mealRate);
+      setMealCost(serverMealCost);
       
-      // Remaining Balance = Total Deposit − (Per-Head Additional Cost + Total Meal Cost)
-      const remainingBalance = portalData.totalDeposit - (perHead + calculatedMealCost);
-      setBalance(remainingBalance);
+      // Use pre-calculated balance from server
+      // Balance = Total Deposit − (Per-Head Additional Cost + Total Meal Cost)
+      const serverBalance = portalData.balance;
+      setBalance(serverBalance);
 
       // Combine notifications
       const combined = [
