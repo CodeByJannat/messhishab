@@ -20,7 +20,6 @@ interface ExportOptions {
   fileName: string;
   filterType?: ExportFilterType;
   filterDate?: string; // YYYY-MM-DD for daily, YYYY-MM for monthly, YYYY for yearly
-  language?: 'en' | 'bn';
 }
 
 // Get date range based on filter type
@@ -60,9 +59,9 @@ export function filterDataByDate<T extends { date: string }>(
   });
 }
 
-// Export to PDF
+// Export to PDF - Note: jsPDF doesn't support Bengali fonts, so we use English text only
 export function exportToPDF(options: ExportOptions): void {
-  const { title, subtitle, messName, columns, data, fileName, language = 'en' } = options;
+  const { title, subtitle, messName, columns, data, fileName } = options;
   
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -77,7 +76,7 @@ export function exportToPDF(options: ExportOptions): void {
     yOffset += 10;
   }
   
-  // Title
+  // Title - Use English titles for PDF (no Bengali font support)
   doc.setFontSize(16);
   doc.setTextColor(40, 40, 40);
   doc.text(title, pageWidth / 2, yOffset, { align: 'center' });
@@ -87,17 +86,14 @@ export function exportToPDF(options: ExportOptions): void {
   if (subtitle) {
     doc.setFontSize(12);
     doc.setTextColor(80, 80, 80);
-    const monthLabel = language === 'bn' ? `মাস: ${subtitle}` : `Month: ${subtitle}`;
-    doc.text(monthLabel, pageWidth / 2, yOffset, { align: 'center' });
+    doc.text(`Month: ${subtitle}`, pageWidth / 2, yOffset, { align: 'center' });
     yOffset += 8;
   }
   
-  // Generated date
+  // Generated date - Always English for PDF
   doc.setFontSize(9);
   doc.setTextColor(120, 120, 120);
-  const generatedText = language === 'bn' 
-    ? `তৈরির তারিখ: ${format(new Date(), 'dd/MM/yyyy hh:mm a')}`
-    : `Generated: ${format(new Date(), 'dd/MM/yyyy hh:mm a')}`;
+  const generatedText = `Generated: ${format(new Date(), 'dd/MM/yyyy hh:mm a')}`;
   doc.text(generatedText, pageWidth / 2, yOffset, { align: 'center' });
   yOffset += 5;
   
@@ -130,24 +126,21 @@ export function exportToPDF(options: ExportOptions): void {
     margin: { left: 14, right: 14 },
   });
   
-  // Footer with page numbers
+  // Footer with page numbers - Always English for PDF
   const pageCount = doc.getNumberOfPages();
   for (let i = 1; i <= pageCount; i++) {
     doc.setPage(i);
     doc.setFontSize(10);
     doc.setTextColor(150);
-    const pageText = language === 'bn' 
-      ? `পৃষ্ঠা ${i} / ${pageCount}`
-      : `Page ${i} of ${pageCount}`;
-    doc.text(pageText, pageWidth / 2, doc.internal.pageSize.getHeight() - 10, { align: 'center' });
+    doc.text(`Page ${i} of ${pageCount}`, pageWidth / 2, doc.internal.pageSize.getHeight() - 10, { align: 'center' });
   }
   
   doc.save(`${fileName}.pdf`);
 }
 
-// Export to Excel
+// Export to Excel - supports Bengali text
 export function exportToExcel(options: ExportOptions): void {
-  const { title, columns, data, fileName, subtitle, messName, language = 'en' } = options;
+  const { title, columns, data, fileName, subtitle, messName } = options;
   
   // Create worksheet data
   const worksheetData: any[][] = [];
@@ -160,8 +153,7 @@ export function exportToExcel(options: ExportOptions): void {
   // Add title row
   worksheetData.push([title]);
   if (subtitle) {
-    const monthLabel = language === 'bn' ? `মাস: ${subtitle}` : `Month: ${subtitle}`;
-    worksheetData.push([monthLabel]);
+    worksheetData.push([`Month: ${subtitle}`]);
   }
   worksheetData.push([]); // Empty row
   
