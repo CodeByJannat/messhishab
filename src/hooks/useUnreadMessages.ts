@@ -31,11 +31,18 @@ export function useUnreadMessages({ messId, memberId, isManager = false }: UseUn
         }
       } else if (memberId) {
         // For member: check unread messages from manager
+        const sessionToken = localStorage.getItem('member_session_token');
+        
+        // Skip if session token is missing
+        if (!sessionToken) {
+          return;
+        }
+
         const { data, error } = await supabase.functions.invoke('get-direct-messages', {
           body: {
             member_id: memberId,
             mess_id: messId,
-            session_token: localStorage.getItem('member_session_token') || '',
+            session_token: sessionToken,
           },
         });
 
