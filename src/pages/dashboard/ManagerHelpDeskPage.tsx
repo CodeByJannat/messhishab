@@ -9,9 +9,10 @@ import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { MessageSquare, Send, Plus, Loader2, User, Shield } from 'lucide-react';
+import { MessageSquare, Send, Plus, Loader2, User, Shield, Megaphone } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { format } from 'date-fns';
 
@@ -33,6 +34,13 @@ interface Message {
   created_at: string;
 }
 
+interface AdminMessage {
+  id: string;
+  message: string;
+  target_type: 'global' | 'mess';
+  created_at: string;
+}
+
 export default function ManagerHelpDeskPage() {
   const { language } = useLanguage();
   const { user, mess } = useAuth();
@@ -40,9 +48,11 @@ export default function ManagerHelpDeskPage() {
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
+  const [adminMessages, setAdminMessages] = useState<AdminMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
+  const [activeTab, setActiveTab] = useState('tickets');
 
   // New ticket modal
   const [showNewTicketModal, setShowNewTicketModal] = useState(false);
@@ -53,6 +63,7 @@ export default function ManagerHelpDeskPage() {
   useEffect(() => {
     if (mess) {
       fetchTickets();
+      fetchAdminMessages();
     }
   }, [mess]);
 
@@ -99,6 +110,22 @@ export default function ManagerHelpDeskPage() {
       console.error('Error fetching tickets:', error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const fetchAdminMessages = async () => {
+    if (!mess) return;
+    try {
+      const { data, error } = await supabase
+        .from('admin_messages')
+        .select('*')
+        .or(`target_type.eq.global,target_mess_id.eq.${mess.id}`)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setAdminMessages(data as AdminMessage[]);
+    } catch (error) {
+      console.error('Error fetching admin messages:', error);
     }
   };
 
@@ -222,18 +249,39 @@ export default function ManagerHelpDeskPage() {
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-foreground">
+            <h1 className="text-2xl md:text-3xl font-bold text-foreground">
               {language === 'bn' ? 'হেল্প ডেস্ক' : 'Help Desk'}
             </h1>
             <p className="text-muted-foreground mt-1">
               {language === 'bn' ? 'এডমিনের সাথে যোগাযোগ করুন' : 'Contact admin for support'}
             </p>
           </div>
-          <Button onClick={() => setShowNewTicketModal(true)} className="btn-primary-glow">
-            <Plus className="w-4 h-4 mr-2" />
-            {language === 'bn' ? 'নতুন টিকেট' : 'New Ticket'}
-          </Button>
         </div>
+
+        {/* Tabs for Tickets and Admin Messages */}
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="grid w-full max-w-md grid-cols-2">
+            <TabsTrigger value="tickets" className="flex items-center gap-2">
+              <MessageSquare className="w-4 h-4" />
+              {language === 'bn' ? 'সাপোর্ট টিকেট' : 'Support Tickets'}
+            </TabsTrigger>
+            <TabsTrigger value="admin-messages" className="flex items-center gap-2">
+              <Megaphone className="w-4 h-4" />
+              {language === 'bn' ? 'এডমিন মেসেজ' : 'Admin Messages'}
+              {adminMessages.length > 0 && (
+                <Badge variant="secondary" className="ml-1">{adminMessages.length}</Badge>
+              )}
+            </TabsTrigger>
+          </TabsList>
+
+          {/* Tickets Tab */}
+          <TabsContent value="tickets" className="mt-4">
+            <div className="flex justify-end mb-4">
+              <Button onClick={() => setShowNewTicketModal(true)} className="btn-primary-glow">
+                <Plus className="w-4 h-4 mr-2" />
+                {language === 'bn' ? 'নতুন টিকেট' : 'New Ticket'}
+              </Button>
+            </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-250px)]">
           {/* Ticket List */}
@@ -400,6 +448,68 @@ export default function ManagerHelpDeskPage() {
             </Card>
           </motion.div>
         </div>
+          </TabsContent>
+
+          {/* Admin Messages Tab */}
+          <TabsContent value="admin-messages" className="mt-4">
+            <Card className="glass-card">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Shield className="w-5 h-5 text-destructive" />
+                  {language === 'bn' ? 'এডমিন থেকে মেসেজ' : 'Messages from Admin'}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {adminMessages.length === 0 ? (
+                  <div className="text-center py-12">
+                    <Megaphone className="w-12 h-12 mx-auto mb-4 text-muted-foreground/50" />
+                    <p className="text-muted-foreground">
+                      {language === 'bn' ? 'কোনো এডমিন মেসেজ নেই' : 'No admin messages'}
+                    </p>
+                  </div>
+                ) : (
+                  <ScrollArea className="h-[400px]">
+                    <div className="space-y-4">
+                      {adminMessages.map((msg) => (
+                        <motion.div
+                          key={msg.id}
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          className="p-4 rounded-xl bg-destructive/5 border border-destructive/20"
+                        >
+                          <div className="flex items-start gap-3">
+                            <div className="w-10 h-10 bg-destructive/10 rounded-full flex items-center justify-center shrink-0">
+                              <Shield className="w-5 h-5 text-destructive" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center justify-between gap-2 mb-2">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-medium text-destructive">
+                                    {language === 'bn' ? 'এডমিন' : 'Admin'}
+                                  </span>
+                                  <Badge variant="outline" className="text-xs">
+                                    {msg.target_type === 'global' 
+                                      ? (language === 'bn' ? 'সকলের জন্য' : 'Global')
+                                      : (language === 'bn' ? 'আপনার জন্য' : 'For You')
+                                    }
+                                  </Badge>
+                                </div>
+                                <span className="text-xs text-muted-foreground">
+                                  {format(new Date(msg.created_at), 'dd/MM/yyyy HH:mm')}
+                                </span>
+                              </div>
+                              <p className="whitespace-pre-wrap">{msg.message}</p>
+                            </div>
+                          </div>
+                        </motion.div>
+                      ))}
+                    </div>
+                  </ScrollArea>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
 
         {/* New Ticket Modal */}
         <Dialog open={showNewTicketModal} onOpenChange={setShowNewTicketModal}>

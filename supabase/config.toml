@@ -68,3 +68,9 @@ verify_jwt = false
 
 [functions.verify-pin]
 verify_jwt = false
+
+[functions.get-direct-messages]
+verify_jwt = false
+
+[functions.send-direct-message]
+verify_jwt = false

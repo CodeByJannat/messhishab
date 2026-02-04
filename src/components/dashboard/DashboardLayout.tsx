@@ -18,7 +18,6 @@ import {
   ShoppingCart,
   Wallet,
   BarChart3,
-  Bell,
   Settings,
   LogOut,
   Menu,
@@ -34,6 +33,8 @@ import {
 import { useState, memo, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { SuspendedMessModal } from './SuspendedMessModal';
+import { useUnreadMessages } from '@/hooks/useUnreadMessages';
+import { UnreadIndicator } from '@/components/messaging/UnreadIndicator';
 
 const managerNavItems = [
   { href: '/manager/dashboard', icon: Home, labelBn: 'ড্যাশবোর্ড', labelEn: 'Dashboard' },
@@ -43,7 +44,7 @@ const managerNavItems = [
   { href: '/manager/deposits', icon: Wallet, labelBn: 'জমা', labelEn: 'Deposits' },
   { href: '/manager/additional-costs', icon: Receipt, labelBn: 'অতিরিক্ত খরচ', labelEn: 'Additional Costs' },
   { href: '/manager/balance', icon: BarChart3, labelBn: 'ব্যালেন্স', labelEn: 'Balance' },
-  { href: '/manager/notifications', icon: Bell, labelBn: 'নোটিফিকেশন', labelEn: 'Notifications' },
+  { href: '/manager/messages', icon: MessageSquare, labelBn: 'মেসেজ', labelEn: 'Messages', showUnread: true },
   { href: '/manager/subscription', icon: CreditCard, labelBn: 'সাবস্ক্রিপশন', labelEn: 'Subscription' },
   { href: '/manager/payment-history', icon: History, labelBn: 'পেমেন্ট হিস্ট্রি', labelEn: 'Payment History' },
   { href: '/manager/helpdesk', icon: MessageSquare, labelBn: 'হেল্প ডেস্ক', labelEn: 'Help Desk' },
@@ -56,6 +57,11 @@ export const DashboardLayout = memo(function DashboardLayout({ children }: { chi
   const location = useLocation();
   const navigate = useNavigate();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  
+  const { hasUnread, unreadCount } = useUnreadMessages({
+    messId: mess?.id,
+    isManager: true,
+  });
 
   // Close sidebar on route change
   useEffect(() => {
@@ -195,7 +201,10 @@ export const DashboardLayout = memo(function DashboardLayout({ children }: { chi
                           }`}
                         >
                           <item.icon className="w-5 h-5 flex-shrink-0" />
-                          <span className="truncate">{language === 'bn' ? item.labelBn : item.labelEn}</span>
+                          <span className="truncate flex-1">{language === 'bn' ? item.labelBn : item.labelEn}</span>
+                          {item.showUnread && hasUnread && !isActive && (
+                            <UnreadIndicator count={unreadCount} />
+                          )}
                         </PreloadLink>
                       </li>
                     );
@@ -271,7 +280,10 @@ export const DashboardLayout = memo(function DashboardLayout({ children }: { chi
                       }`}
                     >
                       <item.icon className="w-5 h-5" />
-                      <span>{language === 'bn' ? item.labelBn : item.labelEn}</span>
+                      <span className="flex-1">{language === 'bn' ? item.labelBn : item.labelEn}</span>
+                      {item.showUnread && hasUnread && !isActive && (
+                        <UnreadIndicator count={unreadCount} />
+                      )}
                     </PreloadLink>
                   </li>
                 );

@@ -144,6 +144,38 @@ export type Database = {
           },
         ]
       }
+      broadcast_messages: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_read_by: string[] | null
+          mess_id: string
+          message: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          is_read_by?: string[] | null
+          mess_id: string
+          message: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_read_by?: string[] | null
+          mess_id?: string
+          message?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "broadcast_messages_mess_id_fkey"
+            columns: ["mess_id"]
+            isOneToOne: false
+            referencedRelation: "messes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contact_message_replies: {
         Row: {
           admin_id: string
@@ -277,6 +309,51 @@ export type Database = {
           },
           {
             foreignKeyName: "deposits_mess_id_fkey"
+            columns: ["mess_id"]
+            isOneToOne: false
+            referencedRelation: "messes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      direct_messages: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_read: boolean | null
+          member_id: string
+          mess_id: string
+          message: string
+          sender_type: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          is_read?: boolean | null
+          member_id: string
+          mess_id: string
+          message: string
+          sender_type: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_read?: boolean | null
+          member_id?: string
+          mess_id?: string
+          message?: string
+          sender_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "direct_messages_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "direct_messages_mess_id_fkey"
             columns: ["mess_id"]
             isOneToOne: false
             referencedRelation: "messes"

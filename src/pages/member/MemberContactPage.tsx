@@ -1,16 +1,27 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useMemberAuth } from '@/contexts/MemberAuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { MemberDashboardLayout } from '@/components/dashboard/MemberDashboardLayout';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Send, Loader2, MessageCircle } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { Send, Loader2, MessageCircle, Users, Megaphone } from 'lucide-react';
+import { MessageBubble } from '@/components/messaging/MessageBubble';
+import { format } from 'date-fns';
 
-interface SentMessage {
+interface DirectMessage {
+  id: string;
+  sender_type: 'manager' | 'member';
+  message: string;
+  created_at: string;
+  is_read: boolean;
+}
+
+interface Broadcast {
   id: string;
   message: string;
   created_at: string;
@@ -20,24 +31,27 @@ export default function MemberContactPage() {
   const { memberSession } = useMemberAuth();
   const { language } = useLanguage();
   const { toast } = useToast();
-  const [message, setMessage] = useState('');
-  const [sentMessages, setSentMessages] = useState<SentMessage[]>([]);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [activeTab, setActiveTab] = useState('chat');
+  const [messages, setMessages] = useState<DirectMessage[]>([]);
+  const [broadcasts, setBroadcasts] = useState<Broadcast[]>([]);
+  const [newMessage, setNewMessage] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const [isSending, setIsSending] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
+  // Scroll to bottom on new messages
   useEffect(() => {
-    if (memberSession) {
-      fetchSentMessages();
+    if (scrollRef.current) {
+      scrollRef.current.scrollIntoView({ behavior: 'smooth' });
     }
-  }, [memberSession]);
+  }, [messages]);
 
-  const fetchSentMessages = async () => {
+  const fetchMessages = useCallback(async () => {
     if (!memberSession) return;
     setIsLoading(true);
 
     try {
-      // Call edge function to get sent messages
-      const { data, error } = await supabase.functions.invoke('get-member-portal-data', {
+      const { data, error } = await supabase.functions.invoke('get-direct-messages', {
         body: {
           member_id: memberSession.member.id,
           mess_id: memberSession.mess.id,
@@ -48,8 +62,8 @@ export default function MemberContactPage() {
       if (error) throw error;
       if (data.error) throw new Error(data.error);
 
-      // Get sent messages from the response
-      setSentMessages(data.data.sentMessages || []);
+      setMessages(data.directMessages || []);
+      setBroadcasts(data.broadcasts || []);
     } catch (error: any) {
       toast({
         title: language === 'bn' ? 'ত্রুটি' : 'Error',
@@ -59,35 +73,40 @@ export default function MemberContactPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [memberSession, language, toast]);
+
+  useEffect(() => {
+    fetchMessages();
+  }, [fetchMessages]);
+
+  // Poll for new messages every 10 seconds (since members can't use realtime directly)
+  useEffect(() => {
+    const interval = setInterval(fetchMessages, 10000);
+    return () => clearInterval(interval);
+  }, [fetchMessages]);
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!memberSession || !message.trim()) return;
+    if (!memberSession || !newMessage.trim()) return;
 
-    setIsSubmitting(true);
+    setIsSending(true);
 
     try {
-      // Use edge function to send message
-      const { data, error } = await supabase.functions.invoke('submit-member-message', {
+      const { data, error } = await supabase.functions.invoke('send-direct-message', {
         body: {
           member_id: memberSession.member.id,
           mess_id: memberSession.mess.id,
           session_token: memberSession.session_token,
-          message: message.trim(),
+          message: newMessage.trim(),
         },
       });
 
       if (error) throw error;
       if (data.error) throw new Error(data.error);
 
-      toast({
-        title: language === 'bn' ? 'সফল!' : 'Success!',
-        description: language === 'bn' ? 'মেসেজ পাঠানো হয়েছে' : 'Message sent',
-      });
-
-      setMessage('');
-      setSentMessages((prev) => [data.message, ...prev]);
+      // Add the new message to the list
+      setMessages((prev) => [...prev, data.message]);
+      setNewMessage('');
     } catch (error: any) {
       toast({
         title: language === 'bn' ? 'ত্রুটি' : 'Error',
@@ -95,13 +114,20 @@ export default function MemberContactPage() {
         variant: 'destructive',
       });
     } finally {
-      setIsSubmitting(false);
+      setIsSending(false);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage(e as any);
     }
   };
 
   return (
     <MemberDashboardLayout>
-      <div className="space-y-6">
+      <div className="space-y-6 h-[calc(100vh-120px)]">
         {/* Page Header */}
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-foreground">
@@ -112,81 +138,142 @@ export default function MemberContactPage() {
           </p>
         </div>
 
-        {/* Message Form */}
-        <Card className="glass-card">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Send className="w-5 h-5" />
-              {language === 'bn' ? 'নতুন মেসেজ' : 'New Message'}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSendMessage} className="space-y-4">
-              <Textarea
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                placeholder={language === 'bn' ? 'আপনার মেসেজ লিখুন...' : 'Write your message...'}
-                className="rounded-xl min-h-[120px]"
-                required
-              />
-              <Button type="submit" disabled={isSubmitting || !message.trim()} className="w-full sm:w-auto">
-                {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Send className="w-4 h-4 mr-2" />}
-                {language === 'bn' ? 'পাঠান' : 'Send'}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
+        {/* Tabs */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1">
+          <TabsList className="grid w-full max-w-md grid-cols-2">
+            <TabsTrigger value="chat" className="flex items-center gap-2">
+              <MessageCircle className="w-4 h-4" />
+              {language === 'bn' ? 'ম্যানেজার' : 'Manager'}
+            </TabsTrigger>
+            <TabsTrigger value="broadcasts" className="flex items-center gap-2">
+              <Users className="w-4 h-4" />
+              {language === 'bn' ? 'গ্রুপ মেসেজ' : 'Broadcasts'}
+            </TabsTrigger>
+          </TabsList>
 
-        {/* Sent Messages */}
-        <div>
-          <h2 className="text-lg font-semibold text-foreground mb-4">
-            {language === 'bn' ? 'পাঠানো মেসেজ' : 'Sent Messages'}
-          </h2>
-          
-          {isLoading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="w-8 h-8 animate-spin text-primary" />
-            </div>
-          ) : sentMessages.length === 0 ? (
-            <Card className="glass-card">
-              <CardContent className="py-12 text-center">
-                <MessageCircle className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                <p className="text-muted-foreground">
-                  {language === 'bn' ? 'কোনো মেসেজ পাঠাননি' : 'No messages sent yet'}
-                </p>
-              </CardContent>
+          {/* Chat Tab */}
+          <TabsContent value="chat" className="mt-4 h-[calc(100vh-280px)]">
+            <Card className="glass-card h-full flex flex-col">
+              {/* Chat Header */}
+              <div className="p-4 border-b flex items-center gap-3">
+                <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
+                  <span className="text-primary font-bold">M</span>
+                </div>
+                <div>
+                  <p className="font-semibold">
+                    {language === 'bn' ? 'ম্যানেজার' : 'Manager'}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {memberSession?.mess.name || memberSession?.mess.mess_id}
+                  </p>
+                </div>
+              </div>
+
+              {/* Messages */}
+              <ScrollArea className="flex-1 p-4">
+                {isLoading ? (
+                  <div className="flex items-center justify-center h-full">
+                    <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                  </div>
+                ) : messages.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center h-full py-12 text-center">
+                    <MessageCircle className="w-12 h-12 text-muted-foreground/50 mb-4" />
+                    <p className="text-muted-foreground">
+                      {language === 'bn' ? 'এখনো কোনো মেসেজ নেই' : 'No messages yet'}
+                    </p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      {language === 'bn' ? 'কথোপকথন শুরু করুন!' : 'Start the conversation!'}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {messages.map((msg) => (
+                      <MessageBubble
+                        key={msg.id}
+                        message={msg.message}
+                        senderType={msg.sender_type}
+                        createdAt={msg.created_at}
+                        isOwn={msg.sender_type === 'member'}
+                      />
+                    ))}
+                    <div ref={scrollRef} />
+                  </div>
+                )}
+              </ScrollArea>
+
+              {/* Input Area */}
+              <form onSubmit={handleSendMessage} className="p-4 border-t">
+                <div className="flex gap-2">
+                  <Textarea
+                    value={newMessage}
+                    onChange={(e) => setNewMessage(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    placeholder={language === 'bn' ? 'মেসেজ লিখুন...' : 'Type a message...'}
+                    className="min-h-[50px] max-h-[120px] resize-none rounded-xl"
+                    rows={1}
+                  />
+                  <Button
+                    type="submit"
+                    disabled={!newMessage.trim() || isSending}
+                    size="icon"
+                    className="h-[50px] w-[50px] rounded-xl shrink-0"
+                  >
+                    {isSending ? (
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                    ) : (
+                      <Send className="w-5 h-5" />
+                    )}
+                  </Button>
+                </div>
+              </form>
             </Card>
-          ) : (
-            <div className="space-y-4">
-              {sentMessages.map((msg, index) => (
-                <motion.div
-                  key={msg.id}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.05 }}
-                >
-                  <Card className="glass-card">
-                    <CardContent className="p-4">
-                      <div className="flex items-start gap-4">
-                        <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
-                          <MessageCircle className="w-5 h-5 text-primary" />
+          </TabsContent>
+
+          {/* Broadcasts Tab */}
+          <TabsContent value="broadcasts" className="mt-4 h-[calc(100vh-280px)]">
+            <Card className="glass-card h-full">
+              <ScrollArea className="h-full p-4">
+                {isLoading ? (
+                  <div className="flex items-center justify-center h-full">
+                    <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                  </div>
+                ) : broadcasts.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center h-full py-12 text-center">
+                    <Megaphone className="w-12 h-12 text-muted-foreground/50 mb-4" />
+                    <p className="text-muted-foreground">
+                      {language === 'bn' ? 'কোনো গ্রুপ মেসেজ নেই' : 'No broadcast messages'}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {broadcasts.map((broadcast) => (
+                      <Card key={broadcast.id} className="bg-muted/30">
+                        <div className="p-4">
+                          <div className="flex items-start gap-3">
+                            <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center shrink-0">
+                              <Users className="w-5 h-5 text-primary" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center justify-between gap-2 mb-1">
+                                <span className="text-xs font-medium text-primary">
+                                  {language === 'bn' ? 'ম্যানেজার' : 'Manager'} → {language === 'bn' ? 'সবাই' : 'Everyone'}
+                                </span>
+                                <span className="text-xs text-muted-foreground">
+                                  {format(new Date(broadcast.created_at), 'dd/MM/yyyy HH:mm')}
+                                </span>
+                              </div>
+                              <p className="text-sm whitespace-pre-wrap">{broadcast.message}</p>
+                            </div>
+                          </div>
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs text-muted-foreground mb-1">
-                            {new Date(msg.created_at).toLocaleString(
-                              language === 'bn' ? 'bn-BD' : 'en-US'
-                            )}
-                          </p>
-                          <p className="text-foreground">{msg.message}</p>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              ))}
-            </div>
-          )}
-        </div>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </ScrollArea>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </div>
     </MemberDashboardLayout>
   );
