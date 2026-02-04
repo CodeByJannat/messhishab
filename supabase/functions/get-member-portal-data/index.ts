@@ -140,6 +140,13 @@ Deno.serve(async (req) => {
 
     const totalAdditionalCosts = additionalCostsData?.reduce((sum, c) => sum + Number(c.amount), 0) || 0;
 
+    // Fetch total active members count for per-head calculation
+    const { count: totalMembersCount } = await supabase
+      .from('members')
+      .select('*', { count: 'exact', head: true })
+      .eq('mess_id', mess_id)
+      .eq('is_active', true);
+
     return new Response(
       JSON.stringify({
         success: true,
@@ -164,6 +171,7 @@ Deno.serve(async (req) => {
           sentMessages: sentMsgData || [],
           additionalCosts: additionalCostsData || [],
           totalAdditionalCosts,
+          totalMembers: totalMembersCount || 0,
         },
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

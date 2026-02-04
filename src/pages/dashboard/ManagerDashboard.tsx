@@ -50,6 +50,7 @@ export default function ManagerDashboard() {
     totalDeposits: 0,
     mealRate: 0,
   });
+  const [totalAdditionalCosts, setTotalAdditionalCosts] = useState(0);
   
   // Monthly selection
   const [availableMonths, setAvailableMonths] = useState<AvailableMonth[]>([]);
@@ -161,6 +162,17 @@ export default function ManagerDashboard() {
 
       const totalDeposits = depositData?.reduce((sum, d) => sum + Number(d.amount), 0) || 0;
 
+      // Fetch additional costs for selected month
+      const { data: additionalCostsData } = await supabase
+        .from('additional_costs')
+        .select('amount')
+        .eq('mess_id', mess.id)
+        .gte('date', startDate)
+        .lte('date', endDate);
+
+      const additionalCostsTotal = additionalCostsData?.reduce((sum, c) => sum + Number(c.amount), 0) || 0;
+      setTotalAdditionalCosts(additionalCostsTotal);
+
       // Calculate meal rate
       const mealRate = totalMeals > 0 ? totalBazar / totalMeals : 0;
 
@@ -265,7 +277,8 @@ export default function ManagerDashboard() {
     },
   ];
 
-  const balance = stats.totalDeposits - stats.totalBazar;
+  // Remaining Balance = Total Deposit − (Total Bazar Cost + Total Additional Cost)
+  const balance = stats.totalDeposits - (stats.totalBazar + totalAdditionalCosts);
 
   return (
     <DashboardLayout>
