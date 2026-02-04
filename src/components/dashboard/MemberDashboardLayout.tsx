@@ -10,9 +10,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Home, ShoppingCart, Bell, LogOut, Menu, Sun, Moon, Globe, Send, Utensils, Wallet, X } from "lucide-react";
+import { Home, ShoppingCart, Bell, LogOut, Menu, Sun, Moon, Globe, Send, Utensils, Wallet, X, MessageSquare } from "lucide-react";
 import { useState, memo, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useUnreadMessages } from "@/hooks/useUnreadMessages";
+import { UnreadIndicator } from "@/components/messaging/UnreadIndicator";
 
 const memberNavItems = [
   { href: "/member/dashboard", icon: Home, labelBn: "ড্যাশবোর্ড", labelEn: "Dashboard" },
@@ -20,7 +22,7 @@ const memberNavItems = [
   { href: "/member/bazar", icon: ShoppingCart, labelBn: "বাজার", labelEn: "Bazar" },
   { href: "/member/deposits", icon: Wallet, labelBn: "জমা", labelEn: "Deposits" },
   { href: "/member/notifications", icon: Bell, labelBn: "নোটিফিকেশন", labelEn: "Notifications" },
-  { href: "/member/contact", icon: Send, labelBn: "ম্যানেজারকে মেসেজ", labelEn: "Message Manager" },
+  { href: "/member/contact", icon: MessageSquare, labelBn: "মেসেজ", labelEn: "Messages", showUnread: true },
 ];
 
 export const MemberDashboardLayout = memo(function MemberDashboardLayout({ children }: { children: React.ReactNode }) {
@@ -29,6 +31,12 @@ export const MemberDashboardLayout = memo(function MemberDashboardLayout({ child
   const { theme, toggleTheme } = useTheme();
   const location = useLocation();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  
+  const { hasUnread, unreadCount } = useUnreadMessages({
+    messId: memberSession?.mess.id,
+    memberId: memberSession?.member.id,
+    isManager: false,
+  });
 
   // Close sidebar on route change
   useEffect(() => {
@@ -152,7 +160,10 @@ export const MemberDashboardLayout = memo(function MemberDashboardLayout({ child
                           }`}
                         >
                           <item.icon className="w-5 h-5 flex-shrink-0" />
-                          <span className="truncate">{language === "bn" ? item.labelBn : item.labelEn}</span>
+                          <span className="truncate flex-1">{language === "bn" ? item.labelBn : item.labelEn}</span>
+                          {item.showUnread && hasUnread && !isActive && (
+                            <UnreadIndicator count={unreadCount} />
+                          )}
                         </PreloadLink>
                       </li>
                     );
@@ -227,7 +238,10 @@ export const MemberDashboardLayout = memo(function MemberDashboardLayout({ child
                       }`}
                     >
                       <item.icon className="w-5 h-5" />
-                      <span>{language === "bn" ? item.labelBn : item.labelEn}</span>
+                      <span className="flex-1">{language === "bn" ? item.labelBn : item.labelEn}</span>
+                      {item.showUnread && hasUnread && !isActive && (
+                        <UnreadIndicator count={unreadCount} />
+                      )}
                     </PreloadLink>
                   </li>
                 );
