@@ -1,7 +1,10 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { DashboardLayout } from '@/components/dashboard/DashboardLayout';
-import { Card, CardContent } from '@/components/ui/card';
+import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
+import { StatCard } from '@/components/dashboard/StatCard';
+import { InfoCard, HighlightCard } from '@/components/dashboard/InfoCard';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -16,7 +19,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useDateValidation } from '@/hooks/useDateValidation';
-import { Copy, Users, Utensils, ShoppingCart, Wallet, TrendingUp, TrendingDown, Loader2, CheckCircle, XCircle, Calendar, Home, Pencil, Check, X, Receipt } from 'lucide-react';
+import { Copy, Users, Utensils, ShoppingCart, Wallet, TrendingUp, TrendingDown, Loader2, CheckCircle, XCircle, Calendar, Home, Pencil, Check, X, Receipt, Sparkles } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { format, parseISO, endOfMonth } from 'date-fns';
@@ -246,66 +249,21 @@ export default function ManagerDashboard() {
     }
   };
 
-  const statCards = [
-    {
-      title: language === 'bn' ? 'মোট মেম্বার' : 'Total Members',
-      value: stats.totalMembers,
-      icon: Users,
-      color: 'text-accent',
-      bgColor: 'bg-accent/10',
-    },
-    {
-      title: language === 'bn' ? 'মোট মিল' : 'Total Meals',
-      value: stats.totalMeals,
-      icon: Utensils,
-      color: 'text-secondary',
-      bgColor: 'bg-secondary/10',
-    },
-    {
-      title: language === 'bn' ? 'মোট বাজার' : 'Total Bazar',
-      value: `৳${stats.totalBazar.toFixed(2)}`,
-      icon: ShoppingCart,
-      color: 'text-warning',
-      bgColor: 'bg-warning/10',
-    },
-    {
-      title: language === 'bn' ? 'মোট জমা' : 'Total Deposits',
-      value: `৳${stats.totalDeposits.toFixed(2)}`,
-      icon: Wallet,
-      color: 'text-success',
-      bgColor: 'bg-success/10',
-    },
-    {
-      title: language === 'bn' ? 'মোট অতিরিক্ত খরচ' : 'Total Additional Cost',
-      value: `৳${totalAdditionalCosts.toFixed(2)}`,
-      icon: Receipt,
-      color: 'text-destructive',
-      bgColor: 'bg-destructive/10',
-    },
-  ];
-
   // Remaining Balance = Total Deposit − (Total Bazar Cost + Total Additional Cost)
   const balance = stats.totalDeposits - (stats.totalBazar + totalAdditionalCosts);
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
-        {/* Page Header */}
-        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-foreground">
-              {language === 'bn' ? 'ড্যাশবোর্ড' : 'Dashboard'}
-            </h1>
-            <p className="text-muted-foreground mt-1">
-              {language === 'bn' ? 'আপনার মেসের মাসিক সারসংক্ষেপ' : 'Monthly overview of your mess'}
-            </p>
-          </div>
-          
-          {/* Month Selector */}
-          <div className="flex items-center gap-2">
-            <Calendar className="w-5 h-5 text-muted-foreground" />
+      <div className="space-y-6 lg:space-y-8">
+        {/* Page Header with Month Selector */}
+        <DashboardHeader
+          title={language === 'bn' ? 'ড্যাশবোর্ড' : 'Dashboard'}
+          subtitle={language === 'bn' ? 'আপনার মেসের মাসিক সারসংক্ষেপ' : 'Monthly overview of your mess'}
+        >
+          <div className="flex items-center gap-2 bg-muted/50 rounded-xl p-1 pr-3">
+            <Calendar className="w-4 h-4 text-muted-foreground ml-2" />
             <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-              <SelectTrigger className="w-[180px] rounded-xl">
+              <SelectTrigger className="w-[160px] sm:w-[180px] border-0 bg-transparent focus:ring-0 focus:ring-offset-0">
                 <SelectValue placeholder={language === 'bn' ? 'মাস সিলেক্ট করুন' : 'Select month'} />
               </SelectTrigger>
               <SelectContent>
@@ -317,220 +275,268 @@ export default function ManagerDashboard() {
               </SelectContent>
             </Select>
           </div>
-        </div>
+        </DashboardHeader>
 
-        {/* Mess Info Card - Clean & Compact */}
-        <Card className="border bg-card/50 backdrop-blur-sm">
-          <CardContent className="p-3 sm:p-4">
-            <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
-              {/* Icon */}
-              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0 mx-auto sm:mx-0">
-                <Home className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
-              </div>
-              
-              {/* Info Grid */}
-              <div className="flex-1 grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
-                {/* Mess ID */}
-                <div className="text-center sm:text-left">
-                  <p className="text-xs text-muted-foreground mb-1">
-                    {language === 'bn' ? 'মেস আইডি' : 'Mess ID'}
-                  </p>
-                  <div className="flex items-center justify-center sm:justify-start gap-1.5">
-                    <span className="text-sm sm:text-lg font-mono font-bold text-primary">
-                      {mess?.mess_id || '-'}
-                    </span>
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      onClick={copyMessId} 
-                      className="h-6 w-6 sm:h-7 sm:w-7 rounded-lg hover:bg-primary/10"
-                    >
-                      <Copy className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
-                    </Button>
-                  </div>
-                </div>
-
-                {/* Mess Name */}
-                <div className="text-center sm:text-left">
-                  <p className="text-xs text-muted-foreground mb-1">
-                    {language === 'bn' ? 'মেসের নাম' : 'Mess Name'}
-                  </p>
-                  {!isEditingName ? (
-                    <div className="flex items-center justify-center sm:justify-start gap-1.5">
-                      <span className="text-sm sm:text-base font-medium truncate max-w-[100px] sm:max-w-none">
-                        {mess?.name || (language === 'bn' ? 'নাম সেট করা হয়নি' : 'Not set')}
-                      </span>
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        onClick={() => setIsEditingName(true)} 
-                        className="h-6 w-6 sm:h-7 sm:w-7 rounded-lg hover:bg-muted shrink-0"
-                      >
-                        <Pencil className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
-                      </Button>
-                    </div>
-                  ) : (
-                    <div className="flex items-center justify-center sm:justify-start gap-1.5">
-                      <Input
-                        value={messName}
-                        onChange={(e) => setMessName(e.target.value)}
-                        placeholder={language === 'bn' ? 'মেসের নাম' : 'Mess name'}
-                        className="h-7 sm:h-8 rounded-lg text-xs sm:text-sm max-w-[100px] sm:max-w-[160px]"
-                        autoFocus
-                      />
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        onClick={handleUpdateMessName} 
-                        disabled={isSaving || !hasNameChanges}
-                        className="h-6 w-6 sm:h-7 sm:w-7 rounded-lg text-success hover:bg-success/10 shrink-0"
-                      >
-                        {isSaving ? <Loader2 className="w-3 h-3 sm:w-3.5 sm:h-3.5 animate-spin" /> : <Check className="w-3 h-3 sm:w-3.5 sm:h-3.5" />}
-                      </Button>
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        onClick={handleCancelEditName}
-                        disabled={isSaving}
-                        className="h-6 w-6 sm:h-7 sm:w-7 rounded-lg text-muted-foreground hover:bg-muted shrink-0"
-                      >
-                        <X className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
-                      </Button>
-                    </div>
-                  )}
-                </div>
-
-                {/* Status */}
-                <div className="col-span-2 sm:col-span-1 text-center sm:text-left">
-                  <p className="text-xs text-muted-foreground mb-1">
-                    {language === 'bn' ? 'স্ট্যাটাস' : 'Status'}
-                  </p>
-                  {isSubscriptionActive ? (
-                    <Badge className="bg-success/10 text-success border-0 font-medium text-xs">
-                      <CheckCircle className="w-3 h-3 sm:w-3.5 sm:h-3.5 mr-1" />
-                      {language === 'bn' ? 'সক্রিয়' : 'Active'}
-                    </Badge>
-                  ) : (
-                    <Badge variant="secondary" className="bg-muted text-muted-foreground border-0 font-medium text-xs">
-                      <XCircle className="w-3 h-3 sm:w-3.5 sm:h-3.5 mr-1" />
-                      {language === 'bn' ? 'নিষ্ক্রিয়' : 'Inactive'}
-                    </Badge>
-                  )}
-                </div>
+        {/* Mess Info Card */}
+        <InfoCard icon={Home} iconColor="text-primary" variant="gradient">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 sm:gap-6">
+            {/* Mess ID */}
+            <div>
+              <p className="text-xs text-muted-foreground mb-1">
+                {language === 'bn' ? 'মেস আইডি' : 'Mess ID'}
+              </p>
+              <div className="flex items-center gap-2">
+                <span className="text-base sm:text-lg font-mono font-bold text-primary">
+                  {mess?.mess_id || '-'}
+                </span>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  onClick={copyMessId} 
+                  className="h-7 w-7 rounded-lg hover:bg-primary/10"
+                >
+                  <Copy className="w-3.5 h-3.5" />
+                </Button>
               </div>
             </div>
-          </CardContent>
-        </Card>
+
+            {/* Mess Name */}
+            <div>
+              <p className="text-xs text-muted-foreground mb-1">
+                {language === 'bn' ? 'মেসের নাম' : 'Mess Name'}
+              </p>
+              {!isEditingName ? (
+                <div className="flex items-center gap-2">
+                  <span className="text-sm sm:text-base font-medium truncate max-w-[120px] sm:max-w-none">
+                    {mess?.name || (language === 'bn' ? 'নাম সেট করা হয়নি' : 'Not set')}
+                  </span>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    onClick={() => setIsEditingName(true)} 
+                    className="h-7 w-7 rounded-lg hover:bg-muted"
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-1.5">
+                  <Input
+                    value={messName}
+                    onChange={(e) => setMessName(e.target.value)}
+                    placeholder={language === 'bn' ? 'মেসের নাম' : 'Mess name'}
+                    className="h-8 rounded-lg text-sm max-w-[120px] sm:max-w-[160px]"
+                    autoFocus
+                  />
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    onClick={handleUpdateMessName} 
+                    disabled={isSaving || !hasNameChanges}
+                    className="h-7 w-7 rounded-lg text-success hover:bg-success/10"
+                  >
+                    {isSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    onClick={handleCancelEditName}
+                    disabled={isSaving}
+                    className="h-7 w-7 rounded-lg text-muted-foreground hover:bg-muted"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </Button>
+                </div>
+              )}
+            </div>
+
+            {/* Status */}
+            <div className="col-span-2 sm:col-span-1">
+              <p className="text-xs text-muted-foreground mb-1">
+                {language === 'bn' ? 'স্ট্যাটাস' : 'Status'}
+              </p>
+              {isSubscriptionActive ? (
+                <Badge className="bg-success/10 text-success border-0 font-medium text-xs px-3 py-1">
+                  <CheckCircle className="w-3.5 h-3.5 mr-1.5" />
+                  {language === 'bn' ? 'সক্রিয়' : 'Active'}
+                </Badge>
+              ) : (
+                <Badge variant="secondary" className="bg-muted text-muted-foreground border-0 font-medium text-xs px-3 py-1">
+                  <XCircle className="w-3.5 h-3.5 mr-1.5" />
+                  {language === 'bn' ? 'নিষ্ক্রিয়' : 'Inactive'}
+                </Badge>
+              )}
+            </div>
+          </div>
+        </InfoCard>
 
         {/* Subscribe Now CTA for Inactive Messes */}
         {!isSubscriptionActive && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="glass-card border-warning/30 bg-warning/5 p-6 rounded-2xl"
-          >
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-              <div className="text-center sm:text-left">
-                <h3 className="text-lg font-semibold text-foreground">
-                  {language === 'bn' ? 'সাবস্ক্রিপশন প্রয়োজন' : 'Subscription Required'}
-                </h3>
-                <p className="text-sm text-muted-foreground mt-1">
-                  {language === 'bn'
-                    ? 'সমস্ত ফিচার ব্যবহার করতে সাবস্ক্রাইব করুন। মাত্র ২০ টাকা/মাস।'
-                    : 'Subscribe to access all features. Only ৳20/month.'}
-                </p>
-              </div>
+          <HighlightCard
+            title={language === 'bn' ? 'সাবস্ক্রিপশন প্রয়োজন' : 'Subscription Required'}
+            description={
+              language === 'bn'
+                ? 'সমস্ত ফিচার ব্যবহার করতে সাবস্ক্রাইব করুন। মাত্র ২০ টাকা/মাস।'
+                : 'Subscribe to access all features. Only ৳20/month.'
+            }
+            variant="warning"
+            action={
               <Link to="/manager/subscription">
-                <Button className="bg-primary hover:bg-primary/90 text-primary-foreground font-medium px-6">
+                <Button className="bg-primary hover:bg-primary/90 text-primary-foreground font-medium px-6 gap-2">
+                  <Sparkles className="w-4 h-4" />
                   {language === 'bn' ? 'সাবস্ক্রাইব করুন' : 'Subscribe Now'}
                 </Button>
               </Link>
-            </div>
-          </motion.div>
+            }
+          />
         )}
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-          {statCards.map((stat, index) => (
-            <motion.div
-              key={stat.title}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3, delay: index * 0.1 }}
-            >
-              <Card className="glass-card">
-                <CardContent className="p-4 sm:p-6">
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs sm:text-sm text-muted-foreground truncate">{stat.title}</p>
-                      <p className="text-lg sm:text-2xl font-bold text-foreground mt-1">{stat.value}</p>
-                    </div>
-                    <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl ${stat.bgColor} flex items-center justify-center shrink-0`}>
-                      <stat.icon className={`w-5 h-5 sm:w-6 sm:h-6 ${stat.color}`} />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
-          ))}
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
+          <StatCard
+            title={language === 'bn' ? 'মোট মেম্বার' : 'Total Members'}
+            value={stats.totalMembers}
+            icon={Users}
+            color="accent"
+            delay={0}
+          />
+          <StatCard
+            title={language === 'bn' ? 'মোট মিল' : 'Total Meals'}
+            value={stats.totalMeals}
+            icon={Utensils}
+            color="secondary"
+            delay={0.1}
+          />
+          <StatCard
+            title={language === 'bn' ? 'মোট বাজার' : 'Total Bazar'}
+            value={`৳${stats.totalBazar.toFixed(0)}`}
+            icon={ShoppingCart}
+            color="warning"
+            delay={0.2}
+          />
+          <StatCard
+            title={language === 'bn' ? 'মোট জমা' : 'Total Deposits'}
+            value={`৳${stats.totalDeposits.toFixed(0)}`}
+            icon={Wallet}
+            color="success"
+            delay={0.3}
+          />
+          <StatCard
+            title={language === 'bn' ? 'অতিরিক্ত খরচ' : 'Additional Cost'}
+            value={`৳${totalAdditionalCosts.toFixed(0)}`}
+            icon={Receipt}
+            color="destructive"
+            delay={0.4}
+          />
         </div>
 
-        {/* Meal Rate & Balance */}
-        <div className="grid grid-cols-2 gap-3 sm:gap-4">
-          <Card className="glass-card">
-            <CardContent className="p-4 sm:p-6">
-              <div className="flex items-center justify-between gap-2">
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs sm:text-sm text-muted-foreground">
-                    {language === 'bn' ? 'মিল রেট' : 'Meal Rate'}
-                  </p>
-                  <p className="text-xl sm:text-3xl font-bold text-foreground mt-1">
-                    ৳{stats.mealRate.toFixed(2)}
-                  </p>
-                  <p className="text-[10px] sm:text-xs text-muted-foreground mt-1">
-                    {language === 'bn' ? 'প্রতি মিল' : 'per meal'}
-                  </p>
-                </div>
-                <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                  <Utensils className="w-6 h-6 sm:w-8 sm:h-8 text-primary" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="glass-card">
-            <CardContent className="p-4 sm:p-6">
-              <div className="flex items-center justify-between gap-2">
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs sm:text-sm text-muted-foreground">
-                    {language === 'bn' ? 'মোট ব্যালেন্স' : 'Balance'}
-                  </p>
-                  <p className={`text-xl sm:text-3xl font-bold mt-1 ${
-                    balance > 0 ? 'text-success' : balance < 0 ? 'text-destructive' : 'text-foreground'
-                  }`}>
-                    ৳{Math.abs(balance).toFixed(2)}
-                  </p>
-                  <p className="text-[10px] sm:text-xs text-muted-foreground mt-1">
-                    {balance > 0
-                      ? language === 'bn' ? 'উদ্বৃত্ত' : 'Surplus'
-                      : balance < 0
-                      ? language === 'bn' ? 'ঘাটতি' : 'Deficit'
-                      : language === 'bn' ? 'সমান' : 'Balanced'}
-                  </p>
-                </div>
-                <div className={`w-12 h-12 sm:w-16 sm:h-16 rounded-xl flex items-center justify-center shrink-0 ${
-                  balance >= 0 ? 'bg-success/10' : 'bg-destructive/10'
-                }`}>
+        {/* Balance & Meal Rate Section */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
+          {/* Balance Card */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5, duration: 0.4 }}
+          >
+            <Card className="h-full overflow-hidden border-2 border-primary/20 bg-gradient-to-br from-card via-card to-primary/5">
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-2 text-base">
                   {balance >= 0 ? (
-                    <TrendingUp className="w-6 h-6 sm:w-8 sm:h-8 text-success" />
+                    <TrendingUp className="w-5 h-5 text-success" />
                   ) : (
-                    <TrendingDown className="w-6 h-6 sm:w-8 sm:h-8 text-destructive" />
+                    <TrendingDown className="w-5 h-5 text-destructive" />
                   )}
+                  {language === 'bn' ? 'অবশিষ্ট ব্যালেন্স' : 'Remaining Balance'}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="flex items-baseline gap-2">
+                    <span className={`text-3xl sm:text-4xl font-bold ${balance >= 0 ? 'text-success' : 'text-destructive'}`}>
+                      ৳{Math.abs(balance).toFixed(2)}
+                    </span>
+                    <span className={`text-sm font-medium ${balance >= 0 ? 'text-success/80' : 'text-destructive/80'}`}>
+                      {balance >= 0 
+                        ? (language === 'bn' ? 'উদ্বৃত্ত' : 'Surplus')
+                        : (language === 'bn' ? 'বকেয়া' : 'Due')}
+                    </span>
+                  </div>
+                  <div className="text-xs text-muted-foreground bg-muted/50 rounded-lg p-3">
+                    <p className="font-medium mb-1">{language === 'bn' ? 'হিসাব:' : 'Calculation:'}</p>
+                    <p>৳{stats.totalDeposits.toFixed(0)} - (৳{stats.totalBazar.toFixed(0)} + ৳{totalAdditionalCosts.toFixed(0)})</p>
+                  </div>
                 </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+
+          {/* Meal Rate Card */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.6, duration: 0.4 }}
+          >
+            <Card className="h-full overflow-hidden border-2 border-secondary/20 bg-gradient-to-br from-card via-card to-secondary/5">
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Utensils className="w-5 h-5 text-secondary" />
+                  {language === 'bn' ? 'মিল রেট' : 'Meal Rate'}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-3xl sm:text-4xl font-bold text-secondary">
+                      ৳{stats.mealRate.toFixed(2)}
+                    </span>
+                    <span className="text-sm text-muted-foreground">
+                      {language === 'bn' ? 'প্রতি মিল' : 'per meal'}
+                    </span>
+                  </div>
+                  <div className="text-xs text-muted-foreground bg-muted/50 rounded-lg p-3">
+                    <p className="font-medium mb-1">{language === 'bn' ? 'হিসাব:' : 'Calculation:'}</p>
+                    <p>৳{stats.totalBazar.toFixed(0)} ÷ {stats.totalMeals} {language === 'bn' ? 'মিল' : 'meals'}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        </div>
+
+        {/* Quick Actions */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.7, duration: 0.4 }}
+        >
+          <Card className="overflow-hidden">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">
+                {language === 'bn' ? 'দ্রুত কার্যক্রম' : 'Quick Actions'}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
+                {[
+                  { to: '/manager/members', icon: Users, label: language === 'bn' ? 'মেম্বার' : 'Members', color: 'text-accent' },
+                  { to: '/manager/meals', icon: Utensils, label: language === 'bn' ? 'মিল' : 'Meals', color: 'text-secondary' },
+                  { to: '/manager/bazar', icon: ShoppingCart, label: language === 'bn' ? 'বাজার' : 'Bazar', color: 'text-warning' },
+                  { to: '/manager/deposits', icon: Wallet, label: language === 'bn' ? 'জমা' : 'Deposits', color: 'text-success' },
+                ].map((action) => (
+                  <Link key={action.to} to={action.to}>
+                    <Button
+                      variant="outline"
+                      className="w-full h-auto py-4 flex-col gap-2 rounded-xl hover:bg-muted/50 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                    >
+                      <action.icon className={`w-5 h-5 ${action.color}`} />
+                      <span className="text-xs font-medium">{action.label}</span>
+                    </Button>
+                  </Link>
+                ))}
               </div>
             </CardContent>
           </Card>
-        </div>
+        </motion.div>
       </div>
     </DashboardLayout>
   );

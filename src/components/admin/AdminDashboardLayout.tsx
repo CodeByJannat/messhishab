@@ -3,6 +3,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -207,25 +208,35 @@ export function AdminDashboardLayout({ children }: { children: React.ReactNode }
       </AnimatePresence>
 
       {/* Desktop Sidebar - Always visible on lg+ */}
-      <aside className="hidden lg:block fixed top-0 left-0 h-full w-64 bg-card border-r border-border z-30">
+      <aside className="hidden lg:block fixed top-0 left-0 h-full w-64 bg-gradient-to-b from-card via-card to-primary/5 border-r border-border z-30">
         <div className="flex flex-col h-full">
           {/* Logo */}
-          <div className="p-6 border-b border-border">
+          <div className="p-6 border-b border-border/50 bg-gradient-to-r from-primary/10 to-transparent">
             <div className="flex items-center gap-3">
-              <img src="/favicon.png" alt="Mess Hishab" className="w-10 h-10 rounded-xl shadow-md" />
+              <div className="relative">
+                <img src="/favicon.png" alt="Mess Hishab" className="w-11 h-11 rounded-xl shadow-lg ring-2 ring-primary/30" />
+                <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-primary rounded-full border-2 border-card flex items-center justify-center">
+                  <Shield className="w-3 h-3 text-primary-foreground" />
+                </div>
+              </div>
               <div>
                 <span className="font-display font-bold text-lg tracking-tight block">
                   <span className="text-foreground">Mess</span>
                   <span className="text-primary ml-0.5">Hishab</span>
                 </span>
-                <span className="text-xs text-primary font-medium">Admin Panel</span>
+                <Badge className="bg-primary/20 text-primary border-0 text-[10px] px-1.5 py-0 font-semibold">
+                  Admin Panel
+                </Badge>
               </div>
             </div>
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 p-4 overflow-y-auto">
-            <ul className="space-y-2">
+          <nav className="flex-1 p-3 overflow-y-auto">
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold px-3 mb-2">
+              {language === 'bn' ? 'মেনু' : 'Menu'}
+            </p>
+            <ul className="space-y-1">
               {adminNavItems.map((item) => {
                 const isActive = location.pathname === item.href || 
                   (item.href !== '/admin/dashboard' && location.pathname.startsWith(item.href));
@@ -233,14 +244,14 @@ export function AdminDashboardLayout({ children }: { children: React.ReactNode }
                   <li key={item.href}>
                     <Link
                       to={item.href}
-                      className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
+                      className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 ${
                         isActive
-                          ? 'bg-primary text-primary-foreground'
-                          : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                          ? 'bg-primary text-primary-foreground shadow-md shadow-primary/20'
+                          : 'text-muted-foreground hover:text-foreground hover:bg-muted/70'
                       }`}
                     >
-                      <item.icon className="w-5 h-5" />
-                      <span>{language === 'bn' ? item.labelBn : item.labelEn}</span>
+                      <item.icon className={`w-5 h-5 transition-transform ${isActive ? 'scale-110' : ''}`} />
+                      <span className="text-sm font-medium">{language === 'bn' ? item.labelBn : item.labelEn}</span>
                     </Link>
                   </li>
                 );
