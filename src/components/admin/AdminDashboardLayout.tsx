@@ -130,11 +130,9 @@ export function AdminDashboardLayout({ children }: { children: React.ReactNode }
               {/* Logo with close button */}
               <div className="p-4 border-b border-border flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 bg-primary rounded-xl flex items-center justify-center">
-                    <Shield className="h-4 w-4 text-primary-foreground" />
-                  </div>
+                  <img src="/favicon.png" alt="Mess Hishab" className="w-9 h-9 rounded-xl" />
                   <div>
-                    <span className="font-bold text-base text-foreground block">MessHishab</span>
+                    <span className="font-bold text-base text-foreground block">Mess Hishab</span>
                     <span className="text-xs text-primary font-medium">Admin Panel</span>
                   </div>
                 </div>
@@ -211,11 +209,9 @@ export function AdminDashboardLayout({ children }: { children: React.ReactNode }
           {/* Logo */}
           <div className="p-6 border-b border-border">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center">
-                <Shield className="h-5 w-5 text-primary-foreground" />
-              </div>
+              <img src="/favicon.png" alt="Mess Hishab" className="w-10 h-10 rounded-xl" />
               <div>
-                <span className="font-bold text-lg text-foreground block">MessHishab</span>
+                <span className="font-bold text-lg text-foreground block">Mess Hishab</span>
                 <span className="text-xs text-primary font-medium">Admin Panel</span>
               </div>
             </div>

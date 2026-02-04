@@ -119,10 +119,8 @@ export const DashboardLayout = memo(function DashboardLayout({ children }: { chi
         </Button>
         
         <div className="flex items-center gap-2">
-          <div className="w-7 h-7 bg-primary rounded-lg flex items-center justify-center">
-            <span className="text-primary-foreground font-bold text-sm">M</span>
-          </div>
-          <span className="font-bold text-sm text-foreground">MessHishab</span>
+          <img src="/favicon.png" alt="Mess Hishab" className="w-7 h-7 rounded-lg" />
+          <span className="font-bold text-sm text-foreground">Mess Hishab</span>
         </div>
 
         <div className="flex items-center gap-0.5">
@@ -163,11 +161,9 @@ export const DashboardLayout = memo(function DashboardLayout({ children }: { chi
               {/* Logo with close button */}
               <div className="p-4 border-b border-border flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 bg-primary rounded-xl flex items-center justify-center">
-                    <span className="text-primary-foreground font-bold text-lg">M</span>
-                  </div>
+                  <img src="/favicon.png" alt="Mess Hishab" className="w-9 h-9 rounded-xl" />
                   <div>
-                    <span className="font-bold text-base text-foreground block">MessHishab</span>
+                    <span className="font-bold text-base text-foreground block">Mess Hishab</span>
                     {mess && (
                       <span className="text-xs text-muted-foreground">{mess.mess_id}</span>
                     )}
@@ -252,11 +248,9 @@ export const DashboardLayout = memo(function DashboardLayout({ children }: { chi
           {/* Logo */}
           <div className="p-6 border-b border-border">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center">
-                <span className="text-primary-foreground font-bold text-xl">M</span>
-              </div>
+              <img src="/favicon.png" alt="Mess Hishab" className="w-10 h-10 rounded-xl" />
               <div>
-                <span className="font-bold text-lg text-foreground block">MessHishab</span>
+                <span className="font-bold text-lg text-foreground block">Mess Hishab</span>
                 {mess && (
                   <span className="text-xs text-muted-foreground">{mess.mess_id}</span>
                 )}

@@ -97,7 +97,7 @@ const translations: Record<Language, Record<string, string>> = {
     'footer.refund': 'রিফান্ড পলিসি',
     'footer.terms': 'শর্তাবলী',
     'footer.privacy': 'প্রাইভেসি পলিসি',
-    'footer.copyright': '© ২০২৪ MessHishab. সর্বস্বত্ব সংরক্ষিত।',
+    'footer.copyright': '© ২০২৪ Mess Hishab. সর্বস্বত্ব সংরক্ষিত।',
     
     // About Page
     'about.title': 'আমাদের সম্পর্কে',
@@ -324,7 +324,7 @@ const translations: Record<Language, Record<string, string>> = {
     'footer.refund': 'Refund Policy',
     'footer.terms': 'Terms & Conditions',
     'footer.privacy': 'Privacy Policy',
-    'footer.copyright': '© 2024 MessHishab. All rights reserved.',
+    'footer.copyright': '© 2024 Mess Hishab. All rights reserved.',
     
     // About Page
     'about.title': 'About Us',

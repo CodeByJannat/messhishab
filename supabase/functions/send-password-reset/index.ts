@@ -71,8 +71,8 @@ serve(async (req: Request): Promise<Response> => {
 
     // Email content based on language
     const subject = language === 'bn' 
-      ? 'আপনার পাসওয়ার্ড রিসেট করুন - MessHishab' 
-      : 'Reset Your Password - MessHishab';
+      ? 'আপনার পাসওয়ার্ড রিসেট করুন - Mess Hishab' 
+      : 'Reset Your Password - Mess Hishab';
 
     const htmlContent = language === 'bn' ? `
       <!DOCTYPE html>
@@ -87,13 +87,13 @@ serve(async (req: Request): Promise<Response> => {
             <div style="background: white; width: 60px; height: 60px; border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 16px;">
               <span style="font-size: 32px; font-weight: bold; color: #6366f1;">M</span>
             </div>
-            <h1 style="color: white; margin: 0; font-size: 24px;">MessHishab</h1>
+            <h1 style="color: white; margin: 0; font-size: 24px;">Mess Hishab</h1>
           </div>
           
           <div style="background: white; padding: 32px; border-radius: 0 0 16px 16px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
             <h2 style="color: #1f2937; margin: 0 0 16px 0; font-size: 20px;">পাসওয়ার্ড রিসেট অনুরোধ</h2>
             <p style="color: #6b7280; line-height: 1.6; margin: 0 0 24px 0;">
-              আপনি আপনার MessHishab অ্যাকাউন্টের জন্য পাসওয়ার্ড রিসেট অনুরোধ করেছেন। নতুন পাসওয়ার্ড সেট করতে নিচের বাটনে ক্লিক করুন।
+              আপনি আপনার Mess Hishab অ্যাকাউন্টের জন্য পাসওয়ার্ড রিসেট অনুরোধ করেছেন। নতুন পাসওয়ার্ড সেট করতে নিচের বাটনে ক্লিক করুন।
             </p>
             
             <a href="${resetLink}" style="display: inline-block; background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); color: white; text-decoration: none; padding: 14px 32px; border-radius: 12px; font-weight: 600; font-size: 16px;">
@@ -109,7 +109,7 @@ serve(async (req: Request): Promise<Response> => {
           </div>
           
           <p style="text-align: center; color: #9ca3af; font-size: 12px; margin-top: 24px;">
-            © ${new Date().getFullYear()} MessHishab. সকল অধিকার সংরক্ষিত।
+            © ${new Date().getFullYear()} Mess Hishab. সকল অধিকার সংরক্ষিত।
           </p>
         </div>
       </body>
@@ -127,13 +127,13 @@ serve(async (req: Request): Promise<Response> => {
             <div style="background: white; width: 60px; height: 60px; border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 16px;">
               <span style="font-size: 32px; font-weight: bold; color: #6366f1;">M</span>
             </div>
-            <h1 style="color: white; margin: 0; font-size: 24px;">MessHishab</h1>
+            <h1 style="color: white; margin: 0; font-size: 24px;">Mess Hishab</h1>
           </div>
           
           <div style="background: white; padding: 32px; border-radius: 0 0 16px 16px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
             <h2 style="color: #1f2937; margin: 0 0 16px 0; font-size: 20px;">Password Reset Request</h2>
             <p style="color: #6b7280; line-height: 1.6; margin: 0 0 24px 0;">
-              You requested to reset your password for your MessHishab account. Click the button below to set a new password.
+              You requested to reset your password for your Mess Hishab account. Click the button below to set a new password.
             </p>
             
             <a href="${resetLink}" style="display: inline-block; background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); color: white; text-decoration: none; padding: 14px 32px; border-radius: 12px; font-weight: 600; font-size: 16px;">
@@ -149,7 +149,7 @@ serve(async (req: Request): Promise<Response> => {
           </div>
           
           <p style="text-align: center; color: #9ca3af; font-size: 12px; margin-top: 24px;">
-            © ${new Date().getFullYear()} MessHishab. All rights reserved.
+            © ${new Date().getFullYear()} Mess Hishab. All rights reserved.
           </p>
         </div>
       </body>
@@ -164,7 +164,7 @@ serve(async (req: Request): Promise<Response> => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: "MessHishab <noreply@info.softauro.com>",
+        from: "Mess Hishab <noreply@info.softauro.com>",
         to: [email],
         subject: subject,
         html: htmlContent,
