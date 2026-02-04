@@ -11,8 +11,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Search, Ban, CheckCircle, Calendar, Loader2 } from 'lucide-react';
+import { Search, Ban, CheckCircle, Calendar, Loader2, Users, Eye, Phone, Mail, User, Home, CalendarDays } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { format } from 'date-fns';
 
 interface Mess {
   id: string;
@@ -22,11 +23,23 @@ interface Mess {
   suspend_reason: string | null;
   created_at: string;
   manager_email?: string;
+  manager_phone?: string;
+  member_count?: number;
   subscription?: {
     type: 'monthly' | 'yearly';
     status: string;
     end_date: string;
   } | null;
+}
+
+interface Member {
+  id: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  room_number: string | null;
+  is_active: boolean;
+  created_at: string;
 }
 
 export default function AdminMessPage() {
@@ -47,9 +60,16 @@ export default function AdminMessPage() {
   const [suspendReason, setSuspendReason] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
 
+  // Member view modal
+  const [showMemberModal, setShowMemberModal] = useState(false);
+  const [viewingMess, setViewingMess] = useState<Mess | null>(null);
+  const [members, setMembers] = useState<Member[]>([]);
+  const [isMembersLoading, setIsMembersLoading] = useState(false);
+
   // Stats
   const [monthlyCount, setMonthlyCount] = useState(0);
   const [yearlyCount, setYearlyCount] = useState(0);
+  const [totalMembers, setTotalMembers] = useState(0);
 
   useEffect(() => {
     fetchMesses();
@@ -95,6 +115,12 @@ export default function AdminMessPage() {
         const { data: emailsData } = await supabase
           .rpc('get_user_emails_for_admin', { user_ids: nonAdminManagerIds });
 
+        // Fetch profiles for phone numbers
+        const { data: profilesData } = await supabase
+          .from('profiles')
+          .select('user_id, phone')
+          .in('user_id', nonAdminManagerIds);
+
         // Fetch subscriptions separately
         const messIds = nonAdminMesses.map(m => m.id);
         const { data: subscriptionsData } = await supabase
@@ -102,8 +128,21 @@ export default function AdminMessPage() {
           .select('mess_id, type, status, end_date')
           .in('mess_id', messIds);
 
+        // Fetch member counts
+        const { data: memberCountsData } = await supabase
+          .from('members')
+          .select('mess_id')
+          .in('mess_id', messIds);
+
         const profileMap = new Map(emailsData?.map((p: { user_id: string; email: string }) => [p.user_id, p.email]) || []);
+        const phoneMap = new Map(profilesData?.map((p: { user_id: string; phone: string | null }) => [p.user_id, p.phone]) || []);
         const subscriptionMap = new Map(subscriptionsData?.map(s => [s.mess_id, s]) || []);
+        
+        // Count members per mess
+        const memberCountMap = new Map<string, number>();
+        memberCountsData?.forEach(m => {
+          memberCountMap.set(m.mess_id, (memberCountMap.get(m.mess_id) || 0) + 1);
+        });
 
         const formattedMesses: Mess[] = nonAdminMesses.map((m) => ({
           id: m.id,
@@ -113,6 +152,8 @@ export default function AdminMessPage() {
           suspend_reason: m.suspend_reason,
           created_at: m.created_at,
           manager_email: profileMap.get(m.manager_id) || undefined,
+          manager_phone: phoneMap.get(m.manager_id) || undefined,
+          member_count: memberCountMap.get(m.id) || 0,
           subscription: subscriptionMap.get(m.id) ? {
             type: subscriptionMap.get(m.id)!.type as 'monthly' | 'yearly',
             status: subscriptionMap.get(m.id)!.status,
@@ -125,8 +166,10 @@ export default function AdminMessPage() {
         // Calculate stats
         const monthly = formattedMesses.filter(m => m.subscription?.type === 'monthly' && m.subscription?.status === 'active').length;
         const yearly = formattedMesses.filter(m => m.subscription?.type === 'yearly' && m.subscription?.status === 'active').length;
+        const totalMemberCount = formattedMesses.reduce((sum, m) => sum + (m.member_count || 0), 0);
         setMonthlyCount(monthly);
         setYearlyCount(yearly);
+        setTotalMembers(totalMemberCount);
       } else {
         setMesses([]);
       }
@@ -139,6 +182,32 @@ export default function AdminMessPage() {
       });
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const fetchMembers = async (mess: Mess) => {
+    setViewingMess(mess);
+    setShowMemberModal(true);
+    setIsMembersLoading(true);
+    
+    try {
+      const { data, error } = await supabase
+        .from('members')
+        .select('id, name, email, phone, room_number, is_active, created_at')
+        .eq('mess_id', mess.id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setMembers(data || []);
+    } catch (error) {
+      console.error('Error fetching members:', error);
+      toast({
+        title: language === 'bn' ? 'ত্রুটি' : 'Error',
+        description: language === 'bn' ? 'সদস্য লোড করতে সমস্যা হয়েছে' : 'Failed to load members',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsMembersLoading(false);
     }
   };
 
@@ -277,7 +346,7 @@ export default function AdminMessPage() {
         </div>
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-3 gap-4">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -314,6 +383,27 @@ export default function AdminMessPage() {
                   </div>
                   <div className="w-12 h-12 rounded-xl bg-success flex items-center justify-center">
                     <Calendar className="w-6 h-6 text-white" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+          >
+            <Card className="glass-card">
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">
+                      {language === 'bn' ? 'মোট সদস্য' : 'Total Members'}
+                    </p>
+                    <p className="text-3xl font-bold text-foreground">{totalMembers}</p>
+                  </div>
+                  <div className="w-12 h-12 rounded-xl bg-primary flex items-center justify-center">
+                    <Users className="w-6 h-6 text-white" />
                   </div>
                 </div>
               </CardContent>
@@ -373,6 +463,8 @@ export default function AdminMessPage() {
                   <TableHead>{language === 'bn' ? 'মেস আইডি' : 'Mess ID'}</TableHead>
                   <TableHead>{language === 'bn' ? 'মেস নাম' : 'Mess Name'}</TableHead>
                   <TableHead>{language === 'bn' ? 'ম্যানেজার ইমেইল' : 'Manager Email'}</TableHead>
+                  <TableHead>{language === 'bn' ? 'ম্যানেজার ফোন' : 'Manager Phone'}</TableHead>
+                  <TableHead>{language === 'bn' ? 'সদস্য' : 'Members'}</TableHead>
                   <TableHead>{language === 'bn' ? 'স্ট্যাটাস' : 'Status'}</TableHead>
                   <TableHead>{language === 'bn' ? 'প্ল্যান' : 'Plan'}</TableHead>
                   <TableHead>{language === 'bn' ? 'অ্যাকশন' : 'Actions'}</TableHead>
@@ -381,13 +473,13 @@ export default function AdminMessPage() {
               <TableBody>
                 {isLoading ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-8">
+                    <TableCell colSpan={8} className="text-center py-8">
                       <Loader2 className="w-6 h-6 animate-spin mx-auto" />
                     </TableCell>
                   </TableRow>
                 ) : paginatedMesses.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                    <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
                       {language === 'bn' ? 'কোনো মেস পাওয়া যায়নি' : 'No messes found'}
                     </TableCell>
                   </TableRow>
@@ -397,6 +489,18 @@ export default function AdminMessPage() {
                       <TableCell className="font-mono">{mess.mess_id}</TableCell>
                       <TableCell>{mess.name || '-'}</TableCell>
                       <TableCell className="text-muted-foreground">{mess.manager_email || '-'}</TableCell>
+                      <TableCell className="text-muted-foreground">{mess.manager_phone || '-'}</TableCell>
+                      <TableCell>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-auto py-1 px-2"
+                          onClick={() => fetchMembers(mess)}
+                        >
+                          <Users className="w-4 h-4 mr-1" />
+                          {mess.member_count || 0}
+                        </Button>
+                      </TableCell>
                       <TableCell>{getStatusBadge(mess.status)}</TableCell>
                       <TableCell>
                         {mess.subscription?.status === 'active' ? (
@@ -411,27 +515,36 @@ export default function AdminMessPage() {
                         )}
                       </TableCell>
                       <TableCell>
-                        {mess.status === 'suspended' ? (
+                        <div className="flex gap-2">
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => handleUnsuspend(mess)}
-                            disabled={isProcessing}
+                            onClick={() => fetchMembers(mess)}
                           >
-                            <CheckCircle className="w-4 h-4 mr-1" />
-                            {language === 'bn' ? 'আনসাসপেন্ড' : 'Unsuspend'}
+                            <Eye className="w-4 h-4" />
                           </Button>
-                        ) : (
-                          <Button
-                            size="sm"
-                            variant="destructive"
-                            onClick={() => openSuspendModal(mess)}
-                            disabled={isProcessing}
-                          >
-                            <Ban className="w-4 h-4 mr-1" />
-                            {language === 'bn' ? 'সাসপেন্ড' : 'Suspend'}
-                          </Button>
-                        )}
+                          {mess.status === 'suspended' ? (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleUnsuspend(mess)}
+                              disabled={isProcessing}
+                            >
+                              <CheckCircle className="w-4 h-4 mr-1" />
+                              {language === 'bn' ? 'আনসাসপেন্ড' : 'Unsuspend'}
+                            </Button>
+                          ) : (
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => openSuspendModal(mess)}
+                              disabled={isProcessing}
+                            >
+                              <Ban className="w-4 h-4 mr-1" />
+                              {language === 'bn' ? 'সাসপেন্ড' : 'Suspend'}
+                            </Button>
+                          )}
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))
@@ -499,6 +612,92 @@ export default function AdminMessPage() {
               >
                 {isProcessing && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                 {language === 'bn' ? 'সাসপেন্ড করুন' : 'Suspend'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Member View Modal */}
+        <Dialog open={showMemberModal} onOpenChange={setShowMemberModal}>
+          <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Users className="w-5 h-5" />
+                {language === 'bn' ? 'সদস্য তালিকা' : 'Member List'} - {viewingMess?.name || viewingMess?.mess_id}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              {isMembersLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="w-8 h-8 animate-spin" />
+                </div>
+              ) : members.length === 0 ? (
+                <div className="text-center py-12 text-muted-foreground">
+                  {language === 'bn' ? 'কোনো সদস্য পাওয়া যায়নি' : 'No members found'}
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>
+                        <div className="flex items-center gap-1">
+                          <User className="w-4 h-4" />
+                          {language === 'bn' ? 'নাম' : 'Name'}
+                        </div>
+                      </TableHead>
+                      <TableHead>
+                        <div className="flex items-center gap-1">
+                          <Mail className="w-4 h-4" />
+                          {language === 'bn' ? 'ইমেইল' : 'Email'}
+                        </div>
+                      </TableHead>
+                      <TableHead>
+                        <div className="flex items-center gap-1">
+                          <Phone className="w-4 h-4" />
+                          {language === 'bn' ? 'ফোন' : 'Phone'}
+                        </div>
+                      </TableHead>
+                      <TableHead>
+                        <div className="flex items-center gap-1">
+                          <Home className="w-4 h-4" />
+                          {language === 'bn' ? 'রুম নং' : 'Room No.'}
+                        </div>
+                      </TableHead>
+                      <TableHead>
+                        <div className="flex items-center gap-1">
+                          <CalendarDays className="w-4 h-4" />
+                          {language === 'bn' ? 'যোগদান তারিখ' : 'Joined Date'}
+                        </div>
+                      </TableHead>
+                      <TableHead>{language === 'bn' ? 'স্ট্যাটাস' : 'Status'}</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {members.map(member => (
+                      <TableRow key={member.id}>
+                        <TableCell className="font-medium">{member.name}</TableCell>
+                        <TableCell className="text-muted-foreground">{member.email || '-'}</TableCell>
+                        <TableCell className="text-muted-foreground">{member.phone || '-'}</TableCell>
+                        <TableCell>{member.room_number || '-'}</TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {format(new Date(member.created_at), 'dd MMM yyyy')}
+                        </TableCell>
+                        <TableCell>
+                          {member.is_active ? (
+                            <Badge className="bg-success">{language === 'bn' ? 'সক্রিয়' : 'Active'}</Badge>
+                          ) : (
+                            <Badge variant="secondary">{language === 'bn' ? 'নিষ্ক্রিয়' : 'Inactive'}</Badge>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowMemberModal(false)}>
+                {language === 'bn' ? 'বন্ধ করুন' : 'Close'}
               </Button>
             </DialogFooter>
           </DialogContent>
