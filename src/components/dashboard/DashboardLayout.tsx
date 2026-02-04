@@ -1,16 +1,16 @@
-import { useLocation, useNavigate } from 'react-router-dom';
-import { PreloadLink } from '@/components/PreloadLink';
-import { useAuth } from '@/contexts/AuthContext';
-import { useLanguage } from '@/contexts/LanguageContext';
-import { useTheme } from '@/contexts/ThemeContext';
-import { Button } from '@/components/ui/button';
+import { useLocation, useNavigate } from "react-router-dom";
+import { PreloadLink } from "@/components/PreloadLink";
+import { useAuth } from "@/contexts/AuthContext";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { useTheme } from "@/contexts/ThemeContext";
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+} from "@/components/ui/dropdown-menu";
 import {
   Home,
   Users,
@@ -18,7 +18,6 @@ import {
   ShoppingCart,
   Wallet,
   BarChart3,
-  Settings,
   LogOut,
   Menu,
   Sun,
@@ -29,25 +28,25 @@ import {
   History,
   Receipt,
   X,
-} from 'lucide-react';
-import { useState, memo, useCallback, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { SuspendedMessModal } from './SuspendedMessModal';
-import { useUnreadMessages } from '@/hooks/useUnreadMessages';
-import { UnreadIndicator } from '@/components/messaging/UnreadIndicator';
+} from "lucide-react";
+import { useState, memo, useCallback, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { SuspendedMessModal } from "./SuspendedMessModal";
+import { useUnreadMessages } from "@/hooks/useUnreadMessages";
+import { UnreadIndicator } from "@/components/messaging/UnreadIndicator";
 
 const managerNavItems = [
-  { href: '/manager/dashboard', icon: Home, labelBn: 'ড্যাশবোর্ড', labelEn: 'Dashboard' },
-  { href: '/manager/members', icon: Users, labelBn: 'মেম্বার', labelEn: 'Members' },
-  { href: '/manager/meals', icon: Utensils, labelBn: 'মিল', labelEn: 'Meals' },
-  { href: '/manager/bazar', icon: ShoppingCart, labelBn: 'বাজার', labelEn: 'Bazar' },
-  { href: '/manager/deposits', icon: Wallet, labelBn: 'জমা', labelEn: 'Deposits' },
-  { href: '/manager/additional-costs', icon: Receipt, labelBn: 'অতিরিক্ত খরচ', labelEn: 'Additional Costs' },
-  { href: '/manager/balance', icon: BarChart3, labelBn: 'ব্যালেন্স', labelEn: 'Balance' },
-  { href: '/manager/messages', icon: MessageSquare, labelBn: 'মেসেজ', labelEn: 'Messages', showUnread: true },
-  { href: '/manager/subscription', icon: CreditCard, labelBn: 'সাবস্ক্রিপশন', labelEn: 'Subscription' },
-  { href: '/manager/payment-history', icon: History, labelBn: 'পেমেন্ট হিস্ট্রি', labelEn: 'Payment History' },
-  { href: '/manager/helpdesk', icon: MessageSquare, labelBn: 'হেল্প ডেস্ক', labelEn: 'Help Desk' },
+  { href: "/manager/dashboard", icon: Home, labelBn: "ড্যাশবোর্ড", labelEn: "Dashboard" },
+  { href: "/manager/members", icon: Users, labelBn: "মেম্বার", labelEn: "Members" },
+  { href: "/manager/meals", icon: Utensils, labelBn: "মিল", labelEn: "Meals" },
+  { href: "/manager/bazar", icon: ShoppingCart, labelBn: "বাজার", labelEn: "Bazar" },
+  { href: "/manager/deposits", icon: Wallet, labelBn: "জমা", labelEn: "Deposits" },
+  { href: "/manager/additional-costs", icon: Receipt, labelBn: "অতিরিক্ত খরচ", labelEn: "Additional Costs" },
+  { href: "/manager/balance", icon: BarChart3, labelBn: "ব্যালেন্স", labelEn: "Balance" },
+  { href: "/manager/messages", icon: MessageSquare, labelBn: "মেসেজ", labelEn: "Messages", showUnread: true },
+  { href: "/manager/subscription", icon: CreditCard, labelBn: "সাবস্ক্রিপশন", labelEn: "Subscription" },
+  { href: "/manager/payment-history", icon: History, labelBn: "পেমেন্ট হিস্ট্রি", labelEn: "Payment History" },
+  { href: "/manager/helpdesk", icon: MessageSquare, labelBn: "হেল্প ডেস্ক", labelEn: "Help Desk" },
 ];
 
 export const DashboardLayout = memo(function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -57,7 +56,7 @@ export const DashboardLayout = memo(function DashboardLayout({ children }: { chi
   const location = useLocation();
   const navigate = useNavigate();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  
+
   const { hasUnread, unreadCount } = useUnreadMessages({
     messId: mess?.id,
     isManager: true,
@@ -71,41 +70,41 @@ export const DashboardLayout = memo(function DashboardLayout({ children }: { chi
   // Prevent body scroll when sidebar is open on mobile
   useEffect(() => {
     if (isSidebarOpen) {
-      document.body.style.overflow = 'hidden';
+      document.body.style.overflow = "hidden";
     } else {
-      document.body.style.overflow = '';
+      document.body.style.overflow = "";
     }
     return () => {
-      document.body.style.overflow = '';
+      document.body.style.overflow = "";
     };
   }, [isSidebarOpen]);
 
   const handleSignOut = useCallback(async () => {
     await signOut();
-    navigate('/login');
+    navigate("/login");
   }, [signOut, navigate]);
 
   const toggleLanguage = useCallback(() => {
-    setLanguage(language === 'bn' ? 'en' : 'bn');
+    setLanguage(language === "bn" ? "en" : "bn");
   }, [language, setLanguage]);
 
   const handleContactAdmin = useCallback(() => {
-    navigate('/manager/helpdesk');
+    navigate("/manager/helpdesk");
   }, [navigate]);
 
   const closeSidebar = useCallback(() => setIsSidebarOpen(false), []);
 
-  const isMessSuspended = mess?.status === 'suspended';
+  const isMessSuspended = mess?.status === "suspended";
 
   return (
     <div className="min-h-screen bg-background">
       {/* Suspended Mess Modal */}
-      <SuspendedMessModal 
+      <SuspendedMessModal
         isOpen={isMessSuspended}
         suspendReason={mess?.suspend_reason}
         onContactAdmin={handleContactAdmin}
       />
-      
+
       {/* Mobile Header */}
       <header className="lg:hidden glass-nav fixed top-0 left-0 right-0 z-40 h-14 flex items-center justify-between px-3 safe-area-top">
         <Button
@@ -117,7 +116,7 @@ export const DashboardLayout = memo(function DashboardLayout({ children }: { chi
         >
           <Menu className="h-5 w-5" />
         </Button>
-        
+
         <div className="flex items-center gap-2">
           <img src="/favicon.png" alt="Mess Hishab" className="w-7 h-7 rounded-lg shadow-sm" />
           <span className="font-display font-bold text-sm tracking-tight">
@@ -131,7 +130,7 @@ export const DashboardLayout = memo(function DashboardLayout({ children }: { chi
             <Globe className="h-4 w-4" />
           </Button>
           <Button variant="ghost" size="icon" onClick={toggleTheme} className="rounded-xl h-9 w-9">
-            {theme === 'light' ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
+            {theme === "light" ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
           </Button>
         </div>
       </header>
@@ -170,14 +169,12 @@ export const DashboardLayout = memo(function DashboardLayout({ children }: { chi
                       <span className="text-foreground">Mess</span>
                       <span className="text-primary ml-0.5">Hishab</span>
                     </span>
-                    {mess && (
-                      <span className="text-xs text-muted-foreground">{mess.mess_id}</span>
-                    )}
+                    {mess && <span className="text-xs text-muted-foreground">{mess.mess_id}</span>}
                   </div>
                 </div>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
+                <Button
+                  variant="ghost"
+                  size="icon"
                   onClick={closeSidebar}
                   className="rounded-xl h-9 w-9"
                   aria-label="Close menu"
@@ -198,15 +195,13 @@ export const DashboardLayout = memo(function DashboardLayout({ children }: { chi
                           onClick={closeSidebar}
                           className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all text-sm ${
                             isActive
-                              ? 'bg-primary text-primary-foreground'
-                              : 'text-muted-foreground hover:text-foreground hover:bg-muted active:bg-muted/80'
+                              ? "bg-primary text-primary-foreground"
+                              : "text-muted-foreground hover:text-foreground hover:bg-muted active:bg-muted/80"
                           }`}
                         >
                           <item.icon className="w-5 h-5 flex-shrink-0" />
-                          <span className="truncate flex-1">{language === 'bn' ? item.labelBn : item.labelEn}</span>
-                          {item.showUnread && hasUnread && !isActive && (
-                            <UnreadIndicator count={unreadCount} />
-                          )}
+                          <span className="truncate flex-1">{language === "bn" ? item.labelBn : item.labelEn}</span>
+                          {item.showUnread && hasUnread && !isActive && <UnreadIndicator count={unreadCount} />}
                         </PreloadLink>
                       </li>
                     );
@@ -224,21 +219,14 @@ export const DashboardLayout = memo(function DashboardLayout({ children }: { chi
                       </div>
                       <div className="text-left flex-1 min-w-0">
                         <p className="text-sm font-medium truncate">{user?.email}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {language === 'bn' ? 'ম্যানেজার' : 'Manager'}
-                        </p>
+                        <p className="text-xs text-muted-foreground">{language === "bn" ? "ম্যানেজার" : "Manager"}</p>
                       </div>
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-56">
-                    <DropdownMenuItem onClick={() => { navigate('/manager/settings'); closeSidebar(); }}>
-                      <Settings className="w-4 h-4 mr-2" />
-                      {language === 'bn' ? 'সেটিংস' : 'Settings'}
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={handleSignOut} className="text-destructive">
                       <LogOut className="w-4 h-4 mr-2" />
-                      {language === 'bn' ? 'লগআউট' : 'Logout'}
+                      {language === "bn" ? "লগআউট" : "Logout"}
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -255,7 +243,11 @@ export const DashboardLayout = memo(function DashboardLayout({ children }: { chi
           <div className="p-6 border-b border-border/50 bg-gradient-to-r from-primary/5 to-transparent">
             <div className="flex items-center gap-3">
               <div className="relative">
-                <img src="/favicon.png" alt="Mess Hishab" className="w-11 h-11 rounded-xl shadow-lg ring-2 ring-primary/20" />
+                <img
+                  src="/favicon.png"
+                  alt="Mess Hishab"
+                  className="w-11 h-11 rounded-xl shadow-lg ring-2 ring-primary/20"
+                />
                 <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-success rounded-full border-2 border-card" />
               </div>
               <div>
@@ -264,7 +256,9 @@ export const DashboardLayout = memo(function DashboardLayout({ children }: { chi
                   <span className="text-primary ml-0.5">Hishab</span>
                 </span>
                 {mess && (
-                  <span className="text-xs text-muted-foreground font-mono bg-muted/50 px-1.5 py-0.5 rounded">{mess.mess_id}</span>
+                  <span className="text-xs text-muted-foreground font-mono bg-muted/50 px-1.5 py-0.5 rounded">
+                    {mess.mess_id}
+                  </span>
                 )}
               </div>
             </div>
@@ -273,7 +267,7 @@ export const DashboardLayout = memo(function DashboardLayout({ children }: { chi
           {/* Navigation */}
           <nav className="flex-1 p-3 overflow-y-auto">
             <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold px-3 mb-2">
-              {language === 'bn' ? 'মেনু' : 'Menu'}
+              {language === "bn" ? "মেনু" : "Menu"}
             </p>
             <ul className="space-y-1">
               {managerNavItems.map((item) => {
@@ -284,15 +278,15 @@ export const DashboardLayout = memo(function DashboardLayout({ children }: { chi
                       to={item.href}
                       className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 ${
                         isActive
-                          ? 'bg-primary text-primary-foreground shadow-md shadow-primary/20'
-                          : 'text-muted-foreground hover:text-foreground hover:bg-muted/70'
+                          ? "bg-primary text-primary-foreground shadow-md shadow-primary/20"
+                          : "text-muted-foreground hover:text-foreground hover:bg-muted/70"
                       }`}
                     >
-                      <item.icon className={`w-5 h-5 transition-transform ${isActive ? 'scale-110' : ''}`} />
-                      <span className="flex-1 text-sm font-medium">{language === 'bn' ? item.labelBn : item.labelEn}</span>
-                      {item.showUnread && hasUnread && !isActive && (
-                        <UnreadIndicator count={unreadCount} />
-                      )}
+                      <item.icon className={`w-5 h-5 transition-transform ${isActive ? "scale-110" : ""}`} />
+                      <span className="flex-1 text-sm font-medium">
+                        {language === "bn" ? item.labelBn : item.labelEn}
+                      </span>
+                      {item.showUnread && hasUnread && !isActive && <UnreadIndicator count={unreadCount} />}
                     </PreloadLink>
                   </li>
                 );
@@ -307,10 +301,10 @@ export const DashboardLayout = memo(function DashboardLayout({ children }: { chi
                 <Globe className="h-5 w-5" />
               </Button>
               <Button variant="ghost" size="icon" onClick={toggleTheme} className="rounded-xl">
-                {theme === 'light' ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
+                {theme === "light" ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
               </Button>
             </div>
-            
+
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="w-full justify-start rounded-xl">
@@ -319,21 +313,14 @@ export const DashboardLayout = memo(function DashboardLayout({ children }: { chi
                   </div>
                   <div className="text-left flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">{user?.email}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {language === 'bn' ? 'ম্যানেজার' : 'Manager'}
-                    </p>
+                    <p className="text-xs text-muted-foreground">{language === "bn" ? "ম্যানেজার" : "Manager"}</p>
                   </div>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuItem onClick={() => navigate('/manager/settings')}>
-                  <Settings className="w-4 h-4 mr-2" />
-                  {language === 'bn' ? 'সেটিংস' : 'Settings'}
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleSignOut} className="text-destructive">
                   <LogOut className="w-4 h-4 mr-2" />
-                  {language === 'bn' ? 'লগআউট' : 'Logout'}
+                  {language === "bn" ? "লগআউট" : "Logout"}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -343,9 +330,7 @@ export const DashboardLayout = memo(function DashboardLayout({ children }: { chi
 
       {/* Main Content */}
       <main className="lg:ml-64 pt-14 lg:pt-0 min-h-screen">
-        <div className="p-3 md:p-4 lg:p-6 xl:p-8">
-          {children}
-        </div>
+        <div className="p-3 md:p-4 lg:p-6 xl:p-8">{children}</div>
       </main>
     </div>
   );
