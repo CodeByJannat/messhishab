@@ -130,9 +130,12 @@ export function AdminDashboardLayout({ children }: { children: React.ReactNode }
               {/* Logo with close button */}
               <div className="p-4 border-b border-border flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <img src="/favicon.png" alt="Mess Hishab" className="w-9 h-9 rounded-xl" />
+                  <img src="/favicon.png" alt="Mess Hishab" className="w-9 h-9 rounded-xl shadow-md" />
                   <div>
-                    <span className="font-bold text-base text-foreground block">Mess Hishab</span>
+                    <span className="font-display font-bold text-base tracking-tight block">
+                      <span className="text-foreground">Mess</span>
+                      <span className="text-primary ml-0.5">Hishab</span>
+                    </span>
                     <span className="text-xs text-primary font-medium">Admin Panel</span>
                   </div>
                 </div>
@@ -209,9 +212,12 @@ export function AdminDashboardLayout({ children }: { children: React.ReactNode }
           {/* Logo */}
           <div className="p-6 border-b border-border">
             <div className="flex items-center gap-3">
-              <img src="/favicon.png" alt="Mess Hishab" className="w-10 h-10 rounded-xl" />
+              <img src="/favicon.png" alt="Mess Hishab" className="w-10 h-10 rounded-xl shadow-md" />
               <div>
-                <span className="font-bold text-lg text-foreground block">Mess Hishab</span>
+                <span className="font-display font-bold text-lg tracking-tight block">
+                  <span className="text-foreground">Mess</span>
+                  <span className="text-primary ml-0.5">Hishab</span>
+                </span>
                 <span className="text-xs text-primary font-medium">Admin Panel</span>
               </div>
             </div>

@@ -21,6 +21,7 @@ export default {
       fontFamily: {
         bengali: ['"Noto Sans Bengali"', 'system-ui', 'sans-serif'],
         sans: ['"Noto Sans Bengali"', 'system-ui', 'sans-serif'],
+        display: ['Poppins', 'system-ui', 'sans-serif'],
       },
       colors: {
         border: "hsl(var(--border))",

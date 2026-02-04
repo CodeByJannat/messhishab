@@ -21,8 +21,11 @@ export const Footer = memo(function Footer() {
         <div className="flex flex-col md:flex-row items-center justify-between gap-8">
           {/* Logo */}
           <div className="flex items-center gap-2">
-            <img src="/favicon.png" alt="Mess Hishab" className="w-10 h-10 rounded-xl" />
-            <span className="font-bold text-xl text-foreground">Mess Hishab</span>
+            <img src="/favicon.png" alt="Mess Hishab" className="w-10 h-10 rounded-xl shadow-md" />
+            <span className="font-display font-bold text-xl tracking-tight">
+              <span className="text-foreground">Mess</span>
+              <span className="text-primary ml-1">Hishab</span>
+            </span>
           </div>
 
           {/* Links */}
