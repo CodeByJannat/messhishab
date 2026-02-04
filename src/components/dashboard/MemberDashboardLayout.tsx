@@ -79,8 +79,11 @@ export const MemberDashboardLayout = memo(function MemberDashboardLayout({ child
         </Button>
 
         <div className="flex items-center gap-2">
-          <img src="/favicon.png" alt="Mess Hishab" className="w-7 h-7 rounded-lg" />
-          <span className="font-bold text-sm text-foreground">Mess Hishab</span>
+          <img src="/favicon.png" alt="Mess Hishab" className="w-7 h-7 rounded-lg shadow-sm" />
+          <span className="font-display font-bold text-sm tracking-tight">
+            <span className="text-foreground">Mess</span>
+            <span className="text-primary ml-0.5">Hishab</span>
+          </span>
         </div>
 
         <div className="flex items-center gap-0.5">
@@ -122,9 +125,12 @@ export const MemberDashboardLayout = memo(function MemberDashboardLayout({ child
               {/* Logo with close button on mobile */}
               <div className="p-4 lg:p-6 border-b border-border flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <img src="/favicon.png" alt="Mess Hishab" className="w-9 h-9 lg:w-10 lg:h-10 rounded-xl" />
+                  <img src="/favicon.png" alt="Mess Hishab" className="w-9 h-9 lg:w-10 lg:h-10 rounded-xl shadow-md" />
                   <div>
-                    <span className="font-bold text-base lg:text-lg text-foreground block">Mess Hishab</span>
+                    <span className="font-display font-bold text-base lg:text-lg tracking-tight block">
+                      <span className="text-foreground">Mess</span>
+                      <span className="text-primary ml-0.5">Hishab</span>
+                    </span>
                     <span className="text-xs text-muted-foreground">{language === "bn" ? "মেম্বার" : "Member"}</span>
                   </div>
                 </div>
@@ -208,9 +214,12 @@ export const MemberDashboardLayout = memo(function MemberDashboardLayout({ child
           {/* Logo */}
           <div className="p-6 border-b border-border">
             <div className="flex items-center gap-3">
-              <img src="/favicon.png" alt="Mess Hishab" className="w-10 h-10 rounded-xl" />
+              <img src="/favicon.png" alt="Mess Hishab" className="w-10 h-10 rounded-xl shadow-md" />
               <div>
-                <span className="font-bold text-lg text-foreground block">Mess Hishab</span>
+                <span className="font-display font-bold text-lg tracking-tight block">
+                  <span className="text-foreground">Mess</span>
+                  <span className="text-primary ml-0.5">Hishab</span>
+                </span>
                 <span className="text-xs text-muted-foreground">{language === "bn" ? "মেম্বার" : "Member"}</span>
               </div>
             </div>
