@@ -255,18 +255,27 @@ export default function Register() {
     setIsLoading(true);
     
     try {
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
           emailRedirectTo: window.location.origin,
-          data: {
-            phone: phone, // Stored in user metadata, trigger saves to profiles
-          },
         },
       });
       
       if (error) throw error;
+
+      // Directly save phone to profiles table after user creation
+      if (data.user) {
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .update({ phone: phone })
+          .eq('user_id', data.user.id);
+        
+        if (profileError) {
+          console.error('Failed to save phone:', profileError);
+        }
+      }
       
       // Send branded welcome email
       supabase.functions.invoke('send-welcome-email', {
