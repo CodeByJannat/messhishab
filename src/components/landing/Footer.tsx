@@ -1,18 +1,18 @@
-import { memo } from 'react';
-import { PreloadLink } from '@/components/PreloadLink';
-import { useLanguage } from '@/contexts/LanguageContext';
-import { Facebook, MessageCircle } from 'lucide-react';
+import { memo } from "react";
+import { PreloadLink } from "@/components/PreloadLink";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { Facebook, MessageCircle } from "lucide-react";
 
 export const Footer = memo(function Footer() {
   const { t, language } = useLanguage();
   const currentYear = new Date().getFullYear();
 
   const links = [
-    { key: 'footer.about', href: '/about' },
-    { key: 'footer.contact', href: '/contact' },
-    { key: 'footer.refund', href: '/refund' },
-    { key: 'footer.terms', href: '/terms' },
-    { key: 'footer.privacy', href: '/privacy' },
+    { key: "footer.about", href: "/about" },
+    { key: "footer.contact", href: "/contact" },
+    { key: "footer.refund", href: "/refund" },
+    { key: "footer.terms", href: "/terms" },
+    { key: "footer.privacy", href: "/privacy" },
   ];
 
   return (
@@ -65,10 +65,10 @@ export const Footer = memo(function Footer() {
         {/* Copyright Section */}
         <div className="mt-8 pt-8 border-t border-border text-center space-y-2">
           <p className="text-muted-foreground text-sm">
-            © {currentYear} Mess Hishab. {language === 'bn' ? 'সর্বস্বত্ব সংরক্ষিত।' : 'All rights reserved.'}
+            © {currentYear} Mess Hishab. {language === "bn" ? "All rights reserved." : "All rights reserved."}
           </p>
           <p className="text-muted-foreground text-sm">
-            {language === 'bn' ? 'ডেভেলপড বাই ' : 'Developed by '}
+            {language === "bn" ? "Developed by " : "Developed by "}
             <a
               href="https://softauro.com"
               target="_blank"
