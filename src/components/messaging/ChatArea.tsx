@@ -66,7 +66,7 @@ export const ChatArea = memo(function ChatArea({
   }
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full min-h-0">
       {/* Chat Header */}
       <div className="p-4 border-b flex items-center gap-3">
         <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
@@ -86,7 +86,7 @@ export const ChatArea = memo(function ChatArea({
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1 min-h-0 overflow-hidden">
         <ScrollArea className="h-full">
           <div className="p-4">
             {messages.length === 0 ? (
