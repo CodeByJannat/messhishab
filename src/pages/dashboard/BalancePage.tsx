@@ -32,6 +32,7 @@ import { useDateValidation } from '@/hooks/useDateValidation';
 import { Eye, Loader2, TrendingUp, TrendingDown, Minus, Calendar } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { format, parseISO, endOfMonth } from 'date-fns';
+import { InlineTableSkeleton, StatCardsSkeleton } from '@/components/ui/loading-skeletons';
 
 interface Member {
   id: string;
@@ -351,9 +352,7 @@ export default function BalancePage() {
         <Card className="glass-card">
           <CardContent className="p-0">
             {isLoading ? (
-              <div className="flex items-center justify-center py-12">
-                <Loader2 className="w-8 h-8 animate-spin text-primary" />
-              </div>
+              <InlineTableSkeleton rows={6} />
             ) : balances.length === 0 ? (
               <div className="text-center py-12">
                 <p className="text-muted-foreground">

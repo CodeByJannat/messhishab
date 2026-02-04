@@ -40,6 +40,7 @@ import { exportToPDF, exportToExcel } from '@/lib/exportUtils';
 import { Plus, Trash2, Loader2, AlertCircle, Receipt, Calendar, Users } from 'lucide-react';
 import { format, parseISO, endOfMonth } from 'date-fns';
 import { motion } from 'framer-motion';
+import { ThreeColumnCardsSkeleton, InlineTableSkeleton } from '@/components/ui/loading-skeletons';
 
 interface AdditionalCost {
   id: string;
@@ -459,9 +460,7 @@ export default function AdditionalCostsPage() {
         <Card className="glass-card">
           <CardContent className="p-0">
             {isLoading ? (
-              <div className="flex items-center justify-center py-12">
-                <Loader2 className="w-8 h-8 animate-spin text-primary" />
-              </div>
+              <InlineTableSkeleton rows={5} />
             ) : costs.length === 0 ? (
               <div className="text-center py-12">
                 <Receipt className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
