@@ -32,8 +32,8 @@ serve(async (req: Request): Promise<Response> => {
     }
 
     const subject = language === 'bn' 
-      ? 'MessHishab-এ স্বাগতম! 🎉' 
-      : 'Welcome to MessHishab! 🎉';
+      ? 'Mess Hishab-এ স্বাগতম! 🎉' 
+      : 'Welcome to Mess Hishab! 🎉';
 
     const htmlContent = language === 'bn' ? `
       <!DOCTYPE html>
@@ -48,7 +48,7 @@ serve(async (req: Request): Promise<Response> => {
             <div style="background: white; width: 80px; height: 80px; border-radius: 16px; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 16px;">
               <span style="font-size: 40px; font-weight: bold; color: #6366f1;">M</span>
             </div>
-            <h1 style="color: white; margin: 0; font-size: 28px;">MessHishab</h1>
+            <h1 style="color: white; margin: 0; font-size: 28px;">Mess Hishab</h1>
             <p style="color: rgba(255,255,255,0.9); margin: 8px 0 0 0; font-size: 16px;">মেস ম্যানেজমেন্ট সহজ করুন</p>
           </div>
           
@@ -56,7 +56,7 @@ serve(async (req: Request): Promise<Response> => {
             <h2 style="color: #1f2937; margin: 0 0 16px 0; font-size: 22px;">🎉 স্বাগতম, ম্যানেজার!</h2>
             
             <p style="color: #6b7280; line-height: 1.8; margin: 0 0 20px 0; font-size: 15px;">
-              আপনার MessHishab অ্যাকাউন্ট সফলভাবে তৈরি হয়েছে! এখন থেকে আপনি সহজেই আপনার মেসের সব হিসাব-নিকাশ পরিচালনা করতে পারবেন।
+              আপনার Mess Hishab অ্যাকাউন্ট সফলভাবে তৈরি হয়েছে! এখন থেকে আপনি সহজেই আপনার মেসের সব হিসাব-নিকাশ পরিচালনা করতে পারবেন।
             </p>
 
             <div style="background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border-radius: 12px; padding: 20px; margin: 24px 0;">
@@ -109,7 +109,7 @@ serve(async (req: Request): Promise<Response> => {
               support@softauro.com
             </p>
             <p style="color: #9ca3af; font-size: 12px; margin: 16px 0 0 0;">
-              © ${new Date().getFullYear()} MessHishab. সকল অধিকার সংরক্ষিত।
+              © ${new Date().getFullYear()} Mess Hishab. সকল অধিকার সংরক্ষিত।
             </p>
           </div>
         </div>
@@ -128,7 +128,7 @@ serve(async (req: Request): Promise<Response> => {
             <div style="background: white; width: 80px; height: 80px; border-radius: 16px; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 16px;">
               <span style="font-size: 40px; font-weight: bold; color: #6366f1;">M</span>
             </div>
-            <h1 style="color: white; margin: 0; font-size: 28px;">MessHishab</h1>
+            <h1 style="color: white; margin: 0; font-size: 28px;">Mess Hishab</h1>
             <p style="color: rgba(255,255,255,0.9); margin: 8px 0 0 0; font-size: 16px;">Simplify Your Mess Management</p>
           </div>
           
@@ -136,7 +136,7 @@ serve(async (req: Request): Promise<Response> => {
             <h2 style="color: #1f2937; margin: 0 0 16px 0; font-size: 22px;">🎉 Welcome, Manager!</h2>
             
             <p style="color: #6b7280; line-height: 1.8; margin: 0 0 20px 0; font-size: 15px;">
-              Your MessHishab account has been successfully created! You can now easily manage all your mess accounts and expenses.
+              Your Mess Hishab account has been successfully created! You can now easily manage all your mess accounts and expenses.
             </p>
 
             <div style="background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border-radius: 12px; padding: 20px; margin: 24px 0;">
@@ -189,7 +189,7 @@ serve(async (req: Request): Promise<Response> => {
               support@softauro.com
             </p>
             <p style="color: #9ca3af; font-size: 12px; margin: 16px 0 0 0;">
-              © ${new Date().getFullYear()} MessHishab. All rights reserved.
+              © ${new Date().getFullYear()} Mess Hishab. All rights reserved.
             </p>
           </div>
         </div>
@@ -204,7 +204,7 @@ serve(async (req: Request): Promise<Response> => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: "MessHishab <noreply@info.softauro.com>",
+        from: "Mess Hishab <noreply@info.softauro.com>",
         to: [email],
         subject: subject,
         html: htmlContent,

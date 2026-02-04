@@ -79,10 +79,8 @@ export const MemberDashboardLayout = memo(function MemberDashboardLayout({ child
         </Button>
 
         <div className="flex items-center gap-2">
-          <div className="w-7 h-7 bg-primary rounded-lg flex items-center justify-center">
-            <span className="text-primary-foreground font-bold text-sm">M</span>
-          </div>
-          <span className="font-bold text-sm text-foreground">MessHishab</span>
+          <img src="/favicon.png" alt="Mess Hishab" className="w-7 h-7 rounded-lg" />
+          <span className="font-bold text-sm text-foreground">Mess Hishab</span>
         </div>
 
         <div className="flex items-center gap-0.5">
@@ -124,11 +122,9 @@ export const MemberDashboardLayout = memo(function MemberDashboardLayout({ child
               {/* Logo with close button on mobile */}
               <div className="p-4 lg:p-6 border-b border-border flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 lg:w-10 lg:h-10 bg-primary rounded-xl flex items-center justify-center">
-                    <span className="text-primary-foreground font-bold text-lg lg:text-xl">M</span>
-                  </div>
+                  <img src="/favicon.png" alt="Mess Hishab" className="w-9 h-9 lg:w-10 lg:h-10 rounded-xl" />
                   <div>
-                    <span className="font-bold text-base lg:text-lg text-foreground block">MessHishab</span>
+                    <span className="font-bold text-base lg:text-lg text-foreground block">Mess Hishab</span>
                     <span className="text-xs text-muted-foreground">{language === "bn" ? "মেম্বার" : "Member"}</span>
                   </div>
                 </div>
@@ -212,11 +208,9 @@ export const MemberDashboardLayout = memo(function MemberDashboardLayout({ child
           {/* Logo */}
           <div className="p-6 border-b border-border">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center">
-                <span className="text-primary-foreground font-bold text-xl">M</span>
-              </div>
+              <img src="/favicon.png" alt="Mess Hishab" className="w-10 h-10 rounded-xl" />
               <div>
-                <span className="font-bold text-lg text-foreground block">MessHishab</span>
+                <span className="font-bold text-lg text-foreground block">Mess Hishab</span>
                 <span className="text-xs text-muted-foreground">{language === "bn" ? "মেম্বার" : "Member"}</span>
               </div>
             </div>

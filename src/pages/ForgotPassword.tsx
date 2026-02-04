@@ -99,10 +99,8 @@ export default function ForgotPassword() {
         <div className="glass-card p-8">
           {/* Logo */}
           <div className="flex items-center justify-center gap-2 mb-6">
-            <div className="w-12 h-12 bg-primary rounded-xl flex items-center justify-center">
-              <span className="text-primary-foreground font-bold text-2xl">M</span>
-            </div>
-            <span className="font-bold text-2xl text-foreground">MessHishab</span>
+            <img src="/favicon.png" alt="Mess Hishab" className="w-12 h-12 rounded-xl" />
+            <span className="font-bold text-2xl text-foreground">Mess Hishab</span>
           </div>
 
           {!isEmailSent ? (
