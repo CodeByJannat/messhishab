@@ -301,61 +301,61 @@ export default function ManagerDashboard() {
 
         {/* Mess Info Card - Clean & Compact */}
         <Card className="border bg-card/50 backdrop-blur-sm">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-4">
+          <CardContent className="p-3 sm:p-4">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
               {/* Icon */}
-              <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                <Home className="w-6 h-6 text-primary" />
+              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0 mx-auto sm:mx-0">
+                <Home className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
               </div>
               
               {/* Info Grid */}
-              <div className="flex-1 grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="flex-1 grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
                 {/* Mess ID */}
-                <div>
+                <div className="text-center sm:text-left">
                   <p className="text-xs text-muted-foreground mb-1">
                     {language === 'bn' ? 'মেস আইডি' : 'Mess ID'}
                   </p>
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-lg font-mono font-bold text-primary">
+                  <div className="flex items-center justify-center sm:justify-start gap-1.5">
+                    <span className="text-sm sm:text-lg font-mono font-bold text-primary">
                       {mess?.mess_id || '-'}
                     </span>
                     <Button 
                       variant="ghost" 
                       size="icon" 
                       onClick={copyMessId} 
-                      className="h-7 w-7 rounded-lg hover:bg-primary/10"
+                      className="h-6 w-6 sm:h-7 sm:w-7 rounded-lg hover:bg-primary/10"
                     >
-                      <Copy className="w-3.5 h-3.5" />
+                      <Copy className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                     </Button>
                   </div>
                 </div>
 
                 {/* Mess Name */}
-                <div>
+                <div className="text-center sm:text-left">
                   <p className="text-xs text-muted-foreground mb-1">
                     {language === 'bn' ? 'মেসের নাম' : 'Mess Name'}
                   </p>
                   {!isEditingName ? (
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-base font-medium truncate">
+                    <div className="flex items-center justify-center sm:justify-start gap-1.5">
+                      <span className="text-sm sm:text-base font-medium truncate max-w-[100px] sm:max-w-none">
                         {mess?.name || (language === 'bn' ? 'নাম সেট করা হয়নি' : 'Not set')}
                       </span>
                       <Button 
                         variant="ghost" 
                         size="icon" 
                         onClick={() => setIsEditingName(true)} 
-                        className="h-7 w-7 rounded-lg hover:bg-muted shrink-0"
+                        className="h-6 w-6 sm:h-7 sm:w-7 rounded-lg hover:bg-muted shrink-0"
                       >
-                        <Pencil className="w-3.5 h-3.5" />
+                        <Pencil className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                       </Button>
                     </div>
                   ) : (
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center justify-center sm:justify-start gap-1.5">
                       <Input
                         value={messName}
                         onChange={(e) => setMessName(e.target.value)}
                         placeholder={language === 'bn' ? 'মেসের নাম' : 'Mess name'}
-                        className="h-8 rounded-lg text-sm max-w-[160px]"
+                        className="h-7 sm:h-8 rounded-lg text-xs sm:text-sm max-w-[100px] sm:max-w-[160px]"
                         autoFocus
                       />
                       <Button 
@@ -363,36 +363,36 @@ export default function ManagerDashboard() {
                         size="icon" 
                         onClick={handleUpdateMessName} 
                         disabled={isSaving || !hasNameChanges}
-                        className="h-7 w-7 rounded-lg text-success hover:bg-success/10 shrink-0"
+                        className="h-6 w-6 sm:h-7 sm:w-7 rounded-lg text-success hover:bg-success/10 shrink-0"
                       >
-                        {isSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                        {isSaving ? <Loader2 className="w-3 h-3 sm:w-3.5 sm:h-3.5 animate-spin" /> : <Check className="w-3 h-3 sm:w-3.5 sm:h-3.5" />}
                       </Button>
                       <Button 
                         variant="ghost" 
                         size="icon" 
                         onClick={handleCancelEditName}
                         disabled={isSaving}
-                        className="h-7 w-7 rounded-lg text-muted-foreground hover:bg-muted shrink-0"
+                        className="h-6 w-6 sm:h-7 sm:w-7 rounded-lg text-muted-foreground hover:bg-muted shrink-0"
                       >
-                        <X className="w-3.5 h-3.5" />
+                        <X className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                       </Button>
                     </div>
                   )}
                 </div>
 
                 {/* Status */}
-                <div>
+                <div className="col-span-2 sm:col-span-1 text-center sm:text-left">
                   <p className="text-xs text-muted-foreground mb-1">
                     {language === 'bn' ? 'স্ট্যাটাস' : 'Status'}
                   </p>
                   {isSubscriptionActive ? (
-                    <Badge className="bg-success/10 text-success border-0 font-medium">
-                      <CheckCircle className="w-3.5 h-3.5 mr-1.5" />
+                    <Badge className="bg-success/10 text-success border-0 font-medium text-xs">
+                      <CheckCircle className="w-3 h-3 sm:w-3.5 sm:h-3.5 mr-1" />
                       {language === 'bn' ? 'সক্রিয়' : 'Active'}
                     </Badge>
                   ) : (
-                    <Badge variant="secondary" className="bg-muted text-muted-foreground border-0 font-medium">
-                      <XCircle className="w-3.5 h-3.5 mr-1.5" />
+                    <Badge variant="secondary" className="bg-muted text-muted-foreground border-0 font-medium text-xs">
+                      <XCircle className="w-3 h-3 sm:w-3.5 sm:h-3.5 mr-1" />
                       {language === 'bn' ? 'নিষ্ক্রিয়' : 'Inactive'}
                     </Badge>
                   )}
@@ -430,7 +430,7 @@ export default function ManagerDashboard() {
         )}
 
         {/* Stats Grid */}
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           {statCards.map((stat, index) => (
             <motion.div
               key={stat.title}
@@ -439,14 +439,14 @@ export default function ManagerDashboard() {
               transition={{ duration: 0.3, delay: index * 0.1 }}
             >
               <Card className="glass-card">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-muted-foreground">{stat.title}</p>
-                      <p className="text-2xl font-bold text-foreground mt-1">{stat.value}</p>
+                <CardContent className="p-4 sm:p-6">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs sm:text-sm text-muted-foreground truncate">{stat.title}</p>
+                      <p className="text-lg sm:text-2xl font-bold text-foreground mt-1">{stat.value}</p>
                     </div>
-                    <div className={`w-12 h-12 rounded-xl ${stat.bgColor} flex items-center justify-center`}>
-                      <stat.icon className={`w-6 h-6 ${stat.color}`} />
+                    <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl ${stat.bgColor} flex items-center justify-center shrink-0`}>
+                      <stat.icon className={`w-5 h-5 sm:w-6 sm:h-6 ${stat.color}`} />
                     </div>
                   </div>
                 </CardContent>
@@ -456,41 +456,41 @@ export default function ManagerDashboard() {
         </div>
 
         {/* Meal Rate & Balance */}
-        <div className="grid sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4">
           <Card className="glass-card">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">
+            <CardContent className="p-4 sm:p-6">
+              <div className="flex items-center justify-between gap-2">
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs sm:text-sm text-muted-foreground">
                     {language === 'bn' ? 'মিল রেট' : 'Meal Rate'}
                   </p>
-                  <p className="text-3xl font-bold text-foreground mt-1">
+                  <p className="text-xl sm:text-3xl font-bold text-foreground mt-1">
                     ৳{stats.mealRate.toFixed(2)}
                   </p>
-                  <p className="text-xs text-muted-foreground mt-1">
+                  <p className="text-[10px] sm:text-xs text-muted-foreground mt-1">
                     {language === 'bn' ? 'প্রতি মিল' : 'per meal'}
                   </p>
                 </div>
-                <div className="w-16 h-16 rounded-xl bg-primary/10 flex items-center justify-center">
-                  <Utensils className="w-8 h-8 text-primary" />
+                <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                  <Utensils className="w-6 h-6 sm:w-8 sm:h-8 text-primary" />
                 </div>
               </div>
             </CardContent>
           </Card>
 
           <Card className="glass-card">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">
-                    {language === 'bn' ? 'মোট ব্যালেন্স' : 'Total Balance'}
+            <CardContent className="p-4 sm:p-6">
+              <div className="flex items-center justify-between gap-2">
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs sm:text-sm text-muted-foreground">
+                    {language === 'bn' ? 'মোট ব্যালেন্স' : 'Balance'}
                   </p>
-                  <p className={`text-3xl font-bold mt-1 ${
+                  <p className={`text-xl sm:text-3xl font-bold mt-1 ${
                     balance > 0 ? 'text-success' : balance < 0 ? 'text-destructive' : 'text-foreground'
                   }`}>
                     ৳{Math.abs(balance).toFixed(2)}
                   </p>
-                  <p className="text-xs text-muted-foreground mt-1">
+                  <p className="text-[10px] sm:text-xs text-muted-foreground mt-1">
                     {balance > 0
                       ? language === 'bn' ? 'উদ্বৃত্ত' : 'Surplus'
                       : balance < 0
@@ -498,13 +498,13 @@ export default function ManagerDashboard() {
                       : language === 'bn' ? 'সমান' : 'Balanced'}
                   </p>
                 </div>
-                <div className={`w-16 h-16 rounded-xl flex items-center justify-center ${
+                <div className={`w-12 h-12 sm:w-16 sm:h-16 rounded-xl flex items-center justify-center shrink-0 ${
                   balance >= 0 ? 'bg-success/10' : 'bg-destructive/10'
                 }`}>
                   {balance >= 0 ? (
-                    <TrendingUp className="w-8 h-8 text-success" />
+                    <TrendingUp className="w-6 h-6 sm:w-8 sm:h-8 text-success" />
                   ) : (
-                    <TrendingDown className="w-8 h-8 text-destructive" />
+                    <TrendingDown className="w-6 h-6 sm:w-8 sm:h-8 text-destructive" />
                   )}
                 </div>
               </div>

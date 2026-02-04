@@ -277,6 +277,7 @@ export default function AdditionalCostsPage() {
     exportToPDF({
       title: language === 'bn' ? 'অতিরিক্ত খরচ রিপোর্ট' : 'Additional Costs Report',
       subtitle: monthLabel,
+      messName: mess?.name || (language === 'bn' ? 'মেস' : 'Mess'),
       fileName: `additional-costs-${selectedMonth}`,
       language: language as 'en' | 'bn',
       columns: [
@@ -298,7 +299,9 @@ export default function AdditionalCostsPage() {
     exportToExcel({
       title: language === 'bn' ? 'অতিরিক্ত খরচ রিপোর্ট' : 'Additional Costs Report',
       subtitle: monthLabel,
+      messName: mess?.name || (language === 'bn' ? 'মেস' : 'Mess'),
       fileName: `additional-costs-${selectedMonth}`,
+      language: language as 'en' | 'bn',
       columns: [
         { header: language === 'bn' ? 'তারিখ' : 'Date', key: 'date', width: 15 },
         { header: language === 'bn' ? 'বিবরণ' : 'Description', key: 'description', width: 30 },

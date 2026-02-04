@@ -380,10 +380,11 @@ export default function MealsPage() {
     exportToPDF({
       title: language === 'bn' ? 'মিল রিপোর্ট' : 'Meal Report',
       subtitle: monthLabel,
+      messName: mess?.name || (language === 'bn' ? 'মেস' : 'Mess'),
       fileName: `meals-${selectedMonth}`,
       language: language as 'en' | 'bn',
       columns: [
-        { header: language === 'bn' ? 'মেম্বার' : 'Member', key: 'memberName', width: 25 },
+        { header: language === 'bn' ? 'মেম্বারের নাম' : 'Member Name', key: 'memberName', width: 25 },
         { header: language === 'bn' ? 'সকাল' : 'Breakfast', key: 'breakfast', width: 12 },
         { header: language === 'bn' ? 'দুপুর' : 'Lunch', key: 'lunch', width: 12 },
         { header: language === 'bn' ? 'রাত' : 'Dinner', key: 'dinner', width: 12 },
@@ -401,9 +402,10 @@ export default function MealsPage() {
     exportToExcel({
       title: language === 'bn' ? 'মিল রিপোর্ট' : 'Meal Report',
       subtitle: monthLabel,
+      messName: mess?.name || (language === 'bn' ? 'মেস' : 'Mess'),
       fileName: `meals-${selectedMonth}`,
       columns: [
-        { header: language === 'bn' ? 'মেম্বার' : 'Member', key: 'memberName', width: 25 },
+        { header: language === 'bn' ? 'মেম্বারের নাম' : 'Member Name', key: 'memberName', width: 25 },
         { header: language === 'bn' ? 'সকাল' : 'Breakfast', key: 'breakfast', width: 12 },
         { header: language === 'bn' ? 'দুপুর' : 'Lunch', key: 'lunch', width: 12 },
         { header: language === 'bn' ? 'রাত' : 'Dinner', key: 'dinner', width: 12 },

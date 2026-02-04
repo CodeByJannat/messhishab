@@ -292,11 +292,12 @@ export default function DepositsPage() {
     exportToPDF({
       title: language === 'bn' ? 'জমা রিপোর্ট' : 'Deposit Report',
       subtitle: monthLabel,
+      messName: mess?.name || (language === 'bn' ? 'মেস' : 'Mess'),
       fileName: `deposits-${selectedMonth}`,
       language: language as 'en' | 'bn',
       columns: [
         { header: language === 'bn' ? 'তারিখ' : 'Date', key: 'date', width: 15 },
-        { header: language === 'bn' ? 'মেম্বার' : 'Member', key: 'member', width: 25 },
+        { header: language === 'bn' ? 'মেম্বারের নাম' : 'Member Name', key: 'member', width: 25 },
         { header: language === 'bn' ? 'পরিমাণ' : 'Amount', key: 'amount', width: 15 },
         { header: language === 'bn' ? 'নোট' : 'Note', key: 'note', width: 25 },
       ],
@@ -315,10 +316,12 @@ export default function DepositsPage() {
     exportToExcel({
       title: language === 'bn' ? 'জমা রিপোর্ট' : 'Deposit Report',
       subtitle: monthLabel,
+      messName: mess?.name || (language === 'bn' ? 'মেস' : 'Mess'),
       fileName: `deposits-${selectedMonth}`,
+      language: language as 'en' | 'bn',
       columns: [
         { header: language === 'bn' ? 'তারিখ' : 'Date', key: 'date', width: 15 },
-        { header: language === 'bn' ? 'মেম্বার' : 'Member', key: 'member', width: 25 },
+        { header: language === 'bn' ? 'মেম্বারের নাম' : 'Member Name', key: 'member', width: 25 },
         { header: language === 'bn' ? 'পরিমাণ' : 'Amount', key: 'amount', width: 15 },
         { header: language === 'bn' ? 'নোট' : 'Note', key: 'note', width: 25 },
       ],
