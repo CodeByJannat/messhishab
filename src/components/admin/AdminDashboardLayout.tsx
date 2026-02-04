@@ -32,7 +32,6 @@ const adminNavItems = [
   { href: '/admin/subscription', icon: CreditCard, labelBn: 'সাবস্ক্রিপশন', labelEn: 'Subscription' },
   { href: '/admin/mess', icon: Building2, labelBn: 'মেস', labelEn: 'Mess' },
   { href: '/admin/coupon', icon: Ticket, labelBn: 'কুপন', labelEn: 'Coupon' },
-  { href: '/admin/messages', icon: MessageSquare, labelBn: 'মেসেজ', labelEn: 'Messages' },
   { href: '/admin/helpdesk', icon: MessageSquare, labelBn: 'হেল্প ডেস্ক', labelEn: 'Help Desk' },
 ];
 

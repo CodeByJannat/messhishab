@@ -86,32 +86,36 @@ export const ChatArea = memo(function ChatArea({
       </div>
 
       {/* Messages */}
-      <ScrollArea className="flex-1 p-4">
-        {messages.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full py-12 text-center">
-            <MessageCircle className="w-12 h-12 text-muted-foreground/50 mb-4" />
-            <p className="text-muted-foreground">
-              {emptyStateText || (language === 'bn' ? 'এখনো কোনো মেসেজ নেই' : 'No messages yet')}
-            </p>
-            <p className="text-sm text-muted-foreground mt-1">
-              {language === 'bn' ? 'কথোপকথন শুরু করুন!' : 'Start the conversation!'}
-            </p>
+      <div className="flex-1 overflow-hidden">
+        <ScrollArea className="h-full">
+          <div className="p-4">
+            {messages.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <MessageCircle className="w-12 h-12 text-muted-foreground/50 mb-4" />
+                <p className="text-muted-foreground">
+                  {emptyStateText || (language === 'bn' ? 'এখনো কোনো মেসেজ নেই' : 'No messages yet')}
+                </p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {language === 'bn' ? 'কথোপকথন শুরু করুন!' : 'Start the conversation!'}
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {messages.map((msg) => (
+                  <MessageBubble
+                    key={msg.id}
+                    message={msg.message}
+                    senderType={msg.sender_type}
+                    createdAt={msg.created_at}
+                    isOwn={msg.sender_type === currentUserType}
+                  />
+                ))}
+                <div ref={scrollRef} />
+              </div>
+            )}
           </div>
-        ) : (
-          <div className="space-y-4">
-            {messages.map((msg) => (
-              <MessageBubble
-                key={msg.id}
-                message={msg.message}
-                senderType={msg.sender_type}
-                createdAt={msg.created_at}
-                isOwn={msg.sender_type === currentUserType}
-              />
-            ))}
-            <div ref={scrollRef} />
-          </div>
-        )}
-      </ScrollArea>
+        </ScrollArea>
+      </div>
 
       {/* Input Area */}
       <div className="p-4 border-t">

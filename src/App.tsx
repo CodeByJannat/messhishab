@@ -47,7 +47,6 @@ const MemberDashboard = lazy(() => import("./pages/member/MemberDashboard"));
 const MemberMealsPage = lazy(() => import("./pages/member/MemberMealsPage"));
 const MemberBazarPage = lazy(() => import("./pages/member/MemberBazarPage"));
 const MemberDepositsPage = lazy(() => import("./pages/member/MemberDepositsPage"));
-const MemberNotificationsPage = lazy(() => import("./pages/member/MemberNotificationsPage"));
 const MemberContactPage = lazy(() => import("./pages/member/MemberContactPage"));
 
 // Admin Dashboard
@@ -56,7 +55,6 @@ const AdminSubscriptionPage = lazy(() => import("./pages/admin/AdminSubscription
 const AdminMessPage = lazy(() => import("./pages/admin/AdminMessPage"));
 const AdminCouponPage = lazy(() => import("./pages/admin/AdminCouponPage"));
 const AdminHelpDeskPage = lazy(() => import("./pages/admin/AdminHelpDeskPage"));
-const AdminMessagesPage = lazy(() => import("./pages/admin/AdminMessagesPage"));
 
 // Optimized QueryClient with better caching
 const queryClient = new QueryClient({
@@ -109,7 +107,6 @@ const AppRoutes = memo(function AppRoutes() {
       <Route path="/member/meals" element={<MemberProtectedRoute><MemberMealsPage /></MemberProtectedRoute>} />
       <Route path="/member/bazar" element={<MemberProtectedRoute><MemberBazarPage /></MemberProtectedRoute>} />
       <Route path="/member/deposits" element={<MemberProtectedRoute><MemberDepositsPage /></MemberProtectedRoute>} />
-      <Route path="/member/notifications" element={<MemberProtectedRoute><MemberNotificationsPage /></MemberProtectedRoute>} />
       <Route path="/member/contact" element={<MemberProtectedRoute><MemberContactPage /></MemberProtectedRoute>} />
       {/* Admin Dashboard Routes */}
       <Route path="/admin/dashboard" element={<ProtectedRoute requiredRole="admin"><AdminDashboard /></ProtectedRoute>} />
@@ -117,7 +114,6 @@ const AppRoutes = memo(function AppRoutes() {
       <Route path="/admin/mess" element={<ProtectedRoute requiredRole="admin"><AdminMessPage /></ProtectedRoute>} />
       <Route path="/admin/coupon" element={<ProtectedRoute requiredRole="admin"><AdminCouponPage /></ProtectedRoute>} />
       <Route path="/admin/helpdesk" element={<ProtectedRoute requiredRole="admin"><AdminHelpDeskPage /></ProtectedRoute>} />
-      <Route path="/admin/messages" element={<ProtectedRoute requiredRole="admin"><AdminMessagesPage /></ProtectedRoute>} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );

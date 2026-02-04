@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { AdminDashboardLayout } from '@/components/admin/AdminDashboardLayout';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -12,7 +12,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { MessageSquare, Send, Loader2, User, Shield, Mail, Clock, ArrowLeft, Inbox } from 'lucide-react';
+import { MessageSquare, Send, Loader2, User, Shield, Mail, Clock, ArrowLeft, Inbox, Globe, Building2, Megaphone } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { format } from 'date-fns';
 
@@ -55,6 +55,21 @@ interface ContactReply {
   sent_at: string;
 }
 
+interface Mess {
+  id: string;
+  mess_id: string;
+  name: string | null;
+}
+
+interface AdminMessage {
+  id: string;
+  admin_id: string;
+  target_type: string;
+  target_mess_id: string | null;
+  message: string;
+  created_at: string;
+}
+
 export default function AdminHelpDeskPage() {
   const { language } = useLanguage();
   const { user } = useAuth();
@@ -77,9 +92,23 @@ export default function AdminHelpDeskPage() {
   const [isSendingContactReply, setIsSendingContactReply] = useState(false);
   const [contactFilter, setContactFilter] = useState<'all' | 'new' | 'replied'>('all');
 
+  // Message Center state
+  const [messes, setMesses] = useState<Mess[]>([]);
+  const [adminMessages, setAdminMessages] = useState<AdminMessage[]>([]);
+  const [isLoadingMessages, setIsLoadingMessages] = useState(true);
+  const [isSendingAdminMessage, setIsSendingAdminMessage] = useState(false);
+  const [adminMessageForm, setAdminMessageForm] = useState({
+    targetType: 'global' as 'global' | 'mess',
+    targetMessId: '',
+    message: '',
+  });
+
+  const messageScrollRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     fetchTickets();
     fetchContactMessages();
+    fetchMessagesData();
   }, []);
 
   useEffect(() => {
@@ -187,6 +216,35 @@ export default function AdminHelpDeskPage() {
     }
   };
 
+  const fetchMessagesData = async () => {
+    setIsLoadingMessages(true);
+    try {
+      const { data: messesData, error: messesError } = await supabase
+        .from('messes')
+        .select('id, mess_id, name')
+        .order('mess_id');
+
+      if (messesError) throw messesError;
+      setMesses(messesData || []);
+
+      const { data: messagesData, error: messagesError } = await supabase
+        .from('admin_messages')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (messagesError) throw messagesError;
+      setAdminMessages(messagesData || []);
+    } catch (error: any) {
+      toast({
+        title: language === 'bn' ? 'ত্রুটি' : 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoadingMessages(false);
+    }
+  };
+
   const handleSendMessage = async () => {
     if (!newMessage.trim() || !selectedTicket || !user) return;
 
@@ -287,6 +345,39 @@ export default function AdminHelpDeskPage() {
     }
   };
 
+  const handleSendAdminMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
+
+    setIsSendingAdminMessage(true);
+    try {
+      const { error } = await supabase.from('admin_messages').insert({
+        admin_id: user.id,
+        target_type: adminMessageForm.targetType,
+        target_mess_id: adminMessageForm.targetType === 'mess' ? adminMessageForm.targetMessId : null,
+        message: adminMessageForm.message,
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: language === 'bn' ? 'সফল!' : 'Success!',
+        description: language === 'bn' ? 'মেসেজ পাঠানো হয়েছে' : 'Message sent successfully',
+      });
+
+      setAdminMessageForm({ targetType: 'global', targetMessId: '', message: '' });
+      fetchMessagesData();
+    } catch (error: any) {
+      toast({
+        title: language === 'bn' ? 'ত্রুটি' : 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSendingAdminMessage(false);
+    }
+  };
+
   const handleUpdateStatus = async (status: Ticket['status']) => {
     if (!selectedTicket) return;
 
@@ -331,6 +422,12 @@ export default function AdminHelpDeskPage() {
     }
   };
 
+  const getMessName = (messId: string | null) => {
+    if (!messId) return null;
+    const mess = messes.find((m) => m.id === messId);
+    return mess?.name || mess?.mess_id || 'Unknown';
+  };
+
   const openTickets = tickets.filter(t => t.status === 'open').length;
   const newContactMessages = contactMessages.filter(m => m.status === 'new').length;
 
@@ -348,12 +445,12 @@ export default function AdminHelpDeskPage() {
             {language === 'bn' ? 'হেল্প ডেস্ক' : 'Help Desk'}
           </h1>
           <p className="text-muted-foreground mt-1">
-            {language === 'bn' ? 'সাপোর্ট টিকেট ও যোগাযোগ বার্তা' : 'Support tickets and contact messages'}
+            {language === 'bn' ? 'সাপোর্ট টিকেট, যোগাযোগ বার্তা ও মেসেজ সেন্টার' : 'Support tickets, contact messages & message center'}
           </p>
         </div>
 
         <Tabs defaultValue="tickets" className="w-full">
-          <TabsList className="grid w-full max-w-md grid-cols-2">
+          <TabsList className="grid w-full max-w-lg grid-cols-3">
             <TabsTrigger value="tickets" className="gap-2">
               <MessageSquare className="w-4 h-4" />
               {language === 'bn' ? 'টিকেট' : 'Tickets'}
@@ -363,10 +460,14 @@ export default function AdminHelpDeskPage() {
             </TabsTrigger>
             <TabsTrigger value="contact" className="gap-2">
               <Inbox className="w-4 h-4" />
-              {language === 'bn' ? 'যোগাযোগ বার্তা' : 'Contact Messages'}
+              {language === 'bn' ? 'যোগাযোগ' : 'Contact'}
               {newContactMessages > 0 && (
                 <Badge variant="secondary" className="ml-1">{newContactMessages}</Badge>
               )}
+            </TabsTrigger>
+            <TabsTrigger value="messages" className="gap-2">
+              <Megaphone className="w-4 h-4" />
+              {language === 'bn' ? 'মেসেজ' : 'Messages'}
             </TabsTrigger>
           </TabsList>
 
@@ -759,6 +860,155 @@ export default function AdminHelpDeskPage() {
                       </div>
                     </div>
                   )}
+                </Card>
+              </motion.div>
+            </div>
+          </TabsContent>
+
+          {/* Message Center Tab */}
+          <TabsContent value="messages" className="mt-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Compose Message */}
+              <motion.div
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+              >
+                <Card className="glass-card">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Send className="w-5 h-5 text-primary" />
+                      {language === 'bn' ? 'নতুন মেসেজ' : 'Compose Message'}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <form onSubmit={handleSendAdminMessage} className="space-y-4">
+                      <div className="space-y-2">
+                        <Label>{language === 'bn' ? 'টার্গেট' : 'Target'}</Label>
+                        <Select
+                          value={adminMessageForm.targetType}
+                          onValueChange={(value: 'global' | 'mess') => 
+                            setAdminMessageForm({ ...adminMessageForm, targetType: value, targetMessId: '' })
+                          }
+                        >
+                          <SelectTrigger className="rounded-xl">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="global">
+                              <div className="flex items-center gap-2">
+                                <Globe className="w-4 h-4" />
+                                {language === 'bn' ? 'সব ম্যানেজার' : 'All Managers'}
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="mess">
+                              <div className="flex items-center gap-2">
+                                <Building2 className="w-4 h-4" />
+                                {language === 'bn' ? 'নির্দিষ্ট মেস' : 'Specific Mess'}
+                              </div>
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {adminMessageForm.targetType === 'mess' && (
+                        <div className="space-y-2">
+                          <Label>{language === 'bn' ? 'মেস সিলেক্ট করুন' : 'Select Mess'}</Label>
+                          <Select
+                            value={adminMessageForm.targetMessId}
+                            onValueChange={(value) => setAdminMessageForm({ ...adminMessageForm, targetMessId: value })}
+                          >
+                            <SelectTrigger className="rounded-xl">
+                              <SelectValue placeholder={language === 'bn' ? 'মেস সিলেক্ট করুন' : 'Select mess'} />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {messes.map((mess) => (
+                                <SelectItem key={mess.id} value={mess.id}>
+                                  {mess.name || mess.mess_id} ({mess.mess_id})
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
+
+                      <div className="space-y-2">
+                        <Label>{language === 'bn' ? 'মেসেজ *' : 'Message *'}</Label>
+                        <Textarea
+                          value={adminMessageForm.message}
+                          onChange={(e) => setAdminMessageForm({ ...adminMessageForm, message: e.target.value })}
+                          placeholder={language === 'bn' ? 'আপনার মেসেজ লিখুন...' : 'Write your message...'}
+                          required
+                          className="rounded-xl min-h-[120px]"
+                        />
+                      </div>
+
+                      <Button 
+                        type="submit" 
+                        className="btn-primary-glow w-full"
+                        disabled={isSendingAdminMessage || !adminMessageForm.message || (adminMessageForm.targetType === 'mess' && !adminMessageForm.targetMessId)}
+                      >
+                        {isSendingAdminMessage ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Send className="w-4 h-4 mr-2" />}
+                        {language === 'bn' ? 'পাঠান' : 'Send'}
+                      </Button>
+                    </form>
+                  </CardContent>
+                </Card>
+              </motion.div>
+
+              {/* Sent Messages */}
+              <motion.div
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+              >
+                <Card className="glass-card h-[calc(100vh-320px)]">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Megaphone className="w-5 h-5 text-primary" />
+                      {language === 'bn' ? 'পাঠানো মেসেজ' : 'Sent Messages'}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-0">
+                    <ScrollArea className="h-[calc(100vh-450px)]">
+                      {isLoadingMessages ? (
+                        <div className="flex items-center justify-center py-8">
+                          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                        </div>
+                      ) : adminMessages.length === 0 ? (
+                        <div className="text-center py-8 px-4">
+                          <Megaphone className="w-12 h-12 text-muted-foreground mx-auto mb-4 opacity-50" />
+                          <p className="text-muted-foreground">
+                            {language === 'bn' ? 'কোনো মেসেজ পাঠানো হয়নি' : 'No messages sent yet'}
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="space-y-3 p-4">
+                          {adminMessages.map((msg, index) => (
+                            <motion.div
+                              key={msg.id}
+                              initial={{ opacity: 0, y: 10 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ delay: index * 0.03 }}
+                              className="p-4 border border-border rounded-xl bg-muted/30"
+                            >
+                              <div className="flex items-center gap-2 mb-2">
+                                <Badge variant={msg.target_type === 'global' ? 'default' : 'secondary'}>
+                                  {msg.target_type === 'global' ? (
+                                    <><Globe className="w-3 h-3 mr-1" /> {language === 'bn' ? 'সব ম্যানেজার' : 'All Managers'}</>
+                                  ) : (
+                                    <><Building2 className="w-3 h-3 mr-1" /> {getMessName(msg.target_mess_id)}</>
+                                  )}
+                                </Badge>
+                                <span className="text-xs text-muted-foreground">
+                                  {format(new Date(msg.created_at), 'dd/MM/yyyy HH:mm')}
+                                </span>
+                              </div>
+                              <p className="text-foreground text-sm">{msg.message}</p>
+                            </motion.div>
+                          ))}
+                        </div>
+                      )}
+                    </ScrollArea>
+                  </CardContent>
                 </Card>
               </motion.div>
             </div>

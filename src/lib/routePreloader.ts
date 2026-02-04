@@ -30,7 +30,6 @@ const routeComponents: Record<string, () => Promise<{ default: ComponentType<unk
   '/member/meals': () => import('@/pages/member/MemberMealsPage'),
   '/member/bazar': () => import('@/pages/member/MemberBazarPage'),
   '/member/deposits': () => import('@/pages/member/MemberDepositsPage'),
-  '/member/notifications': () => import('@/pages/member/MemberNotificationsPage'),
   '/member/contact': () => import('@/pages/member/MemberContactPage'),
   // Admin routes
   '/admin/dashboard': () => import('@/pages/admin/AdminDashboard'),
@@ -38,7 +37,6 @@ const routeComponents: Record<string, () => Promise<{ default: ComponentType<unk
   '/admin/mess': () => import('@/pages/admin/AdminMessPage'),
   '/admin/coupon': () => import('@/pages/admin/AdminCouponPage'),
   '/admin/helpdesk': () => import('@/pages/admin/AdminHelpDeskPage'),
-  '/admin/messages': () => import('@/pages/admin/AdminMessagesPage'),
 };
 
 // Cache for already preloaded routes

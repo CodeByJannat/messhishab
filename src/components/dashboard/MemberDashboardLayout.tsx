@@ -10,7 +10,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Home, ShoppingCart, Bell, LogOut, Menu, Sun, Moon, Globe, Send, Utensils, Wallet, X, MessageSquare } from "lucide-react";
+import { Home, ShoppingCart, LogOut, Menu, Sun, Moon, Globe, Utensils, Wallet, X, MessageSquare } from "lucide-react";
 import { useState, memo, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useUnreadMessages } from "@/hooks/useUnreadMessages";
@@ -21,7 +21,6 @@ const memberNavItems = [
   { href: "/member/meals", icon: Utensils, labelBn: "মিল", labelEn: "Meals" },
   { href: "/member/bazar", icon: ShoppingCart, labelBn: "বাজার", labelEn: "Bazar" },
   { href: "/member/deposits", icon: Wallet, labelBn: "জমা", labelEn: "Deposits" },
-  { href: "/member/notifications", icon: Bell, labelBn: "নোটিফিকেশন", labelEn: "Notifications" },
   { href: "/member/contact", icon: MessageSquare, labelBn: "মেসেজ", labelEn: "Messages", showUnread: true },
 ];
 
