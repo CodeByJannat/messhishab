@@ -3,7 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 serve(async (req) => {
@@ -19,7 +19,10 @@ serve(async (req) => {
     // Get auth header
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
-      throw new Error("No authorization header");
+      return new Response(
+        JSON.stringify({ error: "No authorization header" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     // Verify user is admin
@@ -28,39 +31,51 @@ serve(async (req) => {
     );
 
     if (authError || !user) {
-      throw new Error("Unauthorized");
+      return new Response(
+        JSON.stringify({ error: "Unauthorized" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
-    // Check admin role
-    const { data: roleData } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", user.id)
-      .single();
+    // Check admin role using the has_role function
+    const { data: hasAdminRole } = await supabase
+      .rpc('has_role', { _user_id: user.id, _role: 'admin' });
 
-    if (roleData?.role !== "admin") {
-      throw new Error("Admin access required");
+    if (!hasAdminRole) {
+      return new Response(
+        JSON.stringify({ error: "Admin access required" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     const { mess_id, action, reason } = await req.json();
 
     if (!mess_id || !action) {
-      throw new Error("Missing mess_id or action");
+      return new Response(
+        JSON.stringify({ error: "Missing mess_id or action" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     if (action === "suspend" && !reason) {
-      throw new Error("Suspension reason is required");
+      return new Response(
+        JSON.stringify({ error: "Suspension reason is required" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     // Get mess details
     const { data: mess, error: messError } = await supabase
       .from("messes")
-      .select("*, profiles:manager_id(email)")
+      .select("*")
       .eq("id", mess_id)
       .single();
 
     if (messError || !mess) {
-      throw new Error("Mess not found");
+      return new Response(
+        JSON.stringify({ error: "Mess not found" }),
+        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     if (action === "suspend") {
@@ -73,7 +88,13 @@ serve(async (req) => {
         })
         .eq("id", mess_id);
 
-      if (updateError) throw updateError;
+      if (updateError) {
+        console.error("Update error:", updateError);
+        return new Response(
+          JSON.stringify({ error: updateError.message }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
 
       // Create notification for manager
       await supabase
@@ -82,6 +103,7 @@ serve(async (req) => {
           mess_id: mess_id,
           message: `Your mess has been suspended by admin. Reason: ${reason}. Please contact support for more information.`,
           from_user_id: user.id,
+          to_all: true,
         });
 
       return new Response(
@@ -110,7 +132,13 @@ serve(async (req) => {
         })
         .eq("id", mess_id);
 
-      if (updateError) throw updateError;
+      if (updateError) {
+        console.error("Update error:", updateError);
+        return new Response(
+          JSON.stringify({ error: updateError.message }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
 
       // Create notification for manager
       await supabase
@@ -119,6 +147,7 @@ serve(async (req) => {
           mess_id: mess_id,
           message: `Your mess has been unsuspended. You can now access your dashboard again.`,
           from_user_id: user.id,
+          to_all: true,
         });
 
       return new Response(
@@ -126,14 +155,17 @@ serve(async (req) => {
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     } else {
-      throw new Error("Invalid action. Use 'suspend' or 'unsuspend'");
+      return new Response(
+        JSON.stringify({ error: "Invalid action. Use 'suspend' or 'unsuspend'" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
     console.error("Error:", errorMessage);
     return new Response(
       JSON.stringify({ error: errorMessage }),
-      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 });
