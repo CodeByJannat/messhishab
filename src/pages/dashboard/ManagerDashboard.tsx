@@ -16,7 +16,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useDateValidation } from '@/hooks/useDateValidation';
-import { Copy, Users, Utensils, ShoppingCart, Wallet, TrendingUp, TrendingDown, Loader2, CheckCircle, XCircle, Calendar, Home, Pencil, Check, X } from 'lucide-react';
+import { Copy, Users, Utensils, ShoppingCart, Wallet, TrendingUp, TrendingDown, Loader2, CheckCircle, XCircle, Calendar, Home, Pencil, Check, X, Receipt } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { format, parseISO, endOfMonth } from 'date-fns';
@@ -274,6 +274,13 @@ export default function ManagerDashboard() {
       icon: Wallet,
       color: 'text-success',
       bgColor: 'bg-success/10',
+    },
+    {
+      title: language === 'bn' ? 'মোট অতিরিক্ত খরচ' : 'Total Additional Cost',
+      value: `৳${totalAdditionalCosts.toFixed(2)}`,
+      icon: Receipt,
+      color: 'text-destructive',
+      bgColor: 'bg-destructive/10',
     },
   ];
 
