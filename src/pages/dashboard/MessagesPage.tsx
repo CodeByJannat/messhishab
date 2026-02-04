@@ -329,7 +329,7 @@ export default function MessagesPage() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6 h-[calc(100vh-120px)]">
+      <div className="flex flex-col h-[calc(100vh-80px)] md:h-[calc(100vh-100px)]">
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
@@ -346,8 +346,8 @@ export default function MessagesPage() {
           </Button>
         </div>
 
-        {/* Main Content */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1">
+        {/* Main Content - Flex grow */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
           <TabsList className="grid w-full max-w-md grid-cols-2">
             <TabsTrigger value="individual" className="flex items-center gap-2">
               <MessageCircle className="w-4 h-4" />
@@ -359,21 +359,21 @@ export default function MessagesPage() {
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="individual" className="mt-4 h-[calc(100vh-280px)]">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 h-full">
+          <TabsContent value="individual" className="flex-1 mt-4 min-h-0">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 h-full min-h-0">
               {/* Conversation List */}
               <motion.div
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
-                className="lg:col-span-1"
+                className="lg:col-span-1 min-h-0"
               >
-                <Card className="glass-card h-full">
+                <Card className="glass-card h-full flex flex-col min-h-0">
                   <CardHeader className="pb-2">
                     <CardTitle className="text-base">
                       {language === 'bn' ? 'কথোপকথন' : 'Conversations'} ({members.length})
-                    </CardTitle>
+                  </CardTitle>
                   </CardHeader>
-                  <CardContent className="p-0 h-[calc(100%-60px)]">
+                  <CardContent className="p-0 flex-1 min-h-0">
                     <ConversationList
                       members={members}
                       selectedMemberId={selectedMemberId}
@@ -388,9 +388,9 @@ export default function MessagesPage() {
               <motion.div
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
-                className="lg:col-span-2"
+                className="lg:col-span-2 min-h-0"
               >
-                <Card className="glass-card h-full">
+                <Card className="glass-card h-full flex flex-col min-h-0">
                   {selectedMember ? (
                     <ChatArea
                       messages={messages}
@@ -418,8 +418,8 @@ export default function MessagesPage() {
             </div>
           </TabsContent>
 
-          <TabsContent value="broadcast" className="mt-4 h-[calc(100vh-280px)]">
-            <Card className="glass-card h-full">
+          <TabsContent value="broadcast" className="flex-1 mt-4 min-h-0">
+            <Card className="glass-card h-full flex flex-col min-h-0">
               <CardHeader className="pb-2">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-base">
@@ -436,7 +436,7 @@ export default function MessagesPage() {
                   </Button>
                 </div>
               </CardHeader>
-              <CardContent className="p-0 h-[calc(100%-60px)]">
+              <CardContent className="p-0 flex-1 min-h-0">
                 <BroadcastList broadcasts={broadcasts} isLoading={isLoading} />
               </CardContent>
             </Card>

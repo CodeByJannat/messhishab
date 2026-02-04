@@ -260,10 +260,22 @@ export default function Register() {
         password,
         options: {
           emailRedirectTo: window.location.origin,
+          data: {
+            phone: phone, // Store phone in user metadata
+          },
         },
       });
       
       if (error) throw error;
+
+      // Save phone number to profiles table
+      if (data.user) {
+        await supabase.from('profiles').upsert({
+          user_id: data.user.id,
+          email: email,
+          phone: phone,
+        }, { onConflict: 'user_id' });
+      }
       
       // Send branded welcome email
       supabase.functions.invoke('send-welcome-email', {

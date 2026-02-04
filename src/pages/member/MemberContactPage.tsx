@@ -166,7 +166,7 @@ export default function MemberContactPage() {
 
   return (
     <MemberDashboardLayout>
-      <div className="space-y-6 h-[calc(100vh-120px)]">
+      <div className="flex flex-col h-[calc(100vh-80px)] md:h-[calc(100vh-100px)]">
         {/* Page Header */}
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-foreground">
@@ -177,8 +177,8 @@ export default function MemberContactPage() {
           </p>
         </div>
 
-        {/* Tabs */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1">
+        {/* Tabs - Flex grow to fill remaining space */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
           <TabsList className="grid w-full max-w-md grid-cols-2">
             <TabsTrigger value="chat" className="flex items-center gap-2">
               <MessageCircle className="w-4 h-4" />
@@ -191,8 +191,8 @@ export default function MemberContactPage() {
           </TabsList>
 
           {/* Chat Tab */}
-          <TabsContent value="chat" className="mt-4 h-[calc(100vh-280px)]">
-            <Card className="glass-card h-full flex flex-col">
+          <TabsContent value="chat" className="flex-1 mt-4 min-h-0">
+            <Card className="glass-card h-full flex flex-col min-h-0">
               {/* Chat Header */}
               <div className="p-4 border-b flex items-center gap-3">
                 <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
@@ -209,34 +209,38 @@ export default function MemberContactPage() {
               </div>
 
               {/* Messages */}
-              <ScrollArea className="flex-1 p-4">
-                {isLoading ? (
-                  <ChatSkeleton />
-                ) : messages.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center h-full py-12 text-center">
-                    <MessageCircle className="w-12 h-12 text-muted-foreground/50 mb-4" />
-                    <p className="text-muted-foreground">
-                      {language === 'bn' ? 'এখনো কোনো মেসেজ নেই' : 'No messages yet'}
-                    </p>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      {language === 'bn' ? 'কথোপকথন শুরু করুন!' : 'Start the conversation!'}
-                    </p>
+              <div className="flex-1 min-h-0 overflow-hidden">
+                <ScrollArea className="h-full">
+                  <div className="p-4">
+                    {isLoading ? (
+                      <ChatSkeleton />
+                    ) : messages.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center py-12 text-center">
+                        <MessageCircle className="w-12 h-12 text-muted-foreground/50 mb-4" />
+                        <p className="text-muted-foreground">
+                          {language === 'bn' ? 'এখনো কোনো মেসেজ নেই' : 'No messages yet'}
+                        </p>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          {language === 'bn' ? 'কথোপকথন শুরু করুন!' : 'Start the conversation!'}
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {messages.map((msg) => (
+                          <MessageBubble
+                            key={msg.id}
+                            message={msg.message}
+                            senderType={msg.sender_type}
+                            createdAt={msg.created_at}
+                            isOwn={msg.sender_type === 'member'}
+                          />
+                        ))}
+                        <div ref={scrollRef} />
+                      </div>
+                    )}
                   </div>
-                ) : (
-                  <div className="space-y-4">
-                    {messages.map((msg) => (
-                      <MessageBubble
-                        key={msg.id}
-                        message={msg.message}
-                        senderType={msg.sender_type}
-                        createdAt={msg.created_at}
-                        isOwn={msg.sender_type === 'member'}
-                      />
-                    ))}
-                    <div ref={scrollRef} />
-                  </div>
-                )}
-              </ScrollArea>
+                </ScrollArea>
+              </div>
 
               {/* Input Area */}
               <form onSubmit={handleSendMessage} className="p-4 border-t">
@@ -267,9 +271,9 @@ export default function MemberContactPage() {
           </TabsContent>
 
           {/* Broadcasts Tab */}
-          <TabsContent value="broadcasts" className="mt-4 h-[calc(100vh-280px)]">
-            <Card className="glass-card h-full">
-              <ScrollArea className="h-full p-4">
+          <TabsContent value="broadcasts" className="flex-1 mt-4 min-h-0">
+            <Card className="glass-card h-full flex flex-col min-h-0">
+              <ScrollArea className="flex-1 min-h-0">
                 {isLoading ? (
                   <BroadcastSkeleton />
                 ) : broadcasts.length === 0 ? (
