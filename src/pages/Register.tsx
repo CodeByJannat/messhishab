@@ -255,6 +255,40 @@ export default function Register() {
     setIsLoading(true);
     
     try {
+      // Check if email already exists in profiles table
+      const { data: existingEmail } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('email', email.toLowerCase().trim())
+        .maybeSingle();
+      
+      if (existingEmail) {
+        toast({
+          title: language === 'bn' ? 'ত্রুটি' : 'Error',
+          description: language === 'bn' ? 'এই ইমেইল দিয়ে আগে রেজিস্ট্রেশন করা হয়েছে' : 'This email is already registered',
+          variant: 'destructive',
+        });
+        setIsLoading(false);
+        return;
+      }
+      
+      // Check if phone already exists in profiles table
+      const { data: existingPhone } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('phone', phone)
+        .maybeSingle();
+      
+      if (existingPhone) {
+        toast({
+          title: language === 'bn' ? 'ত্রুটি' : 'Error',
+          description: language === 'bn' ? 'এই ফোন নম্বর দিয়ে আগে রেজিস্ট্রেশন করা হয়েছে' : 'This phone number is already registered',
+          variant: 'destructive',
+        });
+        setIsLoading(false);
+        return;
+      }
+
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
